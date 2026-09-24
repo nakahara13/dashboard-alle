@@ -2,6 +2,12 @@
 
 Base do sistema financeiro com Next.js (App Router), TypeScript, Tailwind CSS e Supabase.
 
+A interface usa branco e laranja, com detalhes em roxo. Inclui sidebar responsiva e páginas vazias de contas a receber, contas a pagar, comissões, usuários, parceiros, alertas, anexos de NF e auditoria. A rota inicial abre o dashboard, sem redirecionamento.
+
+O dashboard contém cards de alertas, balanço (entradas menos saídas), entradas e saídas, com filtro por dia e botão Hoje. Os minigráficos usam [Recharts](https://github.com/recharts/recharts) e mostram valores acumulados ao longo do dia. Os dados são fictícios, disponíveis para hoje e os dois dias anteriores, tomando como referência o fuso de São Paulo no carregamento da página. Outros dias apresentam valores zerados e indicação de ausência de dados de demonstração. Não há consultas ao Supabase nesta interface.
+
+O seletor no topo alterna usuários fictícios apenas no estado da interface. Não realiza autenticação, não altera permissões e volta ao usuário inicial ao recarregar a página.
+
 ## Desenvolvimento
 
 Requisitos: Node.js 22 ou superior e npm.
@@ -44,6 +50,7 @@ Esta etapa configura somente a base: não cria projeto remoto, tabelas, polític
 ```text
 src/
   app/                 # Rotas, layout e estilos globais
+  components/          # Sidebar, cabeçalho e estrutura das páginas vazias
   lib/supabase/        # Configuração e clientes Supabase
 .env.example           # Modelo de variáveis de ambiente
 ```

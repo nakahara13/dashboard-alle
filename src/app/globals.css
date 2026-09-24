@@ -4,7 +4,19 @@
 
 body {
   margin: 0;
-  background: #f8fafc;
-  color: #0f172a;
+  background: #faf9f7;
+  color: #292524;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+::selection {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+:focus-visible {
+  outline: 2px solid #ea580c;
+  outline-offset: 4px;
+}
+
+button, select { cursor: pointer; }
