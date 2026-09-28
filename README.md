@@ -104,3 +104,7 @@ O formulário de Contas a receber não solicita pagador. Novos recebimentos grav
 A página Contas a receber lista transações reais abaixo do formulário, com filtros por período inclusivo (data do pagamento), parceiro, conta bancária, método e status exato sem diferenciar maiúsculas/minúsculas. Sem período, também aparecem registros sem data. A tabela mantém registros antigos sem vínculos e pagina em grupos de 20, ordenados por data e ID do registro decrescentes. O total monetário considera todos os resultados filtrados. Filtros e página ficam na URL; salvar uma entrada atualiza o histórico, mantendo os filtros ativos.
 
 Execute `node --import tsx scripts/test-history-filters.ts` para validar os filtros e a formatação de valores.
+
+## Tema visual
+
+O botão no cabeçalho alterna entre modo claro e noturno. O modo noturno usa `#21222b` no fundo e `#3107b2` nos destaques, com tons auxiliares para legibilidade. A preferência é salva localmente no navegador e sincronizada entre abas. O padrão inicial é o modo claro.

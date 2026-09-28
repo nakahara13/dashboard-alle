@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
@@ -50,16 +51,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[256px_1fr]">
-      <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-white p-3 text-orange-700 shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
-      <aside className="border-b border-stone-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-b-0">
+      <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-surface p-3 text-accent-ink shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
+      <aside className="border-b border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-b-0">
         <div className="flex h-24 items-center justify-between px-7">
           <Link href="/" onClick={() => setMenuOpen(false)} aria-label="Alle Energia — início" className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm shadow-orange-200">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-accent text-white shadow-sm shadow-line">
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-6"><path d="m13 2-8 12h6l-1 8 9-13h-7l1-7Z" fill="currentColor" /></svg>
             </span>
-            <span><span className="block text-3xl font-bold leading-8 tracking-tight">alle<span className="text-orange-500">.</span></span><span className="block text-[10px] font-semibold tracking-[0.24em] text-stone-400">ENERGIA</span></span>
+            <span><span className="block text-3xl font-bold leading-8 tracking-tight">alle<span className="text-accent-ink">.</span></span><span className="block text-[10px] font-semibold tracking-[0.24em] text-muted-ink">ENERGIA</span></span>
           </Link>
-          <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="sidebar-navigation" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} className="rounded-lg border border-stone-200 p-2 text-stone-600 lg:hidden">
+          <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="sidebar-navigation" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} className="rounded-lg border border-line p-2 text-secondary lg:hidden">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={menuOpen ? "m6 6 12 12M6 18 18 6" : "M4 6h16M4 12h16M4 18h16"} /></svg>
           </button>
         </div>
@@ -67,25 +68,28 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav aria-label="Menu principal" className="flex-1 space-y-7 overflow-y-auto px-4 pb-6 pt-5">
             {navigation.map((group) => (
               <div key={group.label}>
-                <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">{group.label}</p>
+                <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-ink">{group.label}</p>
                 <ul className="space-y-1">
                   {group.items.map((item) => {
                     const active = pathname === item.href;
-                    return <li key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-3 text-[13px] font-medium transition-colors ${active ? "bg-orange-50 text-orange-700" : "text-stone-500 hover:bg-stone-50 hover:text-stone-900"}`}><Icon name={item.icon} /><span>{item.title}</span>{active && <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-orange-500" />}</Link></li>;
+                    return <li key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-3 text-[13px] font-medium transition-colors ${active ? "bg-accent-soft text-accent-ink" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span>{active && <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-accent" />}</Link></li>;
                   })}
                 </ul>
               </div>
             ))}
           </nav>
-          <div className="mx-5 mb-5 flex items-center gap-2 border-t border-stone-100 px-2 pt-5 text-xs text-stone-400"><span className="size-1.5 rounded-full bg-purple-400" aria-hidden="true" />Gestão financeira</div>
+          <div className="mx-5 mb-5 flex items-center gap-2 border-t border-subtle px-2 pt-5 text-xs text-muted-ink"><span className="size-1.5 rounded-full bg-purple-400" aria-hidden="true" />Gestão financeira</div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-col">
-        <header className="flex min-h-24 flex-wrap items-center justify-between gap-4 border-b border-stone-200/80 bg-white px-5 py-4 sm:px-9">
-          <div className="flex items-center gap-2 text-xs sm:gap-3 sm:text-sm"><span className="text-stone-400">{currentGroup?.label ?? "Alle"}</span><span aria-hidden="true" className="text-stone-300">/</span><span className="font-medium text-stone-600">{currentPage?.title ?? "Financeiro"}</span></div>
-          <div className="flex items-center gap-3 rounded-xl border border-stone-200/80 bg-white py-2 pl-2.5 pr-3">
+        <header className="flex min-h-24 flex-wrap items-center justify-between gap-4 border-b border-line/80 bg-surface px-5 py-4 sm:px-9">
+          <div className="flex items-center gap-2 text-xs sm:gap-3 sm:text-sm"><span className="text-muted-ink">{currentGroup?.label ?? "Alle"}</span><span aria-hidden="true" className="text-faint">/</span><span className="font-medium text-secondary">{currentPage?.title ?? "Financeiro"}</span></div>
+          <div className="flex flex-wrap items-center gap-3">
+          <ThemeToggle />
+          <div className="flex items-center gap-3 rounded-xl border border-line/80 bg-surface py-2 pl-2.5 pr-3">
             <Icon name="users" />
-            <div><p className="text-xs text-stone-400">Usuário</p><p className="text-sm text-stone-600">Nenhum usuário conectado</p></div>
+            <div><p className="text-xs text-muted-ink">Usuário</p><p className="text-sm text-secondary">Nenhum usuário conectado</p></div>
+          </div>
           </div>
         </header>
         <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col p-5 sm:p-9 lg:min-h-[calc(100dvh-96px)]">{children}</main>

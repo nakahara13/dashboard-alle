@@ -1,22 +1,91 @@
 @import "tailwindcss";
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+  --page: #faf9f7;
+  --surface: #ffffff;
+  --muted: #fafaf9;
+  --line: #e7e5e4;
+  --subtle: #f5f5f4;
+  --primary: #292524;
+  --secondary: #57534e;
+  --muted-ink: #78716c;
+  --faint: #a8a29e;
+  --accent: #ea580c;
+  --accent-hover: #c2410c;
+  --accent-soft: #fff7ed;
+  --accent-line: #fed7aa;
+  --accent-ink: #c2410c;
+  --danger-soft: #fef2f2;
+  --danger-ink: #991b1b;
+  --focus: #ea580c;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #21222b;
+  --surface: #292a35;
+  --muted: #30313e;
+  --line: #454655;
+  --subtle: #383946;
+  --primary: #f5f5fa;
+  --secondary: #dedee9;
+  --muted-ink: #b4b5c6;
+  --faint: #999bad;
+  --accent: #3107b2;
+  --accent-hover: #4821cd;
+  --accent-soft: #30234f;
+  --accent-line: #66518e;
+  --accent-ink: #c7b5ff;
+  --danger-soft: #442b35;
+  --danger-ink: #ffb4bd;
+  --focus: #b9a1ff;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-subtle: var(--subtle);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-muted-ink: var(--muted-ink);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+}
 
 body {
   margin: 0;
-  background: #faf9f7;
-  color: #292524;
+  background: var(--page);
+  color: var(--primary);
   font-family: Arial, Helvetica, sans-serif;
 }
 
 ::selection {
-  background: #ffedd5;
-  color: #9a3412;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 :focus-visible {
-  outline: 2px solid #ea580c;
+  outline: 2px solid var(--focus);
   outline-offset: 4px;
 }
 
 button, select { cursor: pointer; }
+
+@layer base {
+  input, textarea, select {
+    background-color: var(--surface);
+    color: var(--primary);
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--muted-ink);
+    opacity: 1;
+  }
+}

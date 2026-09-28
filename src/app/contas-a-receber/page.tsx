@@ -16,5 +16,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<His
   try { partners = await getPrisma().parceiro.findMany({ select: { id: true, nome: true, documento: true }, orderBy: [{ nome: "asc" }, { id: "asc" }] }); methods = await getPrisma().metodoPagamento.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }); accounts = await getPrisma().contaBancaria.findMany({ select: { id: true, nome: true, banco: true, agencia: true, numero: true }, orderBy: [{ nome: "asc" }, { id: "asc" }] }); } catch {
     return <p role="alert">Não foi possível carregar os parceiros, métodos e contas bancárias. Verifique a conexão e tente novamente.</p>;
   }
-  return <div className="mx-auto w-full max-w-7xl"><h1 className="mb-7 border-l-4 border-orange-500 pl-3 text-3xl font-semibold tracking-tight">Contas a receber</h1><PaymentForm partners={partners} methods={methods} accounts={accounts} /><ReceivablesHistory params={params} partners={partners} methods={methods} accounts={accounts} /></div>;
+  return <div className="mx-auto w-full max-w-7xl"><h1 className="mb-7 border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Contas a receber</h1><PaymentForm partners={partners} methods={methods} accounts={accounts} /><ReceivablesHistory params={params} partners={partners} methods={methods} accounts={accounts} /></div>;
 }
