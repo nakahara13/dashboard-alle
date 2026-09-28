@@ -14,6 +14,8 @@ const navigation = [
     { title: "Comissões", href: "/comissoes", icon: "commission" },
   ] },
   { label: "Gestão", items: [
+    { title: "Contas bancárias", href: "/contas-bancarias", icon: "partners" },
+    { title: "Métodos de pagamento", href: "/metodos-de-pagamento", icon: "commission" },
     { title: "Usuários", href: "/usuarios", icon: "users" },
     { title: "Parceiros", href: "/parceiros", icon: "partners" },
   ] },
@@ -40,17 +42,9 @@ function Icon({ name }: { name: string }) {
   return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">{iconPaths[name]}</svg>;
 }
 
-const users = [
-  { id: "ana", name: "Ana Silva", initials: "AS" },
-  { id: "carlos", name: "Carlos Oliveira", initials: "CO" },
-  { id: "mariana", name: "Mariana Santos", initials: "MS" },
-];
-
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [userId, setUserId] = useState(users[0].id);
-  const user = users.find((item) => item.id === userId) ?? users[0];
   const currentGroup = navigation.find((group) => group.items.some((item) => item.href === pathname));
   const currentPage = currentGroup?.items.find((item) => item.href === pathname);
 
@@ -90,13 +84,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="flex min-h-24 flex-wrap items-center justify-between gap-4 border-b border-stone-200/80 bg-white px-5 py-4 sm:px-9">
           <div className="flex items-center gap-2 text-xs sm:gap-3 sm:text-sm"><span className="text-stone-400">{currentGroup?.label ?? "Alle"}</span><span aria-hidden="true" className="text-stone-300">/</span><span className="font-medium text-stone-600">{currentPage?.title ?? "Financeiro"}</span></div>
           <div className="flex items-center gap-3 rounded-xl border border-stone-200/80 bg-white py-2 pl-2.5 pr-3">
-            <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-full bg-orange-100 text-xs font-semibold text-orange-700">{user.initials}</span>
-            <div>
-              <label htmlFor="current-user" className="block text-[10px] text-stone-400">Usuário de demonstração</label>
-              <select id="current-user" value={userId} onChange={(event) => setUserId(event.target.value)} className="max-w-44 bg-transparent py-0.5 pr-2 text-sm font-semibold text-stone-700" aria-label="Mostrar ou trocar usuário de demonstração">
-                {users.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-              </select>
-            </div>
+            <Icon name="users" />
+            <div><p className="text-xs text-stone-400">Usuário</p><p className="text-sm text-stone-600">Nenhum usuário conectado</p></div>
           </div>
         </header>
         <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col p-5 sm:p-9 lg:min-h-[calc(100dvh-96px)]">{children}</main>

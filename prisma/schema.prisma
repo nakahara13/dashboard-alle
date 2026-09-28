@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model criar_pagamento {
+  id_do_registro      BigInt    @id @default(autoincrement())
+  id_do_pagamento     BigInt    @default(autoincrement())
+  valor_total         Decimal   @db.Decimal(12, 2)
+  data_do_pagamento   DateTime? @db.Date
+  beneficiario        String    @db.VarChar(255)
+  pagador             String?   @db.VarChar(255)
+  metodo_do_pagamento String?   @db.VarChar(100)
+  status_do_pagamento String?   @db.VarChar(50)
+  numero_da_nf        String?   @db.VarChar(100)
+  parceiro_id         Int?
+  parceiro            Parceiro? @relation(fields: [parceiro_id], references: [id], onDelete: Restrict)
+
+  metodo_id Int?
+  metodo MetodoPagamento? @relation(fields: [metodo_id], references: [id], onDelete: Restrict)
+
+  conta_bancaria_id Int?
+  conta_bancaria ContaBancaria? @relation(fields: [conta_bancaria_id], references: [id], onDelete: Restrict)
+
+  @@index([conta_bancaria_id])
+  @@index([metodo_id])
+  @@index([parceiro_id])
+}
+
+model Parceiro {
+  id          Int      @id @default(autoincrement())
+  nome        String   @db.VarChar(255)
+  documento   String?  @unique @db.VarChar(30)
+  email       String?  @db.VarChar(255)
+  telefone    String?  @db.VarChar(30)
+  criado_em   DateTime @default(now()) @db.Timestamptz(6)
+  recebimentos criar_pagamento[]
+
+  @@map("parceiros")
+}
+
+model MetodoPagamento {
+  id Int @id @default(autoincrement())
+  nome String @unique @db.VarChar(100)
+  recebimentos criar_pagamento[]
+
+  @@map("metodos_pagamento")
+}
+
+model ContaBancaria {
+  id Int @id @default(autoincrement())
+  nome String @db.VarChar(100)
+  banco String @db.VarChar(100)
+  agencia String @db.VarChar(20)
+  numero String @db.VarChar(30)
+  titular String @db.VarChar(255)
+  recebimentos criar_pagamento[]
+
+  @@unique([banco, agencia, numero])
+  @@map("contas_bancarias")
+}
