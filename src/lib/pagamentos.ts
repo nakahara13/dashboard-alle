@@ -1,5 +1,7 @@
 import type { Prisma } from "../generated/prisma/client";
 
+export const PAYMENT_STATUSES = ["Recebido", "Pendente"] as const;
+
 export type PaymentInput = {
   parceiro_id: string;
   valor_total: string;
@@ -18,9 +20,11 @@ export function validatePayment(input: PaymentInput) {
   if (!/^\d{1,10}(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
     throw new Error("Informe um valor positivo com até 10 dígitos inteiros e 2 casas decimais.");
   }
-  for (const [field, max] of [["status_do_pagamento", 50], ["numero_da_nf", 100]] as const) {
-    if (input[field].trim().length > max) throw new Error(`O campo ${field} excede ${max} caracteres.`);
+  const status = input.status_do_pagamento.trim();
+  if (!PAYMENT_STATUSES.some((option) => option === status)) {
+    throw new Error("Selecione Recebido ou Pendente como status do pagamento.");
   }
+  if (input.numero_da_nf.trim().length > 100) throw new Error("O campo numero_da_nf excede 100 caracteres.");
   let date: Date | null = null;
   if (input.data_do_pagamento) {
     date = new Date(`${input.data_do_pagamento}T00:00:00.000Z`);
@@ -33,7 +37,7 @@ export function validatePayment(input: PaymentInput) {
     conta_bancaria_id: Number(input.conta_bancaria_id),
     pagador: null,
     metodo_id: Number(input.metodo_id),
-    status_do_pagamento: input.status_do_pagamento.trim() || null,
+    status_do_pagamento: status,
     numero_da_nf: input.numero_da_nf.trim() || null,
   };
 }

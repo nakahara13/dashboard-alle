@@ -1,3 +1,4 @@
+import { PAYMENT_STATUSES } from "./pagamentos";
 import type { Prisma } from "../generated/prisma/client";
 
 export type HistoryParams = Record<string, string | string[] | undefined>;
@@ -25,7 +26,7 @@ export function parseHistoryFilters(params: HistoryParams) {
       where[field] = Number(value);
     }
   }
-  if (values.status.length > 50) throw new Error("O filtro de status deve ter até 50 caracteres.");
+  if (values.status && !PAYMENT_STATUSES.some((status) => status === values.status)) throw new Error("Selecione Recebido ou Pendente no filtro de status.");
   if (values.status) where.status_do_pagamento = { equals: values.status, mode: "insensitive" };
   const page = text("pagina") || "1";
   if (!/^\d+$/.test(page) || !Number.isSafeInteger(Number(page)) || Number(page) < 1) throw new Error("Página inválida.");

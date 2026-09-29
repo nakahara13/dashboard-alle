@@ -17,7 +17,7 @@ const input: PaymentInput = {
   data_do_pagamento: "2026-09-28",
   conta_bancaria_id: "1",
   metodo_id: "1",
-  status_do_pagamento: "TESTE",
+  status_do_pagamento: "Pendente",
   numero_da_nf: "",
 };
 const rollback = new Error("ROLLBACK_TEST");

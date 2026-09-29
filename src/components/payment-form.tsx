@@ -1,6 +1,7 @@
 "use client";
 
 import { PaymentMethodSelect, type PaymentMethodOption } from "@/components/payment-method-select";
+import { PAYMENT_STATUSES } from "@/lib/pagamentos";
 import Link from "next/link";
 import { useActionState } from "react";
 import { savePayment } from "@/app/contas-a-receber/actions";
@@ -8,7 +9,6 @@ import { savePayment } from "@/app/contas-a-receber/actions";
 const fields = [
   { name: "valor_total", label: "Valor total (R$)", required: true, placeholder: "0,00", maxLength: 13 },
   { name: "data_do_pagamento", label: "Data do vencimento", placeholder: "dd/mm/aaaa", type: "date" },
-  { name: "status_do_pagamento", label: "Status do pagamento", placeholder: "Ex.: Recebido ou pendente", maxLength: 50 },
   { name: "numero_da_nf", label: "Número da NF", placeholder: "Ex.: 000123", maxLength: 100 },
 ];
 
@@ -25,6 +25,7 @@ export function PaymentForm({ partners, methods, accounts }: { accounts: { id: n
         <div className="sm:col-span-2"><label htmlFor="parceiro_id" className="mb-2 block text-sm font-medium">Parceiro *</label><select id="parceiro_id" name="parceiro_id" required defaultValue="" className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"><option value="" disabled>Selecione o parceiro</option>{partners.map((partner) => <option key={partner.id} value={partner.id}>{partner.nome}{partner.documento ? ` — ${partner.documento}` : ` — #${partner.id}`}</option>)}</select><p className="mt-2 text-xs text-muted-ink">Selecione o parceiro relacionado a este recebimento.</p></div>
         <div><label htmlFor="conta_bancaria_id" className="mb-2 block text-sm font-medium">Conta bancária *</label><select id="conta_bancaria_id" name="conta_bancaria_id" required defaultValue="" className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"><option value="" disabled>Selecione a conta bancária</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.nome} — {account.banco} — Ag. {account.agencia} / Conta {account.numero}</option>)}</select><Link href="/contas-bancarias" className="mt-2 inline-block text-xs text-accent-ink underline">Cadastrar conta bancária</Link></div>
         <PaymentMethodSelect methods={methods} />
+        <div><label htmlFor="status_do_pagamento" className="mb-2 block text-sm font-medium">Status do pagamento *</label><select id="status_do_pagamento" name="status_do_pagamento" required defaultValue="Pendente" className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">{PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
         {fields.map((field) => <div key={field.name}><label htmlFor={field.name} className="mb-2 block text-sm font-medium">{field.label}{field.required ? " *" : ""}</label><input {...field} id={field.name} type={field.type ?? "text"} aria-describedby={field.type === "date" ? "payment-date-hint" : undefined} inputMode={field.name === "valor_total" ? "decimal" : undefined} className="min-h-11 w-full rounded-lg border border-line px-3 text-sm disabled:opacity-60" />{field.type === "date" && <p id="payment-date-hint" className="mt-1 text-xs text-muted-ink">Selecione a data de vencimento.</p>}</div>)}
       </fieldset>
       {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
