@@ -6,6 +6,7 @@ export type PaymentInput = {
   parceiro_id: string;
   valor_total: string;
   data_do_pagamento: string;
+  competencia_financeira: string;
   conta_bancaria_id: string;
   metodo_id: string;
   status_do_pagamento: string;
@@ -25,6 +26,10 @@ export function validatePayment(input: PaymentInput) {
     throw new Error("Selecione Recebido ou Pendente como status do pagamento.");
   }
   if (input.numero_da_nf.trim().length > 100) throw new Error("O campo numero_da_nf excede 100 caracteres.");
+  const competencia = input.competencia_financeira.trim();
+  if (!/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(competencia)) {
+    throw new Error("Informe a competência financeira com mês e ano válidos.");
+  }
   let date: Date | null = null;
   if (input.data_do_pagamento) {
     date = new Date(`${input.data_do_pagamento}T00:00:00.000Z`);
@@ -34,6 +39,7 @@ export function validatePayment(input: PaymentInput) {
     parceiro_id: Number(input.parceiro_id),
     valor_total: amount,
     data_do_pagamento: date,
+    competencia_financeira: competencia,
     conta_bancaria_id: Number(input.conta_bancaria_id),
     pagador: null,
     metodo_id: Number(input.metodo_id),
@@ -42,11 +48,13 @@ export function validatePayment(input: PaymentInput) {
   };
 }
 
-export async function createPayment(db: Pick<Prisma.TransactionClient, "criar_pagamento" | "metodoPagamento" | "contaBancaria">, input: PaymentInput) {
+export async function createPayment(db: Pick<Prisma.TransactionClient, "criar_pagamento" | "metodoPagamento" | "contaBancaria">, input: PaymentInput, id?: bigint) {
   const data = validatePayment(input);
   const method = await db.metodoPagamento.findUnique({ where: { id: data.metodo_id } });
   if (!method) throw new Error("O método selecionado não existe. Atualize a página.");
   const account = await db.contaBancaria.findUnique({ where: { id: data.conta_bancaria_id } });
   if (!account) throw new Error("A conta bancária selecionada não existe. Atualize a página.");
-  return db.criar_pagamento.create({ data: { ...data, beneficiario: account.titular, metodo_do_pagamento: method.nome } });
+  const values = { ...data, beneficiario: account.titular, metodo_do_pagamento: method.nome };
+  if (id !== undefined) return db.criar_pagamento.update({ where: { id_do_registro: id }, data: values });
+  return db.criar_pagamento.create({ data: values });
 }
