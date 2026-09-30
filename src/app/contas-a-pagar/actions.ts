@@ -27,6 +27,7 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
   try {
     const payable = await createPayable(getPrisma(), input, id);
     revalidatePath("/contas-a-pagar");
+    revalidatePath("/");
     return { success: true, message: id ? "Conta a pagar atualizada com sucesso." : `Conta a pagar nº ${payable.id} registrada com sucesso.` };
   } catch {
     return { success: false, message: "Não foi possível salvar a conta. Verifique a conexão e o favorecido selecionado e tente novamente." };

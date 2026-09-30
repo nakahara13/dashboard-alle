@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PartnerForm } from "@/components/partner-form";
 import { getPrisma } from "@/lib/prisma";
 
-export const metadata: Metadata = { title: "Parceiros | Alle" };
+export const metadata: Metadata = { title: "Parceiros | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page() {

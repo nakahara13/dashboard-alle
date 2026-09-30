@@ -4,7 +4,7 @@ import { PayablesHistory } from "@/components/payables-history";
 import { getPrisma } from "@/lib/prisma";
 import type { HistoryParams } from "@/lib/recebimentos-filtros";
 
-export const metadata: Metadata = { title: "Contas a pagar | Alle" };
+export const metadata: Metadata = { title: "Contas a pagar | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page({ searchParams }: { searchParams: Promise<HistoryParams> }) {

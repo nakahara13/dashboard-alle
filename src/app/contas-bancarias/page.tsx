@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getPrisma } from "@/lib/prisma";
 import { BankAccountForm } from "@/components/bank-account-form";
 
-export const metadata: Metadata = { title: "Contas bancárias | Alle" };
+export const metadata: Metadata = { title: "Contas bancárias | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page() {

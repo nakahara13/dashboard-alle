@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getPrisma } from "@/lib/prisma";
 import { PaymentMethodForm } from "@/components/payment-method-form";
 
-export const metadata: Metadata = { title: "Métodos de pagamento | Alle" };
+export const metadata: Metadata = { title: "Métodos de pagamento | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page() {

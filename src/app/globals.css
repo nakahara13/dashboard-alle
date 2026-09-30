@@ -32,8 +32,8 @@
   --secondary: #dedee9;
   --muted-ink: #b4b5c6;
   --faint: #999bad;
-  --accent: #3107b2;
-  --accent-hover: #4821cd;
+  --accent: #7B00AF;
+  --accent-hover: #65058e;
   --accent-soft: #30234f;
   --accent-line: #66518e;
   --accent-ink: #c7b5ff;
@@ -43,6 +43,7 @@
 }
 
 @theme inline {
+  --font-sans: var(--font-poppins), Arial, Helvetica, sans-serif;
   --color-surface: var(--surface);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -64,7 +65,7 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--primary);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
 }
 
 ::selection {

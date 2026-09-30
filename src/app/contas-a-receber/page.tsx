@@ -4,7 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import { PaymentForm } from "@/components/payment-form";
 
-export const metadata: Metadata = { title: "Contas a receber | Alle" };
+export const metadata: Metadata = { title: "Contas a receber | Financeiro Alle" };
 
 export const dynamic = "force-dynamic";
 
