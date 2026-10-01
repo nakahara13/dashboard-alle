@@ -12,7 +12,7 @@ O cabeçalho informa que não há usuário conectado. Não há usuários fictíc
 
 Requisitos: Node.js 22 ou superior e npm.
 
-```bash
+```bash 
 npm install
 cp -n .env.example .env
 npm run dev
