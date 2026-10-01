@@ -8,6 +8,9 @@ datasource db {
 }
 
 model criar_pagamento {
+  tipo_id Int?
+  tipo Tipo? @relation(fields: [tipo_id], references: [id], onDelete: Restrict)
+  @@index([tipo_id])
   id_do_registro      BigInt    @id @default(autoincrement())
   id_do_pagamento     BigInt    @default(autoincrement())
   valor_total         Decimal   @db.Decimal(12, 2)
@@ -67,11 +70,14 @@ model ContaBancaria {
 }
 
 model ContaPagar {
+  tipo_id Int
+  tipo Tipo @relation(fields: [tipo_id], references: [id], onDelete: Restrict)
+  @@index([tipo_id])
   id BigInt @id @default(autoincrement())
   favorecido_id Int
   favorecido Parceiro @relation(fields: [favorecido_id], references: [id], onDelete: Restrict)
   descricao String @db.VarChar(500)
-  centro_custo String @db.VarChar(100)
+  centro_custo String? @db.VarChar(100)
   lancamento DateTime @db.Date
   competencia String @db.VarChar(7)
   vencimento DateTime @db.Date
@@ -81,4 +87,12 @@ model ContaPagar {
   @@index([favorecido_id])
   @@index([vencimento, id])
   @@map("contas_a_pagar")
+}
+
+model Tipo {
+  id Int @id @default(autoincrement())
+  nome String @unique @db.VarChar(100)
+  recebimentos criar_pagamento[]
+  contas_a_pagar ContaPagar[]
+  @@map("tipos")
 }

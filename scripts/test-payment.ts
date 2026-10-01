@@ -1,3 +1,4 @@
+import { managementData, updateManagement, deleteManagement, type ManagementKind } from "../src/lib/gestao";
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -13,6 +14,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: proc
 const marker = `TESTE-ROLLBACK-${randomUUID()}`;
 const input: PaymentInput = {
   parceiro_id: "1",
+  tipo_id: "1",
   valor_total: "12,34",
   competencia_financeira: "2026-08",
   data_do_pagamento: "2026-09-28",
@@ -40,6 +42,8 @@ try {
     assert.equal(validatePayment({ ...input, competencia_financeira: competencia }).competencia_financeira, competencia);
   }
   await prisma.$transaction(async (tx) => {
+    const tipo = await tx.tipo.create({ data: { nome: marker } });
+    input.tipo_id = String(tipo.id);
     const partner = await createPartner(tx, { nome: marker, documento: "", email: "", telefone: "" });
     input.parceiro_id = partner.id.toString();
     const method = await createMethod(tx, marker);
@@ -48,6 +52,7 @@ try {
     input.conta_bancaria_id = account.id.toString();
     const saved = await createPayment(tx, input);
     const read = await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: saved.id_do_registro } });
+    assert.equal(read.tipo_id, tipo.id);
     assert.equal(read.metodo_id, method.id);
     assert.equal(read.metodo_do_pagamento, method.nome);
     assert.equal(read.parceiro_id, partner.id);
@@ -68,7 +73,29 @@ try {
     assert.equal(updated.status_do_pagamento, "Recebido");
     await tx.criar_pagamento.delete({ where: { id_do_registro: second.id_do_registro } });
     assert.equal(await tx.criar_pagamento.findUnique({ where: { id_do_registro: second.id_do_registro } }), null);
+    await tx.$executeRawUnsafe("SAVEPOINT competence_check");
     await assert.rejects(() => tx.$executeRaw`UPDATE criar_pagamento SET competencia_financeira = ${"2026-13"} WHERE id_do_registro = ${read.id_do_registro}`);
+    await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT competence_check");
+    for (const [kind, id, values] of [
+      ["parceiro", partner.id, { nome: marker + " EDITADO", documento: "", email: "teste@example.com", telefone: "1234" }],
+      ["conta", account.id, { nome: marker + " EDITADO", banco: marker, agencia: "0001", numero: "000123-4", titular: "Titular editado" }],
+      ["metodo", method.id, { nome: marker + " EDITADO" }],
+      ["tipo", tipo.id, { nome: marker + " EDITADO" }],
+    ] as [ManagementKind, number, Record<string, string>][]) {
+      const form = new FormData();
+      Object.entries(values).forEach(([key, value]) => form.set(key, value));
+      const edited = await updateManagement(tx, id, managementData(kind, form));
+      assert.equal(edited.id, id);
+      assert.equal(edited.nome, kind === "metodo" ? values.nome.toUpperCase() : values.nome);
+      await tx.$executeRawUnsafe("SAVEPOINT management_delete");
+      await assert.rejects(() => deleteManagement(tx, kind, id), (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "P2003");
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT management_delete");
+    }
+    await tx.criar_pagamento.delete({ where: { id_do_registro: read.id_do_registro } });
+    for (const [kind, id] of [["parceiro", partner.id], ["conta", account.id], ["metodo", method.id], ["tipo", tipo.id]] as [ManagementKind, number][]) {
+      const deleted = await deleteManagement(tx, kind, id);
+      assert.equal(deleted.id, id);
+    }
     throw rollback;
   }).catch((error) => { if (error !== rollback) throw error; });
   assert.equal(await prisma.contaBancaria.count({ where: { nome: marker } }), 0);

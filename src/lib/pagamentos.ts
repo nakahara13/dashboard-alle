@@ -1,9 +1,11 @@
+import { validateTipoId } from "./tipos";
 import type { Prisma } from "../generated/prisma/client";
 
 export const PAYMENT_STATUSES = ["Recebido", "Pendente"] as const;
 
 export type PaymentInput = {
   parceiro_id: string;
+  tipo_id: string;
   valor_total: string;
   data_do_pagamento: string;
   competencia_financeira: string;
@@ -36,6 +38,7 @@ export function validatePayment(input: PaymentInput) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.data_do_pagamento) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== input.data_do_pagamento) throw new Error("Informe uma data válida.");
   }
   return {
+    tipo_id: validateTipoId(input.tipo_id),
     parceiro_id: Number(input.parceiro_id),
     valor_total: amount,
     data_do_pagamento: date,
@@ -48,8 +51,9 @@ export function validatePayment(input: PaymentInput) {
   };
 }
 
-export async function createPayment(db: Pick<Prisma.TransactionClient, "criar_pagamento" | "metodoPagamento" | "contaBancaria">, input: PaymentInput, id?: bigint) {
+export async function createPayment(db: Pick<Prisma.TransactionClient, "criar_pagamento" | "metodoPagamento" | "contaBancaria" | "tipo">, input: PaymentInput, id?: bigint) {
   const data = validatePayment(input);
+  if (!await db.tipo.findUnique({ where: { id: data.tipo_id } })) throw new Error("O tipo selecionado não existe. Atualize a página.");
   const method = await db.metodoPagamento.findUnique({ where: { id: data.metodo_id } });
   if (!method) throw new Error("O método selecionado não existe. Atualize a página.");
   const account = await db.contaBancaria.findUnique({ where: { id: data.conta_bancaria_id } });

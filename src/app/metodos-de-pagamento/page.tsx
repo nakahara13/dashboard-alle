@@ -1,3 +1,4 @@
+import { ManagementRowActions } from "@/components/management-row-actions";
 import type { Metadata } from "next";
 import { getPrisma } from "@/lib/prisma";
 import { PaymentMethodForm } from "@/components/payment-method-form";
@@ -19,7 +20,7 @@ export default async function Page() {
     <PaymentMethodForm />
     <section className="mt-6 rounded-2xl border border-line bg-surface p-6">
       <h2 className="text-lg font-semibold">Métodos cadastrados ({methods.length})</h2>
-      {methods.length ? <ul className="mt-4 divide-y divide-subtle">{methods.map((method) => <li key={method.id} className="py-3 text-sm">{method.nome}</li>)}</ul> : <p className="mt-4 text-sm text-muted-ink">Nenhum método cadastrado.</p>}
+      {methods.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th scope="col" className="p-3 font-medium">Nome</th><th scope="col" className="p-3 font-medium">Ações</th></tr></thead><tbody>{methods.map((method) => <tr key={method.id} className="border-t border-subtle"><td className="p-3">{method.nome}</td><td className="p-3"><ManagementRowActions kind="metodo" record={method} /></td></tr>)}</tbody></table></div> : <p className="mt-4 text-sm text-muted-ink">Nenhum método cadastrado.</p>}
     </section>
   </div>;
 }

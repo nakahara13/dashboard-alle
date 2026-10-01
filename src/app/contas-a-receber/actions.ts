@@ -13,6 +13,7 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
     if (form.has("id")) id = parseRecordId(String(form.get("id")));
   } catch { return { success: false, message: "Registro inválido." }; }
   const input: PaymentInput = {
+    tipo_id: String(form.get("tipo_id") ?? ""),
     parceiro_id: String(form.get("parceiro_id") ?? ""),
     competencia_financeira: String(form.get("competencia_financeira") ?? "").replace(/^(\d{2})\/(\d{4})$/, "$2-$1"),
     valor_total: String(form.get("valor_total") ?? ""),

@@ -5,8 +5,8 @@ import { PaymentForm } from "@/components/payment-form";
 import { PayableForm } from "@/components/payable-form";
 
 export type FinancialEditData =
-  | ({ kind: "receber" } & Pick<ComponentProps<typeof PaymentForm>, "partners" | "methods" | "accounts"> & { initial: NonNullable<ComponentProps<typeof PaymentForm>["initial"]> })
-  | ({ kind: "pagar" } & Pick<ComponentProps<typeof PayableForm>, "partners"> & { initial: NonNullable<ComponentProps<typeof PayableForm>["initial"]> });
+  | ({ kind: "receber" } & Pick<ComponentProps<typeof PaymentForm>, "types" | "partners" | "methods" | "accounts"> & { initial: NonNullable<ComponentProps<typeof PaymentForm>["initial"]> })
+  | ({ kind: "pagar" } & Pick<ComponentProps<typeof PayableForm>, "types" | "partners"> & { initial: NonNullable<ComponentProps<typeof PayableForm>["initial"]> });
 
 export function FinancialEditModal({ data, onClose, onSaved }: { data: FinancialEditData; onClose: () => void; onSaved: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);

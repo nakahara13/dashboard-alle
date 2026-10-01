@@ -6,9 +6,9 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { createPayable, validatePayable, type PayableInput } from "../src/lib/contas-a-pagar";
 import { parsePayableFilters } from "../src/lib/contas-a-pagar-filtros";
 
-const input: PayableInput = { favorecido_id: "1", descricao: "Aluguel", centro_custo: "Administrativo", lancamento: "2026-09-29", competencia: "08/2026", vencimento: "2026-10-10", valor: "1234,56", status: "Pendente" };
+const input: PayableInput = { favorecido_id: "1", descricao: "Aluguel", tipo_id: "1", lancamento: "2026-09-29", competencia: "08/2026", vencimento: "2026-10-10", valor: "1234,56", status: "Pendente" };
 assert.equal(validatePayable(input).competencia, "2026-08");
-for (const patch of [{ favorecido_id: "0" }, { descricao: " " }, { centro_custo: "" }, { lancamento: "2026-02-30" }, { vencimento: "" }, { competencia: "13/2026" }, { competencia: "01/0000" }, { valor: "0" }, { valor: "1.234" }, { status: "Recebido" }]) {
+for (const patch of [{ favorecido_id: "0" }, { descricao: " " }, { tipo_id: "" }, { lancamento: "2026-02-30" }, { vencimento: "" }, { competencia: "13/2026" }, { competencia: "01/0000" }, { valor: "0" }, { valor: "1.234" }, { status: "Recebido" }]) {
   assert.throws(() => validatePayable({ ...input, ...patch }));
 }
 for (const params of [{ inicio: "2026-10-10", fim: "2026-10-01" }, { favorecido: "-1" }, { competencia: "13/2026" }, { status: "Recebido" }, { pagina: "0" }]) assert.throws(() => parsePayableFilters(params));
@@ -20,13 +20,16 @@ const rollback = new Error("ROLLBACK");
 async function main() {
 try {
   await db.$transaction(async (tx) => {
+    const tipo = await tx.tipo.create({ data: { nome: marker } });
+    input.tipo_id = String(tipo.id);
     const partner = await tx.parceiro.create({ data: { nome: marker } });
     const saved = await createPayable(tx, { ...input, favorecido_id: String(partner.id) });
+    assert.equal(saved.tipo_id, tipo.id);
     assert.equal(saved.valor.toFixed(2), "1234.56");
     assert.equal(saved.competencia, "2026-08");
     assert.equal(saved.lancamento.toISOString().slice(0, 10), input.lancamento);
     assert.equal(saved.vencimento.toISOString().slice(0, 10), input.vencimento);
-    const { where } = parsePayableFilters({ favorecido: String(partner.id), descricao: "ALUG", centro_custo: "admin", competencia: "08/2026", inicio: "2026-10-10", fim: "2026-10-10", status: "Pendente" });
+    const { where } = parsePayableFilters({ favorecido: String(partner.id), descricao: "ALUG", tipo: input.tipo_id, competencia: "08/2026", inicio: "2026-10-10", fim: "2026-10-10", status: "Pendente" });
     const rows = await tx.contaPagar.findMany({ where, include: { favorecido: true } });
     assert.equal(rows.length, 1);
     assert.equal(rows[0].favorecido.nome, marker);

@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<HistoryParams> }) {
   const params = await searchParams;
   let partners;
-  try {
+  let types;
+  try { types = await getPrisma().tipo.findMany({ orderBy: { nome: "asc" } });
     partners = await getPrisma().parceiro.findMany({ select: { id: true, nome: true, documento: true }, orderBy: [{ nome: "asc" }, { id: "asc" }] });
   } catch {
     return <p role="alert">Não foi possível carregar os parceiros. Verifique a conexão e tente novamente.</p>;
   }
-  return <div className="mx-auto w-full max-w-7xl"><h1 className="mb-7 border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Contas a pagar</h1><PayableForm partners={partners} /><PayablesHistory params={params} partners={partners} /></div>;
+  return <div className="mx-auto w-full max-w-7xl"><h1 className="mb-7 border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Contas a pagar</h1><PayableForm types={types} partners={partners} /><PayablesHistory params={params} types={types} partners={partners} /></div>;
 }

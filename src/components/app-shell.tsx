@@ -17,6 +17,7 @@ const navigation = [
     { title: "Comissões", href: "/comissoes", icon: "commission" },
   ] },
   { label: "Gestão", items: [
+    { title: "Tipos de Pagamento", href: "/tipos", icon: "file" },
     { title: "Contas bancárias", href: "/contas-bancarias", icon: "partners" },
     { title: "Métodos de pagamento", href: "/metodos-de-pagamento", icon: "commission" },
     { title: "Usuários", href: "/usuarios", icon: "users" },

@@ -14,7 +14,7 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
   const input: PayableInput = {
     favorecido_id: String(form.get("favorecido_id") ?? ""),
     descricao: String(form.get("descricao") ?? ""),
-    centro_custo: String(form.get("centro_custo") ?? ""),
+    tipo_id: String(form.get("tipo_id") ?? ""),
     lancamento: String(form.get("lancamento") ?? ""),
     competencia: String(form.get("competencia") ?? ""),
     vencimento: String(form.get("vencimento") ?? ""),
