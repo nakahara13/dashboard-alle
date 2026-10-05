@@ -96,3 +96,18 @@ model Tipo {
   contas_a_pagar ContaPagar[]
   @@map("tipos")
 }
+
+enum UserRole {
+  admin
+  gestor
+}
+
+model Usuario {
+  id Int @id @default(autoincrement())
+  nome String @db.VarChar(255)
+  email String @unique @db.VarChar(255)
+  role UserRole @default(gestor)
+  criado_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("usuarios")
+}

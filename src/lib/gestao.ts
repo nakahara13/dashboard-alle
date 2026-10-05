@@ -1,14 +1,16 @@
+import { validateUser } from "./usuarios";
 import type { Prisma } from "../generated/prisma/client";
 import { validatePartner } from "./parceiros";
 import { validateBankAccount } from "./contas-bancarias";
 import { validateMethod } from "./metodos-pagamento";
 import { validateTipo, validateTipoId } from "./tipos";
 
-export type ManagementKind = "parceiro" | "conta" | "metodo" | "tipo";
-type Db = Pick<Prisma.TransactionClient, "parceiro" | "contaBancaria" | "metodoPagamento" | "tipo">;
+export type ManagementKind = "parceiro" | "conta" | "metodo" | "tipo" | "usuario";
+type Db = Pick<Prisma.TransactionClient, "parceiro" | "contaBancaria" | "metodoPagamento" | "tipo" | "usuario">;
 export function managementData(kind: ManagementKind, form: FormData) {
   const text = (key: string) => String(form.get(key) ?? "");
   switch (kind) {
+    case "usuario": return { kind, data: validateUser({ nome: text("nome"), email: text("email"), role: text("role") }) };
     case "parceiro": return { kind, data: validatePartner({ nome: text("nome"), documento: text("documento"), email: text("email"), telefone: text("telefone") }) };
     case "conta": return { kind, data: validateBankAccount({ nome: text("nome"), banco: text("banco"), agencia: text("agencia"), numero: text("numero"), titular: text("titular") }) };
     case "metodo": return { kind, data: validateMethod(text("nome")) };
@@ -19,6 +21,7 @@ export function managementData(kind: ManagementKind, form: FormData) {
 export async function updateManagement(db: Db, id: number, input: ReturnType<typeof managementData>) {
   validateTipoId(String(id));
   switch (input.kind) {
+    case "usuario": return db.usuario.update({ where: { id }, data: input.data });
     case "parceiro": return db.parceiro.update({ where: { id }, data: input.data });
     case "conta": return db.contaBancaria.update({ where: { id }, data: input.data });
     case "metodo": return db.metodoPagamento.update({ where: { id }, data: input.data });
@@ -28,6 +31,7 @@ export async function updateManagement(db: Db, id: number, input: ReturnType<typ
 export async function deleteManagement(db: Db, kind: ManagementKind, id: number) {
   validateTipoId(String(id));
   switch (kind) {
+    case "usuario": return db.usuario.delete({ where: { id } });
     case "parceiro": return db.parceiro.delete({ where: { id } });
     case "conta": return db.contaBancaria.delete({ where: { id } });
     case "metodo": return db.metodoPagamento.delete({ where: { id } });
