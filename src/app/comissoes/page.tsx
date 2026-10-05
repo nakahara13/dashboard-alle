@@ -1,51 +1,108 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
-import { commissionFilters, getCommissions } from "@/lib/comissoes";
-import { PERIODS, displayDate, type DashboardParams } from "@/lib/dashboard";
-import { formatMoney } from "@/lib/recebimentos-filtros";
+import { Prisma } from "@/generated/prisma/client";
+import { positiveId, commissionInclude, serializeCommission } from "@/lib/comissao-module";
+import { parseCompetence } from "@/lib/contas-a-pagar";
+import { CommissionForm, CommissionCatalogs, CommissionImport, CommissionDetailLink } from "@/components/commission-forms";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
+import { formatMoney } from "@/lib/recebimentos-filtros";
 
 export const metadata: Metadata = { title: "Comissões | Financeiro Alle" };
 export const dynamic = "force-dynamic";
-
-export default async function Page({ searchParams }: { searchParams: Promise<DashboardParams> }) {
+const money = (value: string) => formatMoney({ toFixed: () => value });
+const competenceLabel = (value: string) => value.split("-").reverse().join("/");
+const dateLabel = (value: string) => value ? value.split("-").reverse().join("/") : "—";
+const statusOptions = ["a-receber", "recebido", "a-pagar", "pago"];
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-  let filters = commissionFilters({}, today);
-  let error: string | null = null;
-  let result: Awaited<ReturnType<typeof getCommissions>> | null = null;
-  try { filters = commissionFilters(params, today); } catch (cause) { error = cause instanceof Error ? cause.message : "Filtros inválidos."; }
-  if (!error) {
-    try { result = await getPrisma().$transaction((db) => getCommissions(db, filters), { isolationLevel: "RepeatableRead" }); }
-    catch { error = "Não foi possível carregar as comissões. Atualize a página para tentar novamente."; }
+  const text = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
+  const generator = text("geradora"), unit = text("unidade");
+  const competence = text("competencia"), distributor = text("distribuidora"), partner = text("parceiro"), status = text("status"), query = text("busca").trim();
+  let data: Awaited<ReturnType<typeof loadCommissions>> | undefined;
+  let loadError = "";
+  try {
+    const where: Prisma.ComissaoWhereInput = {};
+    if (competence) where.competencia = parseCompetence(competence);
+    if (generator) where.geradora_id = generator === "nao-informada" ? null : positiveId(generator);
+    if (unit) where.cliente = { unidade_id: positiveId(unit) };
+    if (distributor) where.distribuidora_id = positiveId(distributor);
+    if (partner) where.parceiro_id = positiveId(partner);
+    if (status && !statusOptions.includes(status)) throw new Error("Selecione um status válido.");
+    if (status === "a-receber") where.status_recebimento = "Pendente";
+    if (status === "recebido") where.status_recebimento = "Recebido";
+    if (status === "a-pagar") where.status_pagamento = "Pendente";
+    if (status === "pago") where.status_pagamento = "Pago";
+    if (query) where.cliente = { ...(unit ? { unidade_id: positiveId(unit) } : {}), OR: [{ nome: { contains: query, mode: "insensitive" } }, { uc: { contains: query, mode: "insensitive" } }] };
+    const requestedPage = text("pagina") || "1";
+    if (!/^[1-9]\d*$/.test(requestedPage) || !Number.isSafeInteger(Number(requestedPage))) throw new Error("Página inválida.");
+    data = await loadCommissions(getPrisma(), where, Number(requestedPage));
+  } catch (error) {
+    loadError = error instanceof Error && /^(Selecione|Informe|Página inválida)/.test(error.message) ? error.message : "Não foi possível carregar as comissões. Verifique a conexão e as migrations do banco.";
   }
-  const href = (changes: Record<string, string>) => {
-    const query = new URLSearchParams({ periodo: filters.period, inicio: filters.inicio, fim: filters.fim, movimento: filters.direction, ...changes });
-    return `/comissoes?${query}`;
-  };
-  const inputClass = "min-h-11 rounded-lg border border-line bg-surface px-3 text-sm";
-  return <div className="mx-auto w-full max-w-7xl space-y-6">
-    <div><h1 className="border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Comissões</h1><p className="mt-3 text-sm text-muted-ink">Entradas e saídas de comissão, reunidas por vencimento.</p></div>
-    <section aria-label="Filtros de comissões" className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
-      <nav aria-label="Períodos rápidos" className="flex flex-wrap gap-2">{PERIODS.map((period) => <Link key={period.id} href={href({ periodo: period.id })} aria-current={filters.period === period.id ? "page" : undefined} className={`rounded-lg border px-4 py-2.5 text-sm font-medium ${filters.period === period.id ? "border-accent bg-accent text-white" : "border-line text-secondary hover:bg-muted"}`}>{period.label}</Link>)}</nav>
-      <nav aria-label="Movimento" className="mt-4 flex flex-wrap gap-2">{[{ id: "todos", label: "Entradas e saídas" }, { id: "entrada", label: "Somente entradas" }, { id: "saida", label: "Somente saídas" }].map((item) => <Link key={item.id} href={href({ movimento: item.id })} aria-current={filters.direction === item.id ? "page" : undefined} className={`rounded-lg border px-4 py-2 text-sm ${filters.direction === item.id ? "border-accent-line bg-accent-soft font-medium text-accent-ink" : "border-line text-secondary hover:bg-muted"}`}>{item.label}</Link>)}</nav>
-      <form key={`${filters.inicio}-${filters.fim}-${filters.direction}`} action="/comissoes" method="get" className="mt-5 flex flex-wrap items-end gap-3 border-t border-subtle pt-5">
-        <input type="hidden" name="periodo" value="personalizado" /><input type="hidden" name="movimento" value={filters.direction} />
-        <div><label htmlFor="comissoes-inicio" className="mb-2 block text-xs font-medium text-muted-ink">De (dd/mm/aaaa)</label><input id="comissoes-inicio" name="inicio" type="date" required defaultValue={filters.inicio} className={inputClass} /></div>
-        <div><label htmlFor="comissoes-fim" className="mb-2 block text-xs font-medium text-muted-ink">Até (dd/mm/aaaa)</label><input id="comissoes-fim" name="fim" type="date" required defaultValue={filters.fim} className={inputClass} /></div>
-        <button className="min-h-11 rounded-lg bg-accent px-5 text-sm font-medium text-white hover:bg-accent-hover">Aplicar período</button><Link href="/comissoes" className="px-2 py-3 text-sm text-accent-ink underline">Limpar filtros</Link>
-      </form>
-    </section>
-    {error && <p role="alert" className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">{error}</p>}
-    {result && <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Detalhamento das comissões</h2><p className="text-xs text-muted-ink">{result.count} registro(s) · {displayDate(filters.inicio)} a {displayDate(filters.fim)}</p></div>
-      {result.rows.length === 0 ? <p className="rounded-lg bg-muted p-8 text-center text-sm text-muted-ink">Nenhuma comissão encontrada para os filtros selecionados.</p> : <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-left text-sm"><caption className="sr-only">Comissões de entrada e saída ordenadas por vencimento mais recente</caption><thead><tr>{["Movimento", "Registro", "Parceiro / favorecido", "Descrição", "Tipo", "Competência", "Vencimento", "Status", "Valor", "Método", "Conta bancária", "NF"].map((label) => <th key={label} scope="col" className="border-b border-line p-3 font-medium">{label}</th>)}</tr></thead><tbody>{result.rows.map((row) => <tr key={row.key} className="border-b border-subtle hover:bg-muted">
-        <td className="p-3"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${row.direction === "entrada" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{row.direction === "entrada" ? "↗ Entrada" : "↘ Saída"}</span></td>
-        <td className="p-3">#{row.reference}</td><td className="p-3">{row.partner}</td><td className="min-w-48 max-w-xs whitespace-normal break-words p-3">{row.description}</td><td className="p-3">{row.type}</td><td className="p-3">{row.competence ? displayDate(row.competence) : "Não informada"}</td><td className="p-3">{displayDate(row.date)}</td><td className="p-3"><PaymentStatusBadge status={row.status} /></td><td className={`p-3 text-right font-semibold tabular-nums ${row.direction === "entrada" ? "text-green-700 dark:text-green-400" : "text-danger-ink"}`}>{row.direction === "entrada" ? "+" : "−"} {formatMoney({ toFixed: () => row.value })}</td><td className="p-3">{row.method ?? "—"}</td><td className="p-3">{row.account ?? "—"}</td><td className="p-3">{row.invoice ?? "—"}</td>
-      </tr>)}</tbody></table></div>}
-      <nav aria-label="Paginação de comissões" className="mt-6 flex items-center justify-between gap-3 text-sm">{result.page > 1 ? <Link href={href({ pagina: String(result.page - 1) })} className="text-accent-ink underline">Anterior</Link> : <span className="text-muted-ink">Anterior</span>}<span>Página {result.page} de {result.pages}</span>{result.page < result.pages ? <Link href={href({ pagina: String(result.page + 1) })} className="text-accent-ink underline">Próxima</Link> : <span className="text-muted-ink">Próxima</span>}</nav>
-    </section>}
-    <p className="text-xs leading-5 text-muted-ink">Somente lançamentos classificados no tipo Comissão ou Comissões, incluindo pendentes. O período considera o vencimento; registros sem essa data não aparecem. Entradas não possuem descrição própria e são identificadas como “Comissão a receber”.</p>
-  </div>;
+  let content;
+  if (data) {
+    const totals = { pendingReceipt: new Prisma.Decimal(0), received: new Prisma.Decimal(0), pendingPayment: new Prisma.Decimal(0), paid: new Prisma.Decimal(0), margin: new Prisma.Decimal(0) };
+    for (const group of data.groups) {
+      const entryKey = group.status_recebimento === "Recebido" ? "received" : "pendingReceipt";
+      totals[entryKey] = totals[entryKey].plus(group._sum.valor_comissao_empresa ?? 0);
+      if (group.status_pagamento !== "Não se aplica") {
+        const exitKey = group.status_pagamento === "Pago" ? "paid" : "pendingPayment";
+        totals[exitKey] = totals[exitKey].plus(group._sum.valor_comissao_parceiro ?? 0);
+      }
+      totals.margin = totals.margin.plus(group._sum.margem ?? 0);
+    }
+    const href = (page: number) => `/comissoes?${new URLSearchParams({ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query, pagina: String(page) })}`;
+    const fieldClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm";
+    content = <>
+      <section className="rounded-2xl border border-line bg-surface p-5"><form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="grid gap-2 text-sm">Competência<input type="month" name="competencia" defaultValue={competence} className={fieldClass} /></label>
+        <label className="grid gap-2 text-sm">Geradora<select name="geradora" defaultValue={generator} className={fieldClass}><option value="">Todas</option><option value="nao-informada">Geradora não informada</option>{data.options.generators.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">Unidade Allp Fit<select name="unidade" defaultValue={unit} className={fieldClass}><option value="">Todas</option>{data.options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">Distribuidora<select name="distribuidora" defaultValue={distributor} className={fieldClass}><option value="">Todas</option>{data.options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">Gestor / parceiro<select name="parceiro" defaultValue={partner} className={fieldClass}><option value="">Todos</option>{data.options.partners.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">Status<select name="status" defaultValue={status} className={fieldClass}><option value="">Todos</option>{[{ id: "a-receber", label: "A receber" }, { id: "recebido", label: "Recebido" }, { id: "a-pagar", label: "A pagar ao parceiro" }, { id: "pago", label: "Pago ao parceiro" }].map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">Buscar cliente<input name="busca" placeholder="Nome ou UC" defaultValue={query} maxLength={255} className={fieldClass} /></label>
+        <div className="flex items-center gap-4 sm:col-span-2 lg:col-span-4"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Aplicar filtros</button><Link href="/comissoes" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
+      </form></section>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[{ label: "Total a receber", value: totals.pendingReceipt }, { label: "Total recebido", value: totals.received }, { label: "A pagar aos parceiros", value: totals.pendingPayment }, { label: "Pago aos parceiros", value: totals.paid }, { label: "Margem", value: totals.margin }].map((card) => <div key={card.label} className="rounded-2xl border border-line bg-surface p-5"><p className="text-sm text-muted-ink">{card.label}</p><p className={`mt-3 text-xl font-semibold tabular-nums ${card.value.lt(0) ? "text-danger-ink" : ""}`}>{money(card.value.toFixed(2))}</p></div>)}</div>
+      <p className="text-xs text-muted-ink">Totais de todos os registros dos filtros selecionados. Margem = comissão da empresa − comissão do parceiro, independentemente do recebimento e pagamento.</p>
+      {data.unassignedCount > 0 && <p role="status" className="rounded-lg bg-accent-soft p-4 text-sm text-accent-ink">{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
+      <CommissionCatalogs options={data.options} />
+      <details className="rounded-2xl border border-line bg-surface p-5"><summary className="cursor-pointer font-semibold">Nova comissão</summary><CommissionForm options={data.options} /></details>
+      <CommissionImport options={data.options} />
+      <section className="rounded-2xl border border-line bg-surface p-5"><h2 className="mb-5 text-lg font-semibold">Comissões ({data.count})</h2>
+        {!data.rows.length ? <p className="rounded-lg bg-muted p-8 text-center text-sm text-muted-ink">Nenhuma comissão encontrada.</p> : <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-left text-sm"><caption className="sr-only">Comissões por cliente e competência</caption><thead><tr>{["Cliente / UC", "Geradora", "Distribuidora", "Unidade Allp Fit", "Gestor / parceiro", "Competência", "Economia", "Comissão da empresa", "Comissão do parceiro", "Margem", "Recebimento", "Pagamento", "Ações"].map((label) => <th scope="col" key={label} className="border-b border-line p-3 font-medium">{label}</th>)}</tr></thead><tbody>{data.rows.map((row) => <tr key={row.id} className={`border-b border-subtle ${row.parceiro_id && Number(row.margem) <= 0 ? "bg-danger-soft" : "hover:bg-muted"}`}>
+          <td className="p-3">{row.cliente.nome}<p className="text-xs text-muted-ink">{row.cliente.uc}</p></td><td className="p-3">{row.geradora?.nome ?? "Geradora não informada"}</td><td className="p-3">{row.distribuidora.nome}</td><td className="p-3">{row.cliente.unidade?.nome ?? "Não informada"}</td><td className="p-3">{row.parceiro?.nome ?? "Sem parceiro"}</td><td className="p-3">{competenceLabel(row.competencia)}</td><td className="p-3">{money(row.valor_economia)}</td><td className="p-3">{money(row.valor_comissao_empresa)}</td><td className="p-3">{money(row.valor_comissao_parceiro)}</td><td className="p-3 font-semibold">{money(row.margem)}{row.parceiro_id && Number(row.margem) <= 0 && <p className="text-xs text-danger-ink">Atenção: margem zero ou negativa</p>}</td><td className="p-3"><PaymentStatusBadge status={row.status_recebimento} /></td><td className="p-3">{row.status_pagamento === "Não se aplica" ? "Não se aplica" : <PaymentStatusBadge status={row.status_pagamento} />}</td>
+          <td className="p-3"><CommissionDetailLink id={row.id} /></td>
+        </tr>)}</tbody></table></div>}
+        <nav aria-label="Paginação de comissões" className="mt-5 flex justify-between text-sm">{data.page > 1 ? <Link href={href(data.page - 1)} className="text-accent-ink underline">Anterior</Link> : <span className="text-muted-ink">Anterior</span>}<span>Página {data.page} de {data.pages}</span>{data.page < data.pages ? <Link href={href(data.page + 1)} className="text-accent-ink underline">Próxima</Link> : <span className="text-muted-ink">Próxima</span>}</nav>
+      </section>
+      {data.rows.map((row) => <details key={`${row.id}-${JSON.stringify(row)}`} id={`comissao-${row.id}`} className="rounded-2xl border border-line bg-surface p-5 open:shadow-sm"><summary className="cursor-pointer font-semibold">{row.cliente.nome} · {row.geradora?.nome ?? "Geradora não informada"} · {competenceLabel(row.competencia)} — detalhes / editar</summary>
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">{[{ label: "Cliente / UC", value: `${row.cliente.nome} / ${row.cliente.uc}` }, { label: "Geradora pagadora", value: row.geradora?.nome ?? "Não informada — selecione ao editar" }, { label: "Distribuidora da UC", value: row.distribuidora.nome }, { label: "Unidade Allp Fit de origem", value: row.cliente.unidade?.nome ?? "Não informada" }, { label: "Gestor / parceiro", value: row.parceiro?.nome ?? "Sem parceiro" }, { label: "Competência", value: competenceLabel(row.competencia) }, { label: "Economia", value: money(row.valor_economia) }, { label: "Comissão da empresa", value: money(row.valor_comissao_empresa) }, { label: "Comissão do parceiro", value: money(row.valor_comissao_parceiro) }, { label: "Margem", value: money(row.margem) }, { label: "Recebimento", value: row.status_recebimento }, { label: "Pagamento", value: row.status_pagamento }, { label: "Data de recebimento", value: dateLabel(row.data_recebimento) }, { label: "Data de pagamento", value: dateLabel(row.data_pagamento) }].map((item) => <div key={item.label}><dt className="text-muted-ink">{item.label}</dt><dd className="mt-1 font-medium">{item.value}</dd></div>)}</dl>
+        <CommissionForm options={data.options} row={row} />
+      </details>)}
+    </>;
+  } else {
+    content = <p role="alert" className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">{loadError} <Link href="/comissoes" className="underline">Recarregar sem filtros</Link></p>;
+  }
+  return <div className="mx-auto w-full max-w-7xl space-y-6"><div><h1 className="border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Comissões</h1><p className="mt-3 text-sm text-muted-ink">Comissões recebidas das geradoras, pagas aos gestores das unidades Allp Fit e margem por cliente.</p></div>{content}</div>;
+}
+
+async function loadCommissions(db: ReturnType<typeof getPrisma>, where: Prisma.ComissaoWhereInput, requestedPage: number) {
+  return db.$transaction(async (tx) => {
+      const [clients, distributors, partners, accounts, methods, generators, units, unassignedCount, count, groups] = await Promise.all([
+        tx.cliente.findMany({ include: { unidade: true }, orderBy: { nome: "asc" } }), tx.distribuidora.findMany({ orderBy: { nome: "asc" } }),
+        tx.parceiro.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+        tx.contaBancaria.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+        tx.metodoPagamento.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
+        tx.geradora.findMany({ orderBy: { nome: "asc" } }),
+        tx.unidadeAllpFit.findMany({ orderBy: { nome: "asc" } }),
+        tx.comissao.count({ where: { geradora_id: null } }),
+        tx.comissao.count({ where }), tx.comissao.groupBy({ by: ["status_recebimento", "status_pagamento"], where, _sum: { valor_comissao_empresa: true, valor_comissao_parceiro: true, margem: true } }),
+      ]);
+      const pages = Math.max(1, Math.ceil(count / 20)), page = Math.min(requestedPage, pages);
+      const rows = await tx.comissao.findMany({ where, include: commissionInclude, orderBy: [{ competencia: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 });
+      return { options: { clients, distributors, partners, accounts, methods, generators, units }, unassignedCount, count, groups, page, pages, rows: rows.map(serializeCommission) };
+    }, { isolationLevel: "RepeatableRead" });
 }

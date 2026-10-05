@@ -17,7 +17,9 @@
     "db:deploy": "prisma migrate deploy",
     "prebuild": "prisma generate",
     "pretypecheck": "prisma generate",
-    "db:test-payment": "prisma generate && tsx scripts/test-payment.ts"
+    "db:test-payment": "prisma generate && tsx scripts/test-payment.ts",
+    "db:test-commissions": "tsx scripts/test-commission-module.ts",
+    "db:test-commission-upgrade": "tsx scripts/test-commission-upgrade.ts"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -26,6 +28,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "dotenv": "^18.0.4",
+    "exceljs": "^4.4.0",
     "next": "^16.3.6",
     "pg": "^8.23.0",
     "react": "^19.3.0",
@@ -46,5 +49,10 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
   }
 }

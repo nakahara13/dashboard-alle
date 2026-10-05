@@ -29,7 +29,8 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
     revalidatePath("/contas-a-pagar");
     revalidatePath("/");
     return { success: true, message: id ? "Conta a pagar atualizada com sucesso." : `Conta a pagar nº ${payable.id} registrada com sucesso.` };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Edite este lançamento")) return { success: false, message: error.message };
     return { success: false, message: "Não foi possível salvar a conta. Verifique a conexão e o favorecido selecionado e tente novamente." };
   }
 }
@@ -40,7 +41,8 @@ export async function deletePayable(id: string) {
     revalidatePath("/contas-a-pagar");
     revalidatePath("/");
     return { success: true, message: "Registro excluído com sucesso." };
-  } catch {
+  } catch (error) {
+    if (typeof error === "object" && error && "code" in error && error.code === "P2003") return { success: false, message: "Este lançamento está vinculado a uma comissão e não pode ser excluído separadamente." };
     return { success: false, message: "Não foi possível excluir o registro. Atualize a página e tente novamente." };
   }
 }

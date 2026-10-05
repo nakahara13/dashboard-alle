@@ -27,7 +27,8 @@ export function validatePayable(input: PayableInput) {
   return { favorecido_id: Number(input.favorecido_id), descricao, tipo_id, lancamento: parsePayableDate(input.lancamento), competencia: parseCompetence(input.competencia), vencimento: parsePayableDate(input.vencimento), valor, status: input.status };
 }
 
-export async function createPayable(db: Pick<Prisma.TransactionClient, "contaPagar" | "parceiro" | "tipo">, input: PayableInput, id?: bigint) {
+export async function createPayable(db: Pick<Prisma.TransactionClient, "contaPagar" | "parceiro" | "tipo" | "comissao">, input: PayableInput, id?: bigint) {
+  if (id !== undefined && await db.comissao.findUnique({ where: { saida_id: id } })) throw new Error("Edite este lançamento pelo módulo Comissões para manter os valores e status sincronizados.");
   const data = validatePayable(input);
   if (!await db.tipo.findUnique({ where: { id: data.tipo_id } })) throw new Error("O tipo selecionado não existe. Atualize a página.");
   if (!await db.parceiro.findUnique({ where: { id: data.favorecido_id }, select: { id: true } })) throw new Error("O favorecido selecionado não existe.");

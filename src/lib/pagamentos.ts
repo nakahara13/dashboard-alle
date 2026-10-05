@@ -51,7 +51,8 @@ export function validatePayment(input: PaymentInput) {
   };
 }
 
-export async function createPayment(db: Pick<Prisma.TransactionClient, "criar_pagamento" | "metodoPagamento" | "contaBancaria" | "tipo">, input: PaymentInput, id?: bigint) {
+export async function createPayment(db: Pick<Prisma.TransactionClient, "criar_pagamento" | "metodoPagamento" | "contaBancaria" | "tipo" | "comissao">, input: PaymentInput, id?: bigint) {
+  if (id !== undefined && await db.comissao.findUnique({ where: { entrada_id: id } })) throw new Error("Edite este lançamento pelo módulo Comissões para manter os valores e status sincronizados.");
   const data = validatePayment(input);
   if (!await db.tipo.findUnique({ where: { id: data.tipo_id } })) throw new Error("O tipo selecionado não existe. Atualize a página.");
   const method = await db.metodoPagamento.findUnique({ where: { id: data.metodo_id } });

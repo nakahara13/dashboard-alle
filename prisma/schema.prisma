@@ -30,6 +30,9 @@ model criar_pagamento {
   conta_bancaria_id Int?
   conta_bancaria ContaBancaria? @relation(fields: [conta_bancaria_id], references: [id], onDelete: Restrict)
 
+  comissao Comissao? @relation("EntradaComissao")
+  descricao String? @db.VarChar(500)
+
   @@index([conta_bancaria_id])
   @@index([metodo_id])
   @@index([parceiro_id])
@@ -44,6 +47,9 @@ model Parceiro {
   criado_em   DateTime @default(now()) @db.Timestamptz(6)
   recebimentos criar_pagamento[]
   contas_a_pagar ContaPagar[]
+  clientes Cliente[]
+  unidades UnidadeAllpFit[]
+  comissoes Comissao[]
 
   @@map("parceiros")
 }
@@ -84,6 +90,8 @@ model ContaPagar {
   valor Decimal @db.Decimal(12, 2)
   status String @default("Pendente") @db.VarChar(20)
 
+  comissao Comissao? @relation("SaidaComissao")
+
   @@index([favorecido_id])
   @@index([vencimento, id])
   @@map("contas_a_pagar")
@@ -110,4 +118,76 @@ model Usuario {
   criado_em DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("usuarios")
+}
+
+model Cliente {
+  id Int @id @default(autoincrement())
+  nome String @db.VarChar(255)
+  uc String @unique @db.VarChar(100)
+  parceiro_id Int?
+  parceiro Parceiro? @relation(fields: [parceiro_id], references: [id], onDelete: Restrict)
+  distribuidora_id Int?
+  distribuidora Distribuidora? @relation(fields: [distribuidora_id], references: [id], onDelete: Restrict)
+  unidade_id Int?
+  unidade UnidadeAllpFit? @relation(fields: [unidade_id], references: [id], onDelete: Restrict)
+  comissoes Comissao[]
+  @@index([distribuidora_id])
+  @@index([unidade_id])
+  @@index([parceiro_id])
+  @@map("clientes")
+}
+
+model Distribuidora {
+  id Int @id @default(autoincrement())
+  nome String @unique @db.VarChar(255)
+  comissoes Comissao[]
+  clientes Cliente[]
+  @@map("distribuidoras")
+}
+
+model Comissao {
+  id BigInt @id @default(autoincrement())
+  cliente_id Int
+  cliente Cliente @relation(fields: [cliente_id], references: [id], onDelete: Restrict)
+  geradora_id Int?
+  geradora Geradora? @relation(fields: [geradora_id], references: [id], onDelete: Restrict)
+  distribuidora_id Int
+  distribuidora Distribuidora @relation(fields: [distribuidora_id], references: [id], onDelete: Restrict)
+  parceiro_id Int?
+  parceiro Parceiro? @relation(fields: [parceiro_id], references: [id], onDelete: Restrict)
+  competencia String @db.VarChar(7)
+  valor_economia Decimal @db.Decimal(12, 2)
+  valor_comissao_empresa Decimal @db.Decimal(12, 2)
+  valor_comissao_parceiro Decimal @db.Decimal(12, 2)
+  margem Decimal @db.Decimal(12, 2)
+  status_recebimento String @default("Pendente") @db.VarChar(20)
+  status_pagamento String @default("Não se aplica") @db.VarChar(20)
+  data_recebimento DateTime? @db.Date
+  data_pagamento DateTime? @db.Date
+  entrada_id BigInt? @unique
+  entrada criar_pagamento? @relation("EntradaComissao", fields: [entrada_id], references: [id_do_registro], onDelete: Restrict)
+  saida_id BigInt? @unique
+  saida ContaPagar? @relation("SaidaComissao", fields: [saida_id], references: [id], onDelete: Restrict)
+  @@unique([cliente_id, geradora_id, competencia])
+  @@index([parceiro_id])
+  @@index([distribuidora_id, competencia])
+  @@index([geradora_id, competencia])
+  @@map("comissoes")
+}
+
+model Geradora {
+  id Int @id @default(autoincrement())
+  nome String @unique @db.VarChar(255)
+  comissoes Comissao[]
+  @@map("geradoras")
+}
+
+model UnidadeAllpFit {
+  id Int @id @default(autoincrement())
+  nome String @unique @db.VarChar(255)
+  parceiro_id Int?
+  parceiro Parceiro? @relation(fields: [parceiro_id], references: [id], onDelete: Restrict)
+  clientes Cliente[]
+  @@index([parceiro_id])
+  @@map("unidades_allp_fit")
 }

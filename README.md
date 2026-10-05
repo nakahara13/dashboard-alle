@@ -108,3 +108,17 @@ Execute `node --import tsx scripts/test-history-filters.ts` para validar os filt
 ## Tema visual
 
 O botão no cabeçalho alterna entre modo claro e noturno. O modo noturno usa `#21222b` no fundo e `#3107b2` nos destaques, com tons auxiliares para legibilidade. A preferência é salva localmente no navegador e sincronizada entre abas. O padrão inicial é o modo claro.
+
+## Comissões de energia digital
+
+Em `/comissoes`, geradora e distribuidora têm funções distintas: a geradora (por exemplo, Gedisa) paga a comissão à Alle; a distribuidora (por exemplo, CEMIG) atende a unidade consumidora. Cada comissão exige cliente/UC, geradora, distribuidora e competência. A unicidade considera cliente/UC, geradora e competência. Margem, valores e status continuam protegidos no backend e no banco.
+
+Os cadastros dentro do módulo permitem criar ou editar geradoras, distribuidoras, unidades Allp Fit e clientes. Vincule o gestor da unidade ao cadastro existente de Parceiros e associe o cliente à unidade Allp Fit de origem. Um parceiro específico do cliente tem prioridade sobre o gestor da unidade. Selecionar um cliente preenche a distribuidora e o beneficiário quando cadastrados; alterações posteriores nos cadastros não substituem o beneficiário de comissões já registradas.
+
+Na importação CSV/XLSX, selecione a geradora e a competência para todo o arquivo. A coluna Distribuidoras representa a distribuidora de cada UC, sem alterar a geradora pagadora. Na ausência dessa coluna, a distribuidora pode vir do cliente cadastrado ou do vínculo manual no preview. Os cabeçalhos do modelo de recorrência são aceitos: Nome Cooperado, CNPJ/CPF, Unidades Consumidoras, Distribuidoras, Economia Mês (R$) e Valor a pagar. O preview permite conferir cliente, distribuidora, unidade de origem e gestor antes de confirmar. Não há criação automática de clientes ou distribuidoras.
+
+A entrada financeira identifica a geradora como pagadora; a saída identifica o gestor/parceiro como favorecido. Geração e vínculo de movimentos ocorrem junto com a comissão, na mesma transação, com proteção contra duplicidade. Valores numéricos da planilha são arredondados por linha para centavos; a soma pode diferir do total calculado sobre valores sem arredondamento.
+
+A migration `20261005000200_geradoras_unidades` preserva comissões e movimentos existentes, deixando a geradora antiga como não informada. A página destaca esses registros para atribuição manual da geradora correta. Uma comissão antiga sem geradora bloqueia um novo cadastro/importação do mesmo cliente e competência até ser completada. A distribuidora antiga só é copiada ao cadastro do cliente quando inequívoca.
+
+`npm run db:test-commissions` verifica os fluxos e as regras financeiras com rollback. `npm run db:test-commission-upgrade` reproduz a migration em um schema isolado com dados antigos, verifica a preservação dos registros e desfaz todo o schema por rollback.

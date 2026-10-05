@@ -35,7 +35,8 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
     revalidatePath("/");
     revalidatePath("/contas-a-receber");
     return { success: true, message: id ? "Recebimento atualizado com sucesso." : `Recebimento registrado com sucesso. Pagamento nº ${payment.id_do_pagamento.toString()}.` };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Edite este lançamento")) return { success: false, message: error.message };
     return { success: false, message: "Não foi possível salvar o recebimento. Verifique a conexão com o banco e tente novamente." };
   }
 }
@@ -46,7 +47,8 @@ export async function deletePayment(id: string) {
     revalidatePath("/contas-a-receber");
     revalidatePath("/");
     return { success: true, message: "Registro excluído com sucesso." };
-  } catch {
+  } catch (error) {
+    if (typeof error === "object" && error && "code" in error && error.code === "P2003") return { success: false, message: "Este lançamento está vinculado a uma comissão e não pode ser excluído separadamente." };
     return { success: false, message: "Não foi possível excluir o registro. Atualize a página e tente novamente." };
   }
 }
