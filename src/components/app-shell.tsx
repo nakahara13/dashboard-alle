@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import financeiroLogo from "@/assets/financeiro_logo.svg";
+import financeiroLogo from "@/assets/financeiro_logo.png";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -76,11 +76,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen lg:grid lg:grid-cols-[256px_1fr]">
       <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-surface p-3 text-accent-ink shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
       <aside className="border-b border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-b-0">
-        <div className="flex h-24 items-center justify-between px-7">
+        <div className="flex h-24 items-center justify-between gap-4 px-5">
           <Link href="/" onClick={() => setMenuOpen(false)} aria-label="Financeiro Alle Energia — início" className="flex min-w-0 items-center gap-3">
-            {/* Logo e nome identificam o módulo financeiro sem ultrapassar a largura da sidebar. */}
-            <Image src={financeiroLogo} alt="" priority sizes="48px" className="h-12 w-12 shrink-0 object-contain" />
-            <span className="text-sm font-semibold leading-snug text-primary">Financeiro<span className="block">Alle Energia</span></span>
+            {/* Logo horizontal ampliado ocupa a largura disponível sem distorcer a imagem. */}
+            <Image src={financeiroLogo} alt="" priority sizes="216px" className="h-auto w-[216px] max-w-full object-contain" />
           </Link>
           <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="sidebar-navigation" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} className="rounded-lg border border-line p-2 text-secondary lg:hidden">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={menuOpen ? "m6 6 12 12M6 18 18 6" : "M4 6h16M4 12h16M4 18h16"} /></svg>
