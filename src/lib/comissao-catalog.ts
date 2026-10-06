@@ -1,3 +1,5 @@
+import { normalizeClientCpf } from "./clientes";
+import { validateDistributorName } from "./distribuidoras";
 import type { Prisma } from "../generated/prisma/client";
 import { normalizeUC, positiveId } from "./comissao-module";
 
@@ -15,7 +17,7 @@ export async function saveCommissionCatalogData(db: Prisma.TransactionClient, fo
     const distribuidora_id = text("distribuidora_id") ? positiveId(text("distribuidora_id")) : null;
     if (unidade_id) await db.unidadeAllpFit.findUniqueOrThrow({ where: { id: unidade_id } });
     if (distribuidora_id) await db.distribuidora.findUniqueOrThrow({ where: { id: distribuidora_id } });
-    const data = { nome, uc, unidade_id, distribuidora_id, parceiro_id: partner };
+    const data = { nome, uc, unidade_id, distribuidora_id, parceiro_id: partner, ...(form.has("cpf") ? { cpf: normalizeClientCpf(text("cpf")) } : {}) };
     return id ? db.cliente.update({ where: { id }, data }) : db.cliente.create({ data });
   }
   if (kind === "unidade") {
@@ -23,6 +25,6 @@ export async function saveCommissionCatalogData(db: Prisma.TransactionClient, fo
     return id ? db.unidadeAllpFit.update({ where: { id }, data }) : db.unidadeAllpFit.create({ data });
   }
   if (kind === "geradora") return id ? db.geradora.update({ where: { id }, data: { nome } }) : db.geradora.create({ data: { nome } });
-  if (kind === "distribuidora") return id ? db.distribuidora.update({ where: { id }, data: { nome } }) : db.distribuidora.create({ data: { nome } });
+  if (kind === "distribuidora") return id ? db.distribuidora.update({ where: { id }, data: { nome: validateDistributorName(nome) } }) : db.distribuidora.create({ data: { nome: validateDistributorName(nome) } });
   throw new Error("Cadastro inválido.");
 }

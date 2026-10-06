@@ -4,7 +4,7 @@ import { getPrisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { positiveId, commissionInclude, serializeCommission } from "@/lib/comissao-module";
 import { parseCompetence } from "@/lib/contas-a-pagar";
-import { CommissionForm, CommissionCatalogs, CommissionImport, CommissionDetailLink } from "@/components/commission-forms";
+import { CommissionRowActions } from "@/components/commission-row-actions";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { formatMoney } from "@/lib/recebimentos-filtros";
 
@@ -12,7 +12,6 @@ export const metadata: Metadata = { title: "Comissões | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 const money = (value: string) => formatMoney({ toFixed: () => value });
 const competenceLabel = (value: string) => value.split("-").reverse().join("/");
-const dateLabel = (value: string) => value ? value.split("-").reverse().join("/") : "—";
 const statusOptions = ["a-receber", "recebido", "a-pagar", "pago"];
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
@@ -68,20 +67,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[{ label: "Total a receber", value: totals.pendingReceipt }, { label: "Total recebido", value: totals.received }, { label: "A pagar aos parceiros", value: totals.pendingPayment }, { label: "Pago aos parceiros", value: totals.paid }, { label: "Margem", value: totals.margin }].map((card) => <div key={card.label} className="rounded-2xl border border-line bg-surface p-5"><p className="text-sm text-muted-ink">{card.label}</p><p className={`mt-3 text-xl font-semibold tabular-nums ${card.value.lt(0) ? "text-danger-ink" : ""}`}>{money(card.value.toFixed(2))}</p></div>)}</div>
       <p className="text-xs text-muted-ink">Totais de todos os registros dos filtros selecionados. Margem = comissão da empresa − comissão do parceiro, independentemente do recebimento e pagamento.</p>
       {data.unassignedCount > 0 && <p role="status" className="rounded-lg bg-accent-soft p-4 text-sm text-accent-ink">{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
-      <CommissionCatalogs options={data.options} />
-      <details className="rounded-2xl border border-line bg-surface p-5"><summary className="cursor-pointer font-semibold">Nova comissão</summary><CommissionForm options={data.options} /></details>
-      <CommissionImport options={data.options} />
+      {/* A visão geral concentra consulta e edição; criação e importação têm páginas próprias. */}
       <section className="rounded-2xl border border-line bg-surface p-5"><h2 className="mb-5 text-lg font-semibold">Comissões ({data.count})</h2>
         {!data.rows.length ? <p className="rounded-lg bg-muted p-8 text-center text-sm text-muted-ink">Nenhuma comissão encontrada.</p> : <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-left text-sm"><caption className="sr-only">Comissões por cliente e competência</caption><thead><tr>{["Cliente / UC", "Geradora", "Distribuidora", "Unidade Allp Fit", "Gestor / parceiro", "Competência", "Economia", "Comissão da empresa", "Comissão do parceiro", "Margem", "Recebimento", "Pagamento", "Ações"].map((label) => <th scope="col" key={label} className="border-b border-line p-3 font-medium">{label}</th>)}</tr></thead><tbody>{data.rows.map((row) => <tr key={row.id} className={`border-b border-subtle ${row.parceiro_id && Number(row.margem) <= 0 ? "bg-danger-soft" : "hover:bg-muted"}`}>
           <td className="p-3">{row.cliente.nome}<p className="text-xs text-muted-ink">{row.cliente.uc}</p></td><td className="p-3">{row.geradora?.nome ?? "Geradora não informada"}</td><td className="p-3">{row.distribuidora.nome}</td><td className="p-3">{row.cliente.unidade?.nome ?? "Não informada"}</td><td className="p-3">{row.parceiro?.nome ?? "Sem parceiro"}</td><td className="p-3">{competenceLabel(row.competencia)}</td><td className="p-3">{money(row.valor_economia)}</td><td className="p-3">{money(row.valor_comissao_empresa)}</td><td className="p-3">{money(row.valor_comissao_parceiro)}</td><td className="p-3 font-semibold">{money(row.margem)}{row.parceiro_id && Number(row.margem) <= 0 && <p className="text-xs text-danger-ink">Atenção: margem zero ou negativa</p>}</td><td className="p-3"><PaymentStatusBadge status={row.status_recebimento} /></td><td className="p-3">{row.status_pagamento === "Não se aplica" ? "Não se aplica" : <PaymentStatusBadge status={row.status_pagamento} />}</td>
-          <td className="p-3"><CommissionDetailLink id={row.id} /></td>
+          <td className="p-3"><CommissionRowActions row={row} options={data.options} /></td>
         </tr>)}</tbody></table></div>}
         <nav aria-label="Paginação de comissões" className="mt-5 flex justify-between text-sm">{data.page > 1 ? <Link href={href(data.page - 1)} className="text-accent-ink underline">Anterior</Link> : <span className="text-muted-ink">Anterior</span>}<span>Página {data.page} de {data.pages}</span>{data.page < data.pages ? <Link href={href(data.page + 1)} className="text-accent-ink underline">Próxima</Link> : <span className="text-muted-ink">Próxima</span>}</nav>
       </section>
-      {data.rows.map((row) => <details key={`${row.id}-${JSON.stringify(row)}`} id={`comissao-${row.id}`} className="rounded-2xl border border-line bg-surface p-5 open:shadow-sm"><summary className="cursor-pointer font-semibold">{row.cliente.nome} · {row.geradora?.nome ?? "Geradora não informada"} · {competenceLabel(row.competencia)} — detalhes / editar</summary>
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">{[{ label: "Cliente / UC", value: `${row.cliente.nome} / ${row.cliente.uc}` }, { label: "Geradora pagadora", value: row.geradora?.nome ?? "Não informada — selecione ao editar" }, { label: "Distribuidora da UC", value: row.distribuidora.nome }, { label: "Unidade Allp Fit de origem", value: row.cliente.unidade?.nome ?? "Não informada" }, { label: "Gestor / parceiro", value: row.parceiro?.nome ?? "Sem parceiro" }, { label: "Competência", value: competenceLabel(row.competencia) }, { label: "Economia", value: money(row.valor_economia) }, { label: "Comissão da empresa", value: money(row.valor_comissao_empresa) }, { label: "Comissão do parceiro", value: money(row.valor_comissao_parceiro) }, { label: "Margem", value: money(row.margem) }, { label: "Recebimento", value: row.status_recebimento }, { label: "Pagamento", value: row.status_pagamento }, { label: "Data de recebimento", value: dateLabel(row.data_recebimento) }, { label: "Data de pagamento", value: dateLabel(row.data_pagamento) }].map((item) => <div key={item.label}><dt className="text-muted-ink">{item.label}</dt><dd className="mt-1 font-medium">{item.value}</dd></div>)}</dl>
-        <CommissionForm options={data.options} row={row} />
-      </details>)}
     </>;
   } else {
     content = <p role="alert" className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">{loadError} <Link href="/comissoes" className="underline">Recarregar sem filtros</Link></p>;

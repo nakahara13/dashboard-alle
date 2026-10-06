@@ -121,6 +121,8 @@ model Usuario {
 }
 
 model Cliente {
+  // CPF opcional no cadastro manual, na importação e na pesquisa de clientes.
+  cpf String? @db.VarChar(11)
   id Int @id @default(autoincrement())
   nome String @db.VarChar(255)
   uc String @unique @db.VarChar(100)

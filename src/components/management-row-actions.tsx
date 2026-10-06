@@ -5,9 +5,11 @@ import { saveManagement, removeManagement } from "@/app/gestao/actions";
 import { USER_ROLES } from "@/lib/usuarios";
 import type { ManagementKind } from "@/lib/gestao";
 
-const titles = { parceiro: "parceiro", conta: "conta bancária", metodo: "método de pagamento", tipo: "tipo", usuario: "usuário" };
+const titles = { distribuidora: "distribuidora", parceiro: "parceiro", conta: "conta bancária", metodo: "método de pagamento", tipo: "tipo", usuario: "usuário" };
 type Field = { name: string; label: string; max: number; required?: boolean; type?: string };
 function fields(kind: ManagementKind): Field[] {
+  // Respeita o limite de 255 caracteres do cadastro de distribuidoras.
+  if (kind === "distribuidora") return [{ name: "nome", label: "Nome", max: 255, required: true }];
   if (kind === "usuario") return [{ name: "nome", label: "Nome", max: 255, required: true }, { name: "email", label: "E-mail", max: 255, required: true, type: "email" }];
   if (kind === "parceiro") return [{ name: "nome", label: "Nome / razão social", max: 255, required: true }, { name: "documento", label: "CNPJ", max: 18 }, { name: "email", label: "E-mail", max: 255, type: "email" }, { name: "telefone", label: "Telefone", max: 30, type: "tel" }];
   if (kind === "conta") return [{ name: "nome", label: "Nome da conta", max: 100 }, { name: "banco", label: "Banco", max: 100 }, { name: "agencia", label: "Agência", max: 20 }, { name: "numero", label: "Número da conta", max: 30 }, { name: "titular", label: "Titular", max: 255 }].map((field) => ({ ...field, required: true }));

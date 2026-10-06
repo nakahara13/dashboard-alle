@@ -5,7 +5,7 @@ import type { CommissionRow } from "@/lib/comissao-module";
 import type { ImportRow } from "@/lib/comissao-import";
 
 export type CommissionOptions = {
-  clients: { id: number; nome: string; uc: string; parceiro_id: number | null; distribuidora_id: number | null; unidade_id: number | null; unidade: { id: number; nome: string; parceiro_id: number | null } | null }[];
+  clients: { id: number; nome: string; uc: string; cpf?: string | null; parceiro_id: number | null; distribuidora_id: number | null; unidade_id: number | null; unidade: { id: number; nome: string; parceiro_id: number | null } | null }[];
   generators: { id: number; nome: string }[]; units: { id: number; nome: string; parceiro_id: number | null }[];
   distributors: { id: number; nome: string }[]; partners: { id: number; nome: string }[];
   accounts: { id: number; nome: string }[]; methods: { id: number; nome: string }[];
@@ -56,7 +56,8 @@ export function CommissionForm({ options, row }: { options: CommissionOptions; r
     <Notice state={state} /><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Salvando…" : row ? "Salvar alterações" : "Cadastrar comissão"}</button>
   </form>;
 }
-function SimpleCommissionCatalog({ kind, title, options, partners }: { kind: "geradora" | "distribuidora" | "unidade"; title: string; options: { id: number; nome: string; parceiro_id?: number | null }[]; partners: CommissionOptions["partners"] }) {
+// Formulário reutilizado nas páginas de geradoras, distribuidoras e unidades.
+export function SimpleCommissionCatalog({ kind, title, options, partners }: { kind: "geradora" | "distribuidora" | "unidade"; title: string; options: { id: number; nome: string; parceiro_id?: number | null }[]; partners: CommissionOptions["partners"] }) {
   const [state, action, pending] = useActionState(saveCommissionCatalog, initial);
   const [id, setId] = useState("");
   const current = options.find((item) => String(item.id) === id);
@@ -67,13 +68,15 @@ function SimpleCommissionCatalog({ kind, title, options, partners }: { kind: "ge
     </fieldset><Notice state={state} /><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Salvando…" : id ? "Salvar alterações" : "Cadastrar"}</button>
   </form>;
 }
-function ClientCommissionCatalog({ options }: { options: CommissionOptions }) {
+// Cadastro de clientes preserva os vínculos usados nas novas comissões.
+export function ClientCommissionCatalog({ options }: { options: CommissionOptions }) {
   const [state, action, pending] = useActionState(saveCommissionCatalog, initial);
   const [id, setId] = useState("");
   const client = options.clients.find((item) => String(item.id) === id);
   return <form action={action}><h2 className="mb-4 font-medium">Cliente / unidade consumidora</h2><input type="hidden" name="cadastro" value="cliente" />
     <fieldset disabled={pending} className="grid gap-4"><Select name="id" label="Cliente" empty="Novo cliente" options={options.clients.map((item) => ({ ...item, nome: `${item.nome} · ${item.uc}` }))} value={id} onChange={setId} />
       <div key={`${id}-${JSON.stringify(client)}`} className="grid gap-4"><label className="grid gap-2 text-sm">Nome *<input name="nome" required maxLength={255} defaultValue={client?.nome} className={fieldClass} /></label><label className="grid gap-2 text-sm">UC / instalação / código único *<input name="uc" required maxLength={100} defaultValue={client?.uc} className={fieldClass} /></label>
+      <label className="grid gap-2 text-sm">CPF (opcional)<input name="cpf" inputMode="numeric" maxLength={14} defaultValue={client?.cpf ?? ""} className={fieldClass} /></label>
       <Select name="distribuidora_id" label="Distribuidora da UC" options={options.distributors} defaultValue={client?.distribuidora_id ? String(client.distribuidora_id) : ""} empty="Não informada" />
       <Select name="unidade_id" label="Unidade Allp Fit de origem" options={options.units} defaultValue={client?.unidade_id ? String(client.unidade_id) : ""} empty="Sem unidade vinculada" />
       <Select name="parceiro_id" label="Gestor / parceiro específico do cliente" options={options.partners} defaultValue={client?.parceiro_id ? String(client.parceiro_id) : ""} empty="Usar gestor da unidade, quando houver" /></div>
@@ -81,15 +84,7 @@ function ClientCommissionCatalog({ options }: { options: CommissionOptions }) {
     <Notice state={state} /><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Salvando…" : id ? "Salvar cliente" : "Cadastrar cliente"}</button>
   </form>;
 }
-export function CommissionCatalogs({ options }: { options: CommissionOptions }) {
-  return <details className="rounded-2xl border border-line bg-surface p-5"><summary className="cursor-pointer font-semibold">Cadastros de clientes, geradoras, distribuidoras e unidades Allp Fit</summary><div className="mt-5 grid gap-6 md:grid-cols-2">
-    <SimpleCommissionCatalog kind="geradora" title="Geradora — paga comissão à Alle" options={options.generators} partners={options.partners} />
-    <SimpleCommissionCatalog kind="distribuidora" title="Distribuidora — atende a UC" options={options.distributors} partners={options.partners} />
-    <SimpleCommissionCatalog kind="unidade" title="Unidade Allp Fit — origem da indicação" options={options.units} partners={options.partners} />
-    <ClientCommissionCatalog options={options} />
-  </div></details>;
-}
-function ImportPreview({ initialRows, generator, generatorName, competence, options, total }: { initialRows: ImportRow[]; generator: string; generatorName: string; competence: string; options: CommissionOptions; total: string }) {
+function ImportPreview({ initialRows, generator, generatorName, competence, options, total, onCancel }: { initialRows: ImportRow[]; generator: string; generatorName: string; competence: string; options: CommissionOptions; total: string; onCancel: () => void }) {
   const [rows, setRows] = useState(initialRows);
   const [state, action, pending] = useActionState(confirmCommissionImport, initial);
   const clientsById = new Map(options.clients.map((client) => [String(client.id), client]));
@@ -121,20 +116,25 @@ function ImportPreview({ initialRows, generator, generatorName, competence, opti
       <td className="p-3">{row.economia}</td><td className="p-3">{row.empresa}</td><td className="p-3">{row.parceiro}</td><td className="min-w-48 p-3">{row.erro || (row.duplicada ? row.legado ? "Comissão antiga sem geradora — atribua a geradora nos detalhes antes de importar" : "Comissão duplicada — não será importada" : !row.distribuidora_id ? "Distribuidora não identificada" : !row.cliente_id ? "Cliente não identificado" : mismatchedDistributor(row) ? "Distribuidora difere do cadastro da UC — confira o vínculo" : Number(row.parceiro) > 0 && !partnerForClient(row.cliente_id) ? "Cliente sem gestor / parceiro vinculado" : "Identificado")}</td>
     </tr>)}</tbody></table></div>
     <p className="text-sm">{selected.length} registro(s) selecionado(s).{repeated && " O mesmo cliente/UC foi selecionado em mais de uma linha para esta geradora e competência; desmarque a duplicata."}</p>
-    <Notice state={state} /><button disabled={pending || state.success || unresolved || repeated || !selected.length} className={buttonClass}>{pending ? "Importando…" : "Confirmar importação"}</button>
+    <Notice state={state} />
+    {/* Cancelar descarta a prévia; durante a gravação, aguarda o resultado da transação. */}
+    <div className="flex flex-wrap items-center gap-4">
+      <button disabled={pending || state.success || unresolved || repeated || !selected.length} className={buttonClass}>{pending ? "Importando…" : "Confirmar importação"}</button>
+      {!state.success && <button type="button" disabled={pending} onClick={onCancel} className="rounded-lg border border-line px-5 py-3 text-sm font-semibold text-secondary hover:bg-muted disabled:opacity-60">Cancelar importação</button>}
+    </div>
   </form>;
 }
-export function CommissionImport({ options }: { options: CommissionOptions }) {
+function CommissionImportSession({ options, onCancel }: { options: CommissionOptions; onCancel: () => void }) {
   const [state, action, pending] = useActionState(previewCommissionImport, { success: false, message: "" });
-  return <details className="rounded-2xl border border-line bg-surface p-5"><summary className="cursor-pointer font-semibold">Importar comissões</summary>
+  // A página de importação exibe o fluxo diretamente, sem um segundo dropdown.
+  return <section className="rounded-2xl border border-line bg-surface p-5">
     <form action={action} className="mt-5"><fieldset disabled={pending} className="grid gap-4 sm:grid-cols-3"><Select name="geradora_id" label="Geradora que paga à Alle *" options={options.generators} required /><label className="grid gap-2 text-sm">Competência *<input type="month" name="competencia" required className={fieldClass} /></label><label className="grid gap-2 text-sm">Arquivo CSV ou XLSX *<input type="file" name="arquivo" accept=".csv,.xlsx" required className={fieldClass} /></label></fieldset><p className="mt-3 text-xs text-muted-ink">Até 500 registros e 5 MB. Primeira aba, cabeçalhos na primeira linha: Nome cooperado, CPF (ou CNPJ/CPF), Unidade consumidora, Distribuidoras (ou Distirbuidoras), Economia mês e Valor a pagar. Também aceita UC, Economia e Comissão; Comissão parceiro é opcional. Valor a pagar corresponde à comissão da empresa. Valores numéricos são arredondados por linha para centavos; o total pode diferir do total calculado sobre valores sem arredondamento. A geradora selecionada vale para todo o arquivo. A distribuidora da coluna é usada por linha; sem essa coluna, usamos a distribuidora cadastrada para a UC ou o vínculo manual no preview. Preserve zeros iniciais da UC como texto. CSV em UTF-8; valores como 120,00 ou 120.00.</p><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Lendo arquivo…" : "Visualizar importação"}</button></form>
-    <Notice state={state} />{state.rows && <ImportPreview key={JSON.stringify(state)} initialRows={state.rows} generator={state.geradora_id!} generatorName={state.geradora_nome!} competence={state.competencia!} total={state.total!} options={options} />}
-  </details>;
+    <Notice state={state} />{state.rows && <ImportPreview key={JSON.stringify(state)} initialRows={state.rows} generator={state.geradora_id!} generatorName={state.geradora_nome!} competence={state.competencia!} total={state.total!} options={options} onCancel={onCancel} />}
+  </section>;
 }
 
-export function CommissionDetailLink({ id }: { id: string }) {
-  return <button type="button" onClick={() => {
-    const detail = document.getElementById(`comissao-${id}`);
-    if (detail instanceof HTMLDetailsElement) { detail.open = true; detail.scrollIntoView({ behavior: "smooth", block: "start" }); detail.querySelector("summary")?.focus(); }
-  }} className="text-accent-ink underline">Detalhes / editar</button>;
+// Reiniciar a sessão limpa arquivo, geradora, competência e prévia sem recarregar a página.
+export function CommissionImport({ options }: { options: CommissionOptions }) {
+  const [session, setSession] = useState(0);
+  return <CommissionImportSession key={session} options={options} onCancel={() => setSession((current) => current + 1)} />;
 }
