@@ -1,11 +1,13 @@
 "use client";
 
+import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState } from "react";
 import { saveUser } from "@/app/usuarios/actions";
 import { USER_ROLES } from "@/lib/usuarios";
 
 export function UserForm() {
   const [state, action, pending] = useActionState(saveUser, { success: false, message: "" });
+  useDrawerFeedback(state, pending);
   const inputClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm";
   return <form action={action} className="rounded-2xl border border-line bg-surface p-6">
     <h2 className="text-lg font-semibold">Cadastrar usuário</h2>

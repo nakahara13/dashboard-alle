@@ -1,5 +1,5 @@
 export type DashboardParams = Record<string, string | string[] | undefined>;
-export const PERIODS = [ { id: "hoje", label: "Hoje" }, { id: "ontem", label: "Ontem" },{ id: "7dias", label: "7 dias" }, { id: "mes", label: "1 mês" }, { id: "ano", label: "1 ano" }];
+export const PERIODS = [ { id: "hoje", label: "Hoje" }, { id: "ontem", label: "Ontem" },{ id: "7dias", label: "7 dias" }, { id: "mes", label: "Mês" }, { id: "ano", label: "1 ano" }];
 const day = 86400000;
 export function isoDate(value: Date) { return value.toISOString().slice(0, 10); }
 export function parseDate(value: string) {
@@ -9,7 +9,7 @@ export function parseDate(value: string) {
 }
 export function dashboardRange(params: DashboardParams, today: string) {
   const text = (key: string) => typeof params[key] === "string" ? params[key] : "";
-  const period = text("periodo") || (text("inicio") || text("fim") ? "personalizado" : "hoje");
+  const period = text("periodo") || (text("inicio") || text("fim") ? "personalizado" : "mes");
   let end = parseDate(today);
   let start = end;
   if (period === "personalizado") { start = parseDate(text("inicio")); end = parseDate(text("fim")); }

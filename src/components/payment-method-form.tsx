@@ -1,10 +1,12 @@
 "use client";
 
+import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState } from "react";
 import { saveMethod } from "@/app/metodos-de-pagamento/actions";
 
 export function PaymentMethodForm() {
   const [state, action, pending] = useActionState(saveMethod, { success: false, message: "" });
+  useDrawerFeedback(state, pending);
   return <form action={action} className="rounded-2xl border border-line bg-surface p-6">
     <h2 className="text-lg font-semibold">Cadastrar método de pagamento</h2>
     <label htmlFor="method-name" className="mb-2 mt-5 block text-sm font-medium">Nome *</label>

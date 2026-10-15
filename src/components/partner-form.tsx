@@ -1,11 +1,13 @@
 "use client";
 
+import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState } from "react";
 import { formatCnpj, isValidCnpj } from "@/lib/cnpj";
 import { savePartner } from "@/app/parceiros/actions";
 
 export function PartnerForm() {
   const [state, action, pending] = useActionState(savePartner, { success: false, message: "" });
+  useDrawerFeedback(state, pending);
   return <form action={action} className="rounded-2xl border border-line bg-surface p-6">
     <h2 className="text-lg font-semibold">Cadastrar parceiro</h2>
     <fieldset disabled={pending} className="mt-5 grid gap-5 sm:grid-cols-2">

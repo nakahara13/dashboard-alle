@@ -1,4 +1,5 @@
 "use client";
+import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState, useState } from "react";
 import { saveCommissionAction, saveCommissionCatalog, previewCommissionImport, confirmCommissionImport, type State } from "@/app/comissoes/actions";
 import type { CommissionRow } from "@/lib/comissao-module";
@@ -19,6 +20,7 @@ function Select({ name, label, options, value, onChange, required = false, empty
 }
 export function CommissionForm({ options, row }: { options: CommissionOptions; row?: CommissionRow }) {
   const [state, action, pending] = useActionState(saveCommissionAction, initial);
+  useDrawerFeedback(state, pending);
   const [client, setClient] = useState(row ? String(row.cliente_id) : "");
   const [distributor, setDistributor] = useState(row ? String(row.distribuidora_id) : "");
   const [partner, setPartner] = useState(row?.parceiro_id ? String(row.parceiro_id) : "");
@@ -57,20 +59,22 @@ export function CommissionForm({ options, row }: { options: CommissionOptions; r
   </form>;
 }
 // Formulário reutilizado nas páginas de geradoras, distribuidoras e unidades.
-export function SimpleCommissionCatalog({ kind, title, options, partners }: { kind: "geradora" | "distribuidora" | "unidade"; title: string; options: { id: number; nome: string; parceiro_id?: number | null }[]; partners: CommissionOptions["partners"] }) {
+export function SimpleCommissionCatalog({ kind, title, options, createOnly = false }: { kind: "geradora" | "distribuidora" | "unidade"; title: string; createOnly?: boolean; options: { id: number; nome: string; parceiro_id?: number | null }[]; partners: CommissionOptions["partners"] }) {
   const [state, action, pending] = useActionState(saveCommissionCatalog, initial);
+  useDrawerFeedback(state, pending);
   const [id, setId] = useState("");
   const current = options.find((item) => String(item.id) === id);
   return <form action={action}><h2 className="mb-4 font-medium">{title}</h2><input type="hidden" name="cadastro" value={kind} />
-    <fieldset disabled={pending} className="grid gap-4"><Select name="id" label="Cadastro" empty="Novo cadastro" options={options} value={id} onChange={setId} />
+    <fieldset disabled={pending} className="grid gap-4">{!createOnly && <Select name="id" label="Cadastro" empty="Novo cadastro" options={options} value={id} onChange={setId} />}
       <div key={`${id}-${current?.nome}-${current?.parceiro_id}`} className="grid gap-4"><label className="grid gap-2 text-sm">Nome *<input name="nome" required maxLength={255} defaultValue={current?.nome} className={fieldClass} /></label>
-      {kind === "unidade" && <Select name="parceiro_id" label="Gestor da unidade (cadastro de Parceiros)" options={partners} defaultValue={current?.parceiro_id ? String(current.parceiro_id) : ""} empty="Sem gestor vinculado" />}</div>
+      </div>
     </fieldset><Notice state={state} /><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Salvando…" : id ? "Salvar alterações" : "Cadastrar"}</button>
   </form>;
 }
 // Cadastro de clientes preserva os vínculos usados nas novas comissões.
 export function ClientCommissionCatalog({ options }: { options: CommissionOptions }) {
   const [state, action, pending] = useActionState(saveCommissionCatalog, initial);
+  useDrawerFeedback(state, pending);
   const [id, setId] = useState("");
   const client = options.clients.find((item) => String(item.id) === id);
   return <form action={action}><h2 className="mb-4 font-medium">Cliente / unidade consumidora</h2><input type="hidden" name="cadastro" value="cliente" />

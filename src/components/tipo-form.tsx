@@ -1,10 +1,12 @@
 "use client";
 
+import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState } from "react";
 import { saveTipo } from "@/app/tipos/actions";
 
 export function TipoForm() {
   const [state, action, pending] = useActionState(saveTipo, { success: false, message: "" });
+  useDrawerFeedback(state, pending);
   return <form action={action} className="rounded-2xl border border-line bg-surface p-6">
     <h2 className="text-lg font-semibold">Cadastrar tipo de pagamento</h2>
     <label htmlFor="tipo-name" className="mb-2 mt-5 block text-sm font-medium">Nome *</label>

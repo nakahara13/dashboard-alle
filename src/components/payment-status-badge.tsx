@@ -1,10 +1,10 @@
 export function PaymentStatusBadge({ status }: { status: string | null }) {
   const normalized = status?.trim().toLowerCase();
   const colors = normalized === "pago" || normalized === "recebido"
-    ? "bg-green-100 text-green-800"
+    ? "bg-[var(--success-soft)] text-[var(--success-ink)]"
     : normalized === "pendente"
-      ? "bg-yellow-100 text-yellow-800"
+      ? "bg-[var(--warning-soft)] text-[var(--warning-ink)]"
       : "bg-muted text-muted-ink";
 
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${colors}`}>{status || "—"}</span>;
+  return <span className={`status-badge inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${colors}`}>{status || "—"}</span>;
 }

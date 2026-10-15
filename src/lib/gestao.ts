@@ -6,12 +6,13 @@ import { validateBankAccount } from "./contas-bancarias";
 import { validateMethod } from "./metodos-pagamento";
 import { validateTipo, validateTipoId } from "./tipos";
 
-export type ManagementKind = "parceiro" | "conta" | "metodo" | "tipo" | "usuario" | "distribuidora";
-type Db = Pick<Prisma.TransactionClient, "parceiro" | "contaBancaria" | "metodoPagamento" | "tipo" | "usuario" | "distribuidora">;
+export type ManagementKind = "parceiro" | "conta" | "metodo" | "tipo" | "usuario" | "distribuidora" | "unidade";
+type Db = Pick<Prisma.TransactionClient, "parceiro" | "contaBancaria" | "metodoPagamento" | "tipo" | "usuario" | "distribuidora" | "unidadeAllpFit">;
 export function managementData(kind: ManagementKind, form: FormData) {
   const text = (key: string) => String(form.get(key) ?? "");
   switch (kind) {
     // Distribuidoras usam as mesmas ações de edição e exclusão dos demais cadastros.
+    case "unidade": return { kind, data: { nome: validateDistributorName(text("nome")) } };
     case "distribuidora": return { kind, data: { nome: validateDistributorName(text("nome")) } };
     case "usuario": return { kind, data: validateUser({ nome: text("nome"), email: text("email"), role: text("role") }) };
     case "parceiro": return { kind, data: validatePartner({ nome: text("nome"), documento: text("documento"), email: text("email"), telefone: text("telefone") }) };
@@ -24,6 +25,7 @@ export function managementData(kind: ManagementKind, form: FormData) {
 export async function updateManagement(db: Db, id: number, input: ReturnType<typeof managementData>) {
   validateTipoId(String(id));
   switch (input.kind) {
+    case "unidade": return db.unidadeAllpFit.update({ where: { id }, data: input.data });
     case "distribuidora": return db.distribuidora.update({ where: { id }, data: input.data });
     case "usuario": return db.usuario.update({ where: { id }, data: input.data });
     case "parceiro": return db.parceiro.update({ where: { id }, data: input.data });
@@ -36,6 +38,7 @@ export async function deleteManagement(db: Db, kind: ManagementKind, id: number)
   validateTipoId(String(id));
   switch (kind) {
     // As chaves estrangeiras impedem excluir distribuidoras usadas em clientes ou comissões.
+    case "unidade": return db.unidadeAllpFit.delete({ where: { id } });
     case "distribuidora": return db.distribuidora.delete({ where: { id } });
     case "usuario": return db.usuario.delete({ where: { id } });
     case "parceiro": return db.parceiro.delete({ where: { id } });

@@ -21,7 +21,8 @@ export async function saveCommissionCatalogData(db: Prisma.TransactionClient, fo
     return id ? db.cliente.update({ where: { id }, data }) : db.cliente.create({ data });
   }
   if (kind === "unidade") {
-    const data = { nome, parceiro_id: partner };
+    // Sem o campo de gestor, editar o nome preserva vínculos existentes.
+    const data = { nome, ...(form.has("parceiro_id") ? { parceiro_id: partner } : {}) };
     return id ? db.unidadeAllpFit.update({ where: { id }, data }) : db.unidadeAllpFit.create({ data });
   }
   if (kind === "geradora") return id ? db.geradora.update({ where: { id }, data: { nome } }) : db.geradora.create({ data: { nome } });

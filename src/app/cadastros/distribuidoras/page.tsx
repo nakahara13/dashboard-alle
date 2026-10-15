@@ -1,3 +1,4 @@
+import { CreateRecord } from "@/components/management-drawer";
 import type { Metadata } from "next";
 import { SimpleCommissionCatalog } from "@/components/commission-forms";
 import { CommissionWorkspacePage } from "@/components/commission-workspace-page";
@@ -8,8 +9,7 @@ export const dynamic = "force-dynamic";
 
 // O formulário mantém o cadastro atual; a tabela permite agir diretamente em cada distribuidora.
 export default function Page() {
-  return <CommissionWorkspacePage title="Cadastro de distribuidora" description="Distribuidora — atende a UC">{(options) => <>
-    <section className="rounded-2xl border border-line bg-surface p-5"><SimpleCommissionCatalog kind="distribuidora" title="Distribuidora — atende a UC" options={options.distributors} partners={options.partners} /></section>
+  return <CommissionWorkspacePage title="Cadastro de distribuidora" description="Distribuidora — atende a UC" action={(options) => <CreateRecord label="Nova distribuidora" title="Nova distribuidora"><SimpleCommissionCatalog kind="distribuidora" title="Nova distribuidora" options={options.distributors} partners={options.partners} createOnly /></CreateRecord>}>{(options) => <>
     {/* A lista usa as ações compartilhadas: edição em modal e exclusão com confirmação. */}
     <section className="rounded-2xl border border-line bg-surface p-5">
       <h2 className="text-lg font-semibold">Distribuidoras cadastradas ({options.distributors.length})</h2>

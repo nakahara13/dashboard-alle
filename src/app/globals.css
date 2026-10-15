@@ -2,23 +2,32 @@
 
 :root {
   color-scheme: light;
-  --page: #faf9f7;
+  --page: #F4F6F9;
   --surface: #ffffff;
-  --muted: #fafaf9;
-  --line: #e7e5e4;
-  --subtle: #f5f5f4;
-  --primary: #292524;
-  --secondary: #57534e;
-  --muted-ink: #78716c;
-  --faint: #a8a29e;
-  --accent: #ea580c;
-  --accent-hover: #c2410c;
-  --accent-soft: #fff7ed;
-  --accent-line: #fed7aa;
-  --accent-ink: #c2410c;
-  --danger-soft: #fef2f2;
-  --danger-ink: #991b1b;
-  --focus: #ea580c;
+  --muted: #F8FAFC;
+  --line: #E8ECF2;
+  --subtle: #F1F4F8;
+  --primary: #171B26;
+  --secondary: #495468;
+  --muted-ink: #737D8C;
+  --faint: #A8AFBA;
+  --accent: #246BFD;
+  --accent-hover: #155EEF;
+  --accent-soft: #EBF2FF;
+  --accent-line: #D6E4FF;
+  --accent-ink: #155EEF;
+  --danger-soft: #FFF0F3;
+  --danger-ink: #BC2948;
+  --focus: #246BFD;
+  --success: #24B47E;
+  --success-soft: #EAF8F2;
+  --success-ink: #167550;
+  --warning: #FF9F43;
+  --warning-soft: #FFF5E8;
+  --warning-ink: #9A5B16;
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --shadow-card: 0 2px 8px rgb(23 27 38 / 0.025);
 }
 
 :root[data-theme="dark"] {
@@ -32,18 +41,22 @@
   --secondary: #dedee9;
   --muted-ink: #b4b5c6;
   --faint: #999bad;
-  --accent: #7B00AF;
-  --accent-hover: #65058e;
-  --accent-soft: #30234f;
-  --accent-line: #66518e;
-  --accent-ink: #c7b5ff;
+  --accent: #246BFD;
+  --accent-hover: #155EEF;
+  --accent-soft: #1E3052;
+  --accent-line: #34527F;
+  --accent-ink: #9BBFFF;
   --danger-soft: #442b35;
   --danger-ink: #ffb4bd;
-  --focus: #b9a1ff;
+  --focus: #9BBFFF;
+  --success-soft: #193C32;
+  --success-ink: #7DDCB4;
+  --warning-soft: #403323;
+  --warning-ink: #FFD08B;
 }
 
 @theme inline {
-  --font-sans: var(--font-poppins), Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
   --color-surface: var(--surface);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -65,7 +78,7 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--primary);
-  font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
 
 ::selection {
@@ -89,4 +102,73 @@ button, select { cursor: pointer; }
     color: var(--muted-ink);
     opacity: 1;
   }
+}
+
+/* Shared presentation rules keep every module on the same visual system. */
+@layer base {
+  body { font-size: 14px; -webkit-font-smoothing: antialiased; }
+  h1 { font-size: clamp(22px, 2vw, 26px); line-height: 1.3; letter-spacing: -0.035em; }
+  h2 { letter-spacing: -0.02em; }
+  button, a, summary, input, select, textarea {
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  }
+  button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea {
+    min-height: 44px;
+    border-radius: var(--radius-control);
+    border-color: var(--line);
+    max-width: 100%;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
+    outline: 2px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+  }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; vertical-align: middle; }
+  input[type="file"]::file-selector-button { border: 0; border-radius: 6px; padding: 5px 10px; margin-right: 10px; background: var(--accent-soft); color: var(--accent-ink); }
+  table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  thead { background: var(--muted); color: var(--muted-ink); }
+  th { font-size: 11px; font-weight: 600; white-space: nowrap; }
+  th, td { padding: 15px 16px; }
+  tbody tr { border-bottom: 1px solid var(--line); transition: background-color 160ms ease; }
+  tbody tr:last-child { border-bottom: 0; }
+  tbody tr:hover { background: var(--muted); }
+  dialog { border-radius: 20px; box-shadow: 0 24px 80px rgb(15 23 42 / 0.18); }
+  dialog::backdrop { background: rgb(15 23 42 / 0.45); backdrop-filter: blur(3px); }
+}
+
+@layer components {
+  .saas-sidebar nav > div + div { border-top: 1px solid var(--line); padding-top: 18px; }
+  .saas-sidebar :is(a[aria-current="page"], summary.bg-accent-soft) { position: relative; }
+  .saas-sidebar :is(a[aria-current="page"], summary.bg-accent-soft)::before {
+    content: ""; position: absolute; left: 0; top: 25%; height: 50%; width: 3px; background: var(--accent); border-radius: 4px;
+  }
+  #conteudo :is(section, article, form).bg-surface { box-shadow: var(--shadow-card); }
+  #conteudo .overflow-x-auto:has(> table) { border: 1px solid var(--line); border-radius: 12px; }
+  #conteudo h1 { border-left: 0; padding-left: 0; font-size: clamp(22px, 2vw, 26px); }
+  #conteudo h2.text-xl { font-size: 18px; }
+  .status-badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+}
+
+@media (max-width: 639px) {
+  #conteudo :is(section, form).bg-surface { padding: 18px; }
+  #conteudo form > .flex > div:has(input[type="date"]) { flex: 1 1 130px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Native dialogs provide a keyboard focus trap for side panels. */
+.management-drawer {
+  position: fixed; inset: 0 0 0 auto; margin: 0; width: min(720px, 100%);
+  max-width: 100%; height: 100dvh; max-height: 100dvh; overflow-y: auto;
+  border: 0; border-left: 1px solid var(--line); border-radius: 0;
+  background: var(--surface); padding: 0; white-space: normal;
+}
+.drawer-content form.bg-surface { border: 0; padding: 0; box-shadow: none; }
+.drawer-content fieldset { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.drawer-content fieldset > * { min-width: 0; }
+@media (max-width: 639px) {
+  .drawer-content fieldset { grid-template-columns: minmax(0, 1fr); }
+  .drawer-content fieldset > * { grid-column: auto; }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useDrawerFeedback, useDrawerClose } from "@/components/management-drawer";
 import { PaymentMethodSelect, type PaymentMethodOption } from "@/components/payment-method-select";
 import { PAYMENT_STATUSES, type PaymentInput } from "@/lib/pagamentos";
 import { TipoSelect, type TipoOption } from "@/components/tipo-select";
@@ -20,6 +21,8 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
     if (result.success) onSaved?.();
     return result;
   }, { success: false, message: "" });
+  useDrawerFeedback(state, pending);
+  const drawerClose = useDrawerClose();
   const prefix = useId();
   return (
     <form action={action} className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
@@ -41,7 +44,7 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
       </fieldset>
       {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
       <button disabled={pending || types.length === 0 || partners.length === 0 || methods.length === 0 || accounts.length === 0} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar recebimento"}</button>
-      {onCancel && <button type="button" disabled={pending} onClick={onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
+      {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
       {initial && !onCancel && <Link href="/contas-a-receber#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
     </form>
   );

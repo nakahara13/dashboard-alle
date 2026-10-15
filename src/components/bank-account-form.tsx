@@ -1,10 +1,12 @@
 "use client";
 
+import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState } from "react";
 import { saveBankAccount } from "@/app/contas-bancarias/actions";
 
 export function BankAccountForm() {
   const [state, action, pending] = useActionState(saveBankAccount, { success: false, message: "" });
+  useDrawerFeedback(state, pending);
   return <form action={action} className="rounded-2xl border border-line bg-surface p-6">
     <h2 className="text-lg font-semibold">Cadastrar conta bancária</h2>
     <fieldset disabled={pending} className="mt-5 grid gap-5 sm:grid-cols-2">

@@ -18,3 +18,6 @@ const yearly = dashboardRange({ periodo: "ano" }, today);
 assert.equal(trendBuckets(yearly.start, yearly.end).points.length, 12);
 assert.equal(trendBuckets(yearly.start, yearly.end).monthly, true);
 console.log("PASSOU: atalhos, limites de mês/ano, ano bissexto, datas inválidas e agrupamentos.");
+
+assert.equal(dashboardRange({}, today).period, "mes");
+assert.equal(dashboardRange({}, today).inicio, dashboardRange({ periodo: "mes" }, today).inicio);
