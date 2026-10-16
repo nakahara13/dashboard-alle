@@ -6,6 +6,7 @@ import { matchImport, parseCommissionFile, importCommissions, type ImportRow } f
 import { saveCommissionCatalogData } from "@/lib/comissao-catalog";
 import { parseCompetence, parsePayableDate } from "@/lib/contas-a-pagar";
 import { parseRecordId } from "@/lib/record-id";
+import { updateCommissionPayments } from "@/lib/comissao-payments";
 
 export type State = { success: boolean; message: string };
 export type PreviewState = State & { rows?: ImportRow[]; geradora_id?: string; geradora_nome?: string; competencia?: string; total?: string };
@@ -17,20 +18,9 @@ export async function updateCommissionPaymentsAction(form: FormData): Promise<St
     const status = String(form.get("status") ?? "");
     if (status !== "Pago" && status !== "Pendente") throw new Error("Status de pagamento inválido.");
     const date = status === "Pago" ? parsePayableDate(String(form.get("data_pagamento") ?? "")) : null;
-    const count = await getPrisma().$transaction(async (db) => {
-      const rows = await db.comissao.findMany({ where: { id: { in: ids } } });
-      if (rows.length !== ids.length) throw new Error("Comissão não encontrada. Atualize a página e selecione novamente.");
-      const applicable = rows.filter((row) => row.parceiro_id !== null);
-      if (!applicable.length) throw new Error("As comissões selecionadas não possuem parceiro para pagamento.");
-      if (status === "Pendente" && applicable.some((row) => row.saida_id !== null)) throw new Error("Uma comissão selecionada possui saída financeira vinculada e deve permanecer como paga. Desmarque-a para continuar. Nenhuma comissão foi alterada.");
-      for (const row of applicable) {
-        await db.comissao.update({ where: { id: row.id }, data: { status_pagamento: status, data_pagamento: date } });
-        if (row.saida_id) await db.contaPagar.update({ where: { id: row.saida_id }, data: { status: "Pago", vencimento: date! } });
-      }
-      return applicable.length;
-    }, { isolationLevel: "Serializable" });
+    const count = await getPrisma().$transaction((db) => updateCommissionPayments(db, ids, status, date), { isolationLevel: "Serializable" });
     refresh();
-    return { success: true, message: `${count} comissão(ões) marcada(s) como ${status === "Pago" ? "paga(s)" : "pendente(s)"}.${ids.length > count ? ` ${ids.length - count} sem parceiro, sem alteração.` : ""}` };
+    return { success: true, message: `${count} comissão(ões) marcada(s) como ${status === "Pago" ? "paga(s) e recebida(s)" : "pendente(s)"}.${ids.length > count ? ` ${ids.length - count} sem parceiro, sem alteração.` : ""}` };
   } catch (error) { return { success: false, message: message(error) }; }
 }
 function message(error: unknown) {

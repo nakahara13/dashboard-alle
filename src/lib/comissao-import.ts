@@ -62,11 +62,9 @@ export async function parseCommissionFile(buffer: Buffer, filename: string) {
   return rows;
 }
 export async function matchImport(db: Pick<Prisma.TransactionClient, "cliente" | "comissao" | "distribuidora">, rows: ImportRow[], generator: number, competence: string) {
-  const [distributors, clients, commissions] = await Promise.all([
-    db.distribuidora.findMany({ select: { id: true, nome: true } }),
-    db.cliente.findMany({ where: { uc: { in: rows.map((row) => row.uc).filter(Boolean) } } }),
-    db.comissao.findMany({ where: { OR: [{ geradora_id: generator }, { geradora_id: null }], competencia: competence }, select: { cliente_id: true, geradora_id: true } }),
-  ]);
+  const distributors = await db.distribuidora.findMany({ select: { id: true, nome: true } });
+  const clients = await db.cliente.findMany({ where: { uc: { in: rows.map((row) => row.uc).filter(Boolean) } } });
+  const commissions = await db.comissao.findMany({ where: { OR: [{ geradora_id: generator }, { geradora_id: null }], competencia: competence }, select: { cliente_id: true, geradora_id: true } });
   const byUC = new Map(clients.map((client) => [client.uc, client]));
   const existing = new Set(commissions.map((row) => row.cliente_id));
   const legacyClients = new Set(commissions.filter((row) => row.geradora_id === null).map((row) => row.cliente_id));

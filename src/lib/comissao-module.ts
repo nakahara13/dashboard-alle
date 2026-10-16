@@ -22,25 +22,26 @@ export function validateCommission(input: CommissionInput) {
   if (!["Pendente", "Recebido"].includes(input.status_recebimento)) throw new Error("Status de recebimento inválido.");
   const payment = parceiro_id ? input.status_pagamento : "Não se aplica";
   if (parceiro_id && !["Pendente", "Pago"].includes(payment)) throw new Error("Status de pagamento inválido.");
-  if (input.status_recebimento === "Recebido" && !input.data_recebimento) throw new Error("Informe a data de recebimento.");
   if (payment === "Pago" && !input.data_pagamento) throw new Error("Informe a data de pagamento.");
+  const receipt = payment === "Pago" ? "Recebido" : input.status_recebimento;
+  const receiptDate = input.data_recebimento || (payment === "Pago" ? input.data_pagamento : "");
+  if (receipt === "Recebido" && !receiptDate) throw new Error("Informe a data de recebimento.");
   return {
     cliente_id: positiveId(input.cliente_id), geradora_id: positiveId(input.geradora_id), distribuidora_id: positiveId(input.distribuidora_id), parceiro_id,
     competencia: parseCompetence(input.competencia), valor_economia: money(input.valor_economia),
     valor_comissao_empresa: empresa, valor_comissao_parceiro: parceiro, margem: empresa.minus(parceiro),
-    status_recebimento: input.status_recebimento, status_pagamento: payment,
-    data_recebimento: input.status_recebimento === "Recebido" ? parsePayableDate(input.data_recebimento) : null,
+    status_recebimento: receipt, status_pagamento: payment,
+    data_recebimento: receipt === "Recebido" ? parsePayableDate(receiptDate) : null,
     data_pagamento: payment === "Pago" ? parsePayableDate(input.data_pagamento) : null,
   };
 }
 // Called inside a serializable transaction: commission and financial movements commit together.
 export async function saveCommission(db: Prisma.TransactionClient, input: CommissionInput) {
-  const data = validateCommission(input);
   const previous = input.id ? await db.comissao.findUniqueOrThrow({ where: { id: parseRecordId(input.id) } }) : null;
-  const [client, generator] = await Promise.all([
-    db.cliente.findUniqueOrThrow({ where: { id: data.cliente_id }, include: { unidade: true } }),
-    db.geradora.findUniqueOrThrow({ where: { id: data.geradora_id } }),
-  ]);
+  const previousReceiptDate = input.parceiro_id && input.status_pagamento === "Pago" ? previous?.data_recebimento?.toISOString().slice(0, 10) ?? "" : "";
+  const data = validateCommission({ ...input, data_recebimento: input.data_recebimento || previousReceiptDate });
+  const client = await db.cliente.findUniqueOrThrow({ where: { id: data.cliente_id }, include: { unidade: true } });
+  const generator = await db.geradora.findUniqueOrThrow({ where: { id: data.geradora_id } });
   await db.distribuidora.findUniqueOrThrow({ where: { id: data.distribuidora_id } });
   if (client.distribuidora_id && client.distribuidora_id !== data.distribuidora_id && !(previous?.cliente_id === client.id && previous.distribuidora_id === data.distribuidora_id)) throw new Error("A distribuidora selecionada difere da distribuidora cadastrada para a UC. Confira o cliente antes de salvar.");
   if (!previous && await db.comissao.findFirst({ where: { cliente_id: data.cliente_id, competencia: data.competencia, geradora_id: null }, select: { id: true } })) throw new Error("Existe uma comissão antiga deste cliente/UC e competência sem geradora. Informe a geradora nos detalhes desse registro antes de cadastrar ou importar outra comissão.");

@@ -43,7 +43,7 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
       <label className="grid gap-1 text-sm">Data de pagamento<input type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={pending} className="rounded-lg border border-line bg-surface px-3 py-2" /></label>
       <button type="button" disabled={pending || !selected.length || !date} className={buttonClass} onClick={() => update("Pago")}>Marcar como pago</button>
       <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("Pendente")}>Marcar como pendente</button>
-      <p className="w-full text-xs text-muted-ink">Altera o pagamento ao parceiro. Comissões sem parceiro permanecem como “Não se aplica”.</p>
+      <p className="w-full text-xs text-muted-ink">Marcar como pago também marca como recebido. A data de recebimento é preservada; se estiver vazia, usamos a data de pagamento. Comissões sem parceiro permanecem como “Não se aplica”.</p>
     </div>}
     {pending && <p role="status" className="mb-4 text-sm">Atualizando pagamentos…</p>}
     {result && <p role={result.success ? "status" : "alert"} className={`mb-4 rounded-lg p-3 text-sm ${result.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{result.message}</p>}

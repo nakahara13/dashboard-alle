@@ -14,7 +14,7 @@ import { formatMoney } from "@/lib/recebimentos-filtros";
 export const metadata: Metadata = { title: "Comissões | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 const money = (value: string) => formatMoney({ toFixed: () => value });
-const statusOptions = ["a-receber", "recebido", "a-pagar", "pago"];
+const statusOptions = [{ value: "a-pagar", label: "A pagar" }, { value: "pago", label: "Pagas" }];
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const text = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
@@ -29,9 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     if (unit) where.cliente = { unidade_id: positiveId(unit) };
     if (distributor) where.distribuidora_id = positiveId(distributor);
     if (partner) where.parceiro_id = positiveId(partner);
-    if (status && !statusOptions.includes(status)) throw new Error("Selecione um status válido.");
-    if (status === "a-receber") where.status_recebimento = "Pendente";
-    if (status === "recebido") where.status_recebimento = "Recebido";
+    if (status && !statusOptions.some((option) => option.value === status)) throw new Error("Selecione um status válido.");
     if (status === "a-pagar") where.status_pagamento = "Pendente";
     if (status === "pago") where.status_pagamento = "Pago";
     if (query) where.cliente = { ...(unit ? { unidade_id: positiveId(unit) } : {}), OR: [{ nome: { contains: query, mode: "insensitive" } }, { uc: { contains: query, mode: "insensitive" } }] };
@@ -59,14 +57,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[{ label: "Total a receber", value: totals.pendingReceipt }, { label: "Total recebido", value: totals.received }, { label: "A pagar aos parceiros", value: totals.pendingPayment }, { label: "Pago aos parceiros", value: totals.paid }, { label: "Margem", value: totals.margin }].map((card) => <div key={card.label} className="rounded-2xl border border-line bg-surface p-5"><p className="text-sm text-muted-ink">{card.label}</p><p className={`mt-3 text-xl font-semibold tabular-nums ${card.value.lt(0) ? "text-danger-ink" : ""}`}>{money(card.value.toFixed(2))}</p></div>)}</div>
       <p className="text-xs text-muted-ink">Totais de todos os registros dos filtros selecionados. Margem = comissão da empresa − comissão do parceiro, independentemente do recebimento e pagamento.</p>
-      <ManagementFilters basePath="/comissoes" values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={[{ value: "a-receber", label: "A receber" }, { value: "recebido", label: "Recebidas" }, { value: "a-pagar", label: "A pagar" }, { value: "pago", label: "Pagas" }]} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
+      <ManagementFilters basePath="/comissoes" values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={statusOptions} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
       <form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-2 text-sm">Competência<input type="month" name="competencia" defaultValue={competence} className={fieldClass} /></label>
         <label className="grid gap-2 text-sm">Geradora<select name="geradora" defaultValue={generator} className={fieldClass}><option value="">Todas</option><option value="nao-informada">Geradora não informada</option>{data.options.generators.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
         <label className="grid gap-2 text-sm">Unidade Allp Fit<select name="unidade" defaultValue={unit} className={fieldClass}><option value="">Todas</option>{data.options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
         <label className="grid gap-2 text-sm">Distribuidora<select name="distribuidora" defaultValue={distributor} className={fieldClass}><option value="">Todas</option>{data.options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
         <label className="grid gap-2 text-sm">Gestor / parceiro<select name="parceiro" defaultValue={partner} className={fieldClass}><option value="">Todos</option>{data.options.partners.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-        <label className="grid gap-2 text-sm">Status<select name="status" defaultValue={status} className={fieldClass}><option value="">Todos</option>{[{ id: "a-receber", label: "A receber" }, { id: "recebido", label: "Recebido" }, { id: "a-pagar", label: "A pagar ao parceiro" }, { id: "pago", label: "Pago ao parceiro" }].map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+        <label className="grid gap-2 text-sm">Status<select name="status" defaultValue={status} className={fieldClass}><option value="">Todas</option>{statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
         <label className="grid gap-2 text-sm">Buscar cliente<input name="busca" placeholder="Nome ou UC" defaultValue={query} maxLength={255} className={fieldClass} /></label>
         <div className="flex items-center gap-4 sm:col-span-2 lg:col-span-4"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Aplicar filtros</button><Link href="/comissoes" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
       </form>
@@ -86,16 +84,16 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
 
 async function loadCommissions(db: ReturnType<typeof getPrisma>, where: Prisma.ComissaoWhereInput, requestedPage: number) {
   return db.$transaction(async (tx) => {
-      const [clients, distributors, partners, accounts, methods, generators, units, unassignedCount, count, groups] = await Promise.all([
-        tx.cliente.findMany({ include: { unidade: true }, orderBy: { nome: "asc" } }), tx.distribuidora.findMany({ orderBy: { nome: "asc" } }),
-        tx.parceiro.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
-        tx.contaBancaria.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
-        tx.metodoPagamento.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }),
-        tx.geradora.findMany({ orderBy: { nome: "asc" } }),
-        tx.unidadeAllpFit.findMany({ orderBy: { nome: "asc" } }),
-        tx.comissao.count({ where: { geradora_id: null } }),
-        tx.comissao.count({ where }), tx.comissao.groupBy({ by: ["status_recebimento", "status_pagamento"], where, _sum: { valor_comissao_empresa: true, valor_comissao_parceiro: true, margem: true } }),
-      ]);
+      const clients = await tx.cliente.findMany({ include: { unidade: true }, orderBy: { nome: "asc" } });
+      const distributors = await tx.distribuidora.findMany({ orderBy: { nome: "asc" } });
+      const partners = await tx.parceiro.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } });
+      const accounts = await tx.contaBancaria.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } });
+      const methods = await tx.metodoPagamento.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } });
+      const generators = await tx.geradora.findMany({ orderBy: { nome: "asc" } });
+      const units = await tx.unidadeAllpFit.findMany({ orderBy: { nome: "asc" } });
+      const unassignedCount = await tx.comissao.count({ where: { geradora_id: null } });
+      const count = await tx.comissao.count({ where });
+      const groups = await tx.comissao.groupBy({ by: ["status_recebimento", "status_pagamento"], where, _sum: { valor_comissao_empresa: true, valor_comissao_parceiro: true, margem: true } });
       const pages = Math.max(1, Math.ceil(count / 20)), page = Math.min(requestedPage, pages);
       const rows = await tx.comissao.findMany({ where, include: commissionInclude, orderBy: [{ competencia: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 });
       return { options: { clients, distributors, partners, accounts, methods, generators, units }, unassignedCount, count, groups, page, pages, rows: rows.map(serializeCommission) };

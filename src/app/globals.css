@@ -2,7 +2,10 @@
 
 :root {
   color-scheme: light;
-  --page: #F4F6F9;
+  --brand-orange: #FE6E00;
+  --brand-green: #24B47E;
+  --brand-purple: #7b00ae;
+  --page: #f4f6f9;
   --surface: #ffffff;
   --muted: #F8FAFC;
   --line: #E8ECF2;
@@ -19,12 +22,12 @@
   --danger-soft: #FFF0F3;
   --danger-ink: #BC2948;
   --focus: #246BFD;
-  --success: #24B47E;
+  --success: var(--brand-green);
   --success-soft: #EAF8F2;
   --success-ink: #167550;
-  --warning: #FF9F43;
-  --warning-soft: #FFF5E8;
-  --warning-ink: #9A5B16;
+  --warning: var(--brand-orange);
+  --warning-soft: color-mix(in srgb, var(--brand-orange) 10%, white);
+  --warning-ink: color-mix(in srgb, var(--brand-orange) 40%, black);
   --radius-card: 16px;
   --radius-control: 10px;
   --shadow-card: 0 2px 8px rgb(23 27 38 / 0.025);
@@ -51,11 +54,12 @@
   --focus: #9BBFFF;
   --success-soft: #193C32;
   --success-ink: #7DDCB4;
-  --warning-soft: #403323;
-  --warning-ink: #FFD08B;
+  --warning-soft: color-mix(in srgb, var(--brand-orange) 20%, #21222b);
+  --warning-ink: color-mix(in srgb, var(--brand-orange) 40%, white);
 }
 
 @theme inline {
+  --color-brand-purple: var(--brand-purple);
   --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
   --color-surface: var(--surface);
   --color-muted: var(--muted);
@@ -138,10 +142,38 @@ button, select { cursor: pointer; }
 }
 
 @layer components {
+  .saas-sidebar {
+    --surface: var(--brand-orange);
+    --muted: rgb(0 0 0 / 0.12);
+    --primary: #ffffff;
+    --secondary: #ffffff;
+    --muted-ink: #ffffff;
+    --faint: rgb(255 255 255 / 0.8);
+    --line: rgb(255 255 255 / 0.3);
+    --subtle: rgb(255 255 255 / 0.3);
+    --accent: #ffffff;
+    --accent-soft: rgb(0 0 0 / 0.12);
+    --accent-ink: #ffffff;
+    --focus: #ffffff;
+    background: var(--brand-orange);
+  }
+  .dashboard-kpi {
+    background: var(--kpi-strong);
+    border-color: rgb(255 255 255 / 0.3);
+    box-shadow: none;
+  }
+  .dashboard-kpi-incoming { --kpi-strong: var(--brand-orange); --kpi-icon: var(--brand-orange); }
+  .dashboard-kpi-outgoing { background: #ffffff; border-color: var(--line); --kpi-icon: var(--brand-orange); }
+  .dashboard-kpi-commissions { --kpi-strong: var(--brand-purple); --kpi-icon: var(--brand-purple); }
+  .dashboard-kpi-icon {
+    background: #ffffff;
+    color: var(--kpi-icon);
+    box-shadow: none;
+  }
   .saas-sidebar nav > div + div { border-top: 1px solid var(--line); padding-top: 18px; }
-  .saas-sidebar :is(a[aria-current="page"], summary.bg-accent-soft) { position: relative; }
-  .saas-sidebar :is(a[aria-current="page"], summary.bg-accent-soft)::before {
-    content: ""; position: absolute; left: 0; top: 25%; height: 50%; width: 3px; background: var(--accent); border-radius: 4px;
+  .saas-sidebar :is(a[aria-current="page"], summary.bg-white) { position: relative; }
+  .saas-sidebar :is(a[aria-current="page"], summary.bg-white)::before {
+    content: ""; position: absolute; left: 0; top: 25%; height: 50%; width: 3px; background: currentColor; border-radius: 4px;
   }
   #conteudo :is(section, article, form).bg-surface { box-shadow: var(--shadow-card); }
   #conteudo .overflow-x-auto:has(> table) { border: 1px solid var(--line); border-radius: 12px; }

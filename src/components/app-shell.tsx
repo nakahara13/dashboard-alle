@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import financeiroLogo from "@/assets/financeiro_logo.png";
+import financeiroLogo from "@/assets/financeiro-sidebar-logo.png";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -62,65 +62,69 @@ function Icon({ name }: { name: string }) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  // Reconhece subpáginas no cabeçalho e mantém a compatibilidade com a rota de parceiros.
+  // Mantém a compatibilidade com a rota de parceiros.
   const currentPath = pathname === "/parceiros" ? "/cadastros/parceiros" : pathname;
   const matchesPath = (href: string) => currentPath === href || (href !== "/" && currentPath.startsWith(`${href}/`));
   // Prioriza a rota exata para reconhecer Clientes em Gestão, mesmo sob /cadastros.
   const currentGroup = navigation.find((group) => group.items.some((item) => item.href === currentPath))
     ?? navigation.find((group) => group.items.some((item) => matchesPath(item.href)));
-  const currentItem = currentGroup?.items.find((item) => matchesPath(item.href));
-  const currentPage = currentItem?.children?.find((item) => currentPath === item.href) ?? currentItem;
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
+    <div className="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
       <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-surface p-3 text-accent-ink shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
-      <aside className="saas-sidebar border-b border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:border-r lg:border-b-0">
-        <div className="flex h-16 items-center justify-between gap-4 px-5">
-          <Link href="/" onClick={() => setMenuOpen(false)} aria-label="Financeiro Alle Energia — início" className="flex min-w-0 items-center gap-3 rounded bg-white p-1">
-            {/* Logo horizontal ampliado ocupa a largura disponível sem distorcer a imagem. */}
-            <Image src={financeiroLogo} alt="" priority sizes="184px" className="h-auto w-[184px] max-w-full object-contain" />
-          </Link>
+      <aside className="saas-sidebar m-4 overflow-hidden rounded-3xl border border-line bg-surface lg:sticky lg:top-4 lg:mr-0 lg:flex lg:h-[calc(100dvh-2rem)] lg:flex-col lg:self-start">
+        <div className="flex shrink-0 items-center justify-end px-6 py-3 lg:hidden">
           <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="sidebar-navigation" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} className="rounded-lg border border-line p-2 text-secondary lg:hidden">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={menuOpen ? "m6 6 12 12M6 18 18 6" : "M4 6h16M4 12h16M4 18h16"} /></svg>
           </button>
         </div>
         <div id="sidebar-navigation" className={`${menuOpen ? "flex" : "hidden"} min-h-0 flex-1 flex-col lg:flex`}>
-          <nav aria-label="Menu principal" className="flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-5">
-            {navigation.map((group) => (
-              <div key={group.label}>
-                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-ink">{group.label}</p>
-                <ul className="space-y-1">
+          <nav aria-label="Menu principal" className="flex-1 space-y-4 overflow-y-auto px-[18px] pb-6 pt-5">
+            {navigation.map((group) => {
+              const items = <ul className="space-y-1">
                   {group.items.map((item) => {
                     const active = currentGroup === group && matchesPath(item.href);
                     // Details oferece abertura por teclado; o grupo da página atual inicia expandido.
-                    if (item.children) return <li key={item.href}><details key={`${item.href}-${currentPath}`} open={active} className="group">
-                      <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium [&::-webkit-details-marker]:hidden ${active ? "bg-accent-soft text-accent-ink" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="ml-auto size-4 transition-transform group-open:rotate-180"><path d="m5 7 5 5 5-5" /></svg></summary>
+                    if (item.children) return <li key={item.href}><details key={`${item.href}-${currentPath}`} open={active} className="group/item">
+                      <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden ${active ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="ml-auto size-4 transition-transform group-open/item:rotate-180"><path d="m5 7 5 5 5-5" /></svg></summary>
                       <ul className="ml-5 mt-1 space-y-1 border-l border-line pl-2">{item.children.map((child) => {
                         const childActive = currentPath === child.href;
-                        return <li key={child.href}><Link href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`block rounded-lg px-3 py-2.5 text-[13px] ${childActive ? "bg-accent-soft font-medium text-accent-ink" : "text-muted-ink hover:bg-muted hover:text-primary"}`}>{child.title}</Link></li>;
+                        return <li key={child.href}><Link href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`block rounded-lg px-3 py-2.5 text-sm ${childActive ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}>{child.title}</Link></li>;
                       })}</ul>
                     </details></li>;
-                    return <li key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${active ? "bg-accent-soft text-accent-ink" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span>{active && <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-accent" />}</Link></li>;
+                    return <li key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span>{active && <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-current" />}</Link></li>;
                   })}
-                </ul>
-              </div>
-            ))}
+                </ul>;
+              return <div key={group.label}>
+                {group.label === "Visão geral" ? <>
+                  <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">{group.label}</p>
+                  {items}
+                </> : <details key={`${group.label}-${currentGroup?.label}`} open={currentGroup === group} className="group/section">
+                  <summary className="mb-2 flex min-h-11 cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink hover:bg-muted [&::-webkit-details-marker]:hidden">
+                    {group.label}
+                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="size-4 transition-transform group-open/section:rotate-180"><path d="m5 7 5 5 5-5" /></svg>
+                  </summary>
+                  {items}
+                </details>}
+              </div>;
+            })}
           </nav>
-          <div className="mx-5 mb-5 flex items-center gap-2 border-t border-subtle px-2 pt-5 text-xs text-muted-ink"><span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />Gestão financeira</div>
+          <div className="flex shrink-0 justify-center px-6 py-5">
+          <Link href="/" onClick={() => setMenuOpen(false)} aria-label="Financeiro Alle Energia — início" className="flex min-w-0 items-center gap-3 p-1">
+            <Image src={financeiroLogo} alt="" priority sizes="184px" className="h-auto w-[184px] max-w-full object-contain" />
+          </Link>
+          </div>
+          <div className="mx-[18px] mb-5 flex shrink-0 items-center gap-2 border-t border-line pt-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink"><Icon name="users" /></span>
+              <div className="min-w-0"><p className="text-xs text-muted-ink">Usuário</p><p className="text-xs text-secondary">Nenhum usuário conectado</p></div>
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-col">
-        <header className="flex min-h-16 flex-wrap items-center justify-between gap-4 border-b border-line/80 bg-surface px-5 py-2 sm:px-7">
-          <div className="flex items-center gap-2 text-xs sm:gap-3 sm:text-sm"><span className="text-muted-ink">{currentGroup?.label ?? "Alle"}</span><span aria-hidden="true" className="text-faint">/</span><span className="font-medium text-secondary">{currentPage?.title ?? "Financeiro"}</span></div>
-          <div className="flex flex-wrap items-center gap-3">
-          <ThemeToggle />
-          <div className="flex items-center gap-3 border-l border-line py-1 pl-4">
-            <span className="flex size-8 items-center justify-center rounded-full bg-accent-soft text-accent-ink"><Icon name="users" /></span>
-            <div><p className="text-xs text-muted-ink">Usuário</p><p className="text-sm text-secondary">Nenhum usuário conectado</p></div>
-          </div>
-          </div>
-        </header>
-        <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col p-5 sm:p-7 lg:min-h-[calc(100dvh-64px)]">{children}</main>
+        <main id="conteudo" tabIndex={-1} className="flex min-w-0 flex-1 flex-col p-5 sm:p-7 lg:min-h-dvh">{children}</main>
       </div>
     </div>
   );
