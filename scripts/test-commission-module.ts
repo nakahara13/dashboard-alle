@@ -6,6 +6,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { saveCommissionCatalogData } from "../src/lib/comissao-catalog";
 import { saveCommission, validateCommission, referringPartner, money, type CommissionInput } from "../src/lib/comissao-module";
+import { updateCommissionPayments } from "../src/lib/comissao-payments";
+import { updateCommissionReceipts } from "../src/lib/comissao-receipts";
 import { parseCommissionFile, matchImport, importCommissions } from "../src/lib/comissao-import";
 import { createPayment } from "../src/lib/pagamentos";
 import { createPayable } from "../src/lib/contas-a-pagar";
@@ -18,6 +20,8 @@ assert.equal(money("R$ 1.234,56").toFixed(2), "1234.56");
 assert.throws(() => validateCommission({ ...base, geradora_id: "" }), /geradora/);
 assert.throws(() => money("-1")); assert.throws(() => money("1.234"));
 assert.throws(() => validateCommission({ ...base, parceiro_id: "" }));
+const noPartner = validateCommission({ ...base, parceiro_id: "", valor_comissao_parceiro: "0" });
+assert.equal(noPartner.parceiro_id, null); assert.equal(noPartner.status_pagamento, "Não se aplica"); assert.equal(noPartner.margem.toFixed(2), "120.00");
 assert.throws(() => validateCommission({ ...base, status_recebimento: "Recebido" }));
 assert.throws(() => validateCommission({ ...base, status_pagamento: "Pago", data_pagamento: "2026-02-30" }));
 
@@ -114,6 +118,69 @@ async function main() {
       const linked = await saveCommission(tx, linkInput);
       assert.equal(linked.entrada_id, existingEntry.id_do_registro); assert.equal(linked.saida_id, existingExit.id);
       assert.equal(await tx.criar_pagamento.count(), beforeEntries); assert.equal(await tx.contaPagar.count(), beforeExits);
+
+      // A saída ao gestor pode existir antes do recebimento da geradora.
+      const prepaidClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-prepaid`, parceiro_id: partner.id } });
+      const prepaid = await saveCommission(tx, { ...input, cliente_id: String(prepaidClient.id), status_pagamento: "Pago", data_pagamento: "2026-10-01", gerar_saida: "on" });
+      assert.equal(prepaid.status_recebimento, "Pendente"); assert.equal(prepaid.data_recebimento, null); assert.equal(prepaid.entrada_id, null); assert.ok(prepaid.saida_id);
+      const prepaidExit = await tx.contaPagar.findUniqueOrThrow({ where: { id: prepaid.saida_id! } });
+      assert.equal(prepaidExit.status, "Pago"); assert.equal(prepaidExit.valor.toFixed(2), "70.00");
+      await assert.rejects(() => saveCommission(tx, { ...input, id: String(prepaid.id), cliente_id: String(prepaidClient.id) }), /saída já foi gerada/);
+
+      // A ausência de parceiro no formulário prevalece sobre qualquer sugestão do cliente ou da unidade.
+      let optionalReceiptId: bigint | null = null;
+      for (const [origin, clientData] of [
+        ["none", {}], ["direct", { parceiro_id: partner.id }], ["unit", { unidade_id: unit.id }],
+      ] as const) {
+        const optionalClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-optional-${origin}`, ...clientData } });
+        const optional = await saveCommission(tx, { ...input, cliente_id: String(optionalClient.id), parceiro_id: "", valor_comissao_parceiro: "0", status_recebimento: "Recebido", data_recebimento: "2026-09-30", gerar_entrada: "on" });
+        assert.equal(optional.parceiro_id, null); assert.equal(optional.status_pagamento, "Não se aplica"); assert.equal(optional.data_pagamento, null);
+        assert.equal(optional.valor_comissao_parceiro.toFixed(2), "0.00"); assert.equal(optional.margem.toFixed(2), "120.00");
+        assert.equal(optional.status_recebimento, "Recebido"); assert.ok(optional.entrada_id); assert.equal(optional.saida_id, null);
+        const optionalEntry = await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: optional.entrada_id! } });
+        assert.equal(optionalEntry.status_do_pagamento, "Recebido"); assert.equal(optionalEntry.pagador, generator.nome);
+        optionalReceiptId = optional.id;
+      }
+      const removePartnerClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-remove-partner`, parceiro_id: partner.id } });
+      const toRemovePartner = await saveCommission(tx, { ...input, cliente_id: String(removePartnerClient.id) });
+      const removedPartner = await saveCommission(tx, { ...input, id: String(toRemovePartner.id), cliente_id: String(removePartnerClient.id), parceiro_id: "", valor_comissao_parceiro: "0" });
+      assert.equal(removedPartner.parceiro_id, null); assert.equal(removedPartner.status_pagamento, "Não se aplica"); assert.equal(removedPartner.margem.toFixed(2), "120.00");
+
+      // O lote altera apenas o pagamento: preserva os recebimentos e cada entrada financeira.
+      assert.ok(optionalReceiptId);
+      const entryBeforeBulk = await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: paid.entrada_id! } });
+      const optionalBeforeBulk = await tx.comissao.findUniqueOrThrow({ where: { id: optionalReceiptId } });
+      assert.equal(await updateCommissionPayments(tx, [prepaid.id, paid.id, optionalReceiptId], "Pago", new Date("2026-10-02T00:00:00Z")), 2);
+      const prepaidAfterBulk = await tx.comissao.findUniqueOrThrow({ where: { id: prepaid.id } });
+      const receivedAfterBulk = await tx.comissao.findUniqueOrThrow({ where: { id: paid.id } });
+      assert.equal(prepaidAfterBulk.status_recebimento, "Pendente"); assert.equal(prepaidAfterBulk.data_recebimento, null); assert.equal(prepaidAfterBulk.entrada_id, null);
+      assert.equal(receivedAfterBulk.status_recebimento, "Recebido"); assert.equal(receivedAfterBulk.data_recebimento?.toISOString().slice(0, 10), "2026-09-30");
+      assert.equal(receivedAfterBulk.data_pagamento?.toISOString().slice(0, 10), "2026-10-02");
+      assert.deepEqual(await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: paid.entrada_id! } }), entryBeforeBulk);
+      assert.deepEqual(await tx.comissao.findUniqueOrThrow({ where: { id: optionalReceiptId } }), optionalBeforeBulk);
+      assert.equal((await tx.contaPagar.findUniqueOrThrow({ where: { id: prepaid.saida_id! } })).vencimento.toISOString().slice(0, 10), "2026-10-02");
+      // Receber em lote inclui comissões sem parceiro e preserva todos os pagamentos.
+      const receiptIds = [prepaid.id, paid.id, removedPartner.id];
+      const beforeReceipts = await tx.comissao.findMany({ where: { id: { in: receiptIds } }, orderBy: { id: "asc" } });
+      const exitsBeforeReceipts = await tx.contaPagar.findMany({ where: { favorecido_id: partner.id }, orderBy: { id: "asc" } });
+      const entryCountBeforeReceipts = await tx.criar_pagamento.count();
+      const receiptDate = new Date("2026-10-03T00:00:00Z");
+      await assert.rejects(() => updateCommissionReceipts(tx, [prepaid.id, BigInt("9223372036854775807")], receiptDate), /não encontrada/);
+      assert.deepEqual(await tx.comissao.findMany({ where: { id: { in: receiptIds } }, orderBy: { id: "asc" } }), beforeReceipts);
+      assert.equal(await updateCommissionReceipts(tx, receiptIds, receiptDate), 3);
+      const afterReceipts = await tx.comissao.findMany({ where: { id: { in: receiptIds } }, orderBy: { id: "asc" } });
+      for (const [index, commission] of afterReceipts.entries()) {
+        assert.equal(commission.status_recebimento, "Recebido");
+        assert.equal(commission.data_recebimento?.getTime(), receiptDate.getTime());
+        assert.equal(commission.status_pagamento, beforeReceipts[index].status_pagamento);
+        assert.deepEqual(commission.data_pagamento, beforeReceipts[index].data_pagamento);
+        assert.equal(commission.entrada_id, beforeReceipts[index].entrada_id);
+        assert.equal(commission.saida_id, beforeReceipts[index].saida_id);
+      }
+      const syncedEntry = await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: paid.entrada_id! } });
+      assert.deepEqual(syncedEntry, { ...entryBeforeBulk, status_do_pagamento: "Recebido", data_do_pagamento: receiptDate });
+      assert.equal(await tx.criar_pagamento.count(), entryCountBeforeReceipts);
+      assert.deepEqual(await tx.contaPagar.findMany({ where: { favorecido_id: partner.id }, orderBy: { id: "asc" } }), exitsBeforeReceipts);
       throw rollback;
     }, { isolationLevel: "Serializable", timeout: 30000 });
   } catch (error) { if (error !== rollback) throw error; }
@@ -140,6 +207,6 @@ async function main() {
   assert.equal(await db.geradora.count({ where: { nome: { startsWith: marker } } }), 0);
   assert.equal(await db.unidadeAllpFit.count({ where: { nome: { startsWith: marker } } }), 0);
   assert.equal(await db.parceiro.count({ where: { nome: marker } }), 0);
-  console.log("PASSOU: margem decimal, validação, CSV/XLSX, fórmulas, identificação/manual, duplicatas, rollback, geradora pagadora, duplicidade por geradora, origem Allp Fit, gestor herdado e preservação do legado.");
+  console.log("PASSOU: margem decimal, CSV/XLSX, duplicatas, rollback, geradora, origem Allp Fit, legado, pagamento/recebimento independentes, lotes independentes de pagamento e recebimento, entradas sincronizadas, saídas preservadas e gestor opcional.");
 }
 void main().catch((error) => { console.error(error instanceof Error ? error.message : "Teste falhou."); process.exitCode = 1; }).finally(() => db.$disconnect());

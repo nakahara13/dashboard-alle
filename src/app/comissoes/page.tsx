@@ -10,11 +10,17 @@ import { positiveId, commissionInclude, serializeCommission } from "@/lib/comiss
 import { parseCompetence } from "@/lib/contas-a-pagar";
 import { CommissionTable } from "@/components/commission-table";
 import { formatMoney } from "@/lib/recebimentos-filtros";
+import styles from "./commissions.module.css";
 
 export const metadata: Metadata = { title: "Comissões | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 const money = (value: string) => formatMoney({ toFixed: () => value });
-const statusOptions = [{ value: "a-pagar", label: "A pagar" }, { value: "pago", label: "Pagas" }];
+const statusOptions = [
+  { value: "a-receber", label: "A receber" },
+  { value: "recebido", label: "Recebidos" },
+  { value: "a-pagar", label: "A pagar" },
+  { value: "pago", label: "Pagas" },
+];
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const text = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
@@ -30,6 +36,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     if (distributor) where.distribuidora_id = positiveId(distributor);
     if (partner) where.parceiro_id = positiveId(partner);
     if (status && !statusOptions.some((option) => option.value === status)) throw new Error("Selecione um status válido.");
+    if (status === "a-receber") where.status_recebimento = "Pendente";
+    if (status === "recebido") where.status_recebimento = "Recebido";
     if (status === "a-pagar") where.status_pagamento = "Pendente";
     if (status === "pago") where.status_pagamento = "Pago";
     if (query) where.cliente = { ...(unit ? { unidade_id: positiveId(unit) } : {}), OR: [{ nome: { contains: query, mode: "insensitive" } }, { uc: { contains: query, mode: "insensitive" } }] };
@@ -55,8 +63,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     const fieldClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm";
     content = <>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[{ label: "Total a receber", value: totals.pendingReceipt }, { label: "Total recebido", value: totals.received }, { label: "A pagar aos parceiros", value: totals.pendingPayment }, { label: "Pago aos parceiros", value: totals.paid }, { label: "Margem", value: totals.margin }].map((card) => <div key={card.label} className="rounded-2xl border border-line bg-surface p-5"><p className="text-sm text-muted-ink">{card.label}</p><p className={`mt-3 text-xl font-semibold tabular-nums ${card.value.lt(0) ? "text-danger-ink" : ""}`}>{money(card.value.toFixed(2))}</p></div>)}</div>
-      <p className="text-xs text-muted-ink">Totais de todos os registros dos filtros selecionados. Margem = comissão da empresa − comissão do parceiro, independentemente do recebimento e pagamento.</p>
+      <div className={styles.summary}>
+        <div className={styles.metrics} aria-label="Indicadores de comissões">{[{ label: "Total a receber", value: totals.pendingReceipt, tone: "receipt" }, { label: "Total recebido", value: totals.received, tone: "success" }, { label: "A pagar aos parceiros", value: totals.pendingPayment, tone: "pending" }, { label: "Pago aos parceiros", value: totals.paid, tone: "success" }, { label: "Margem", value: totals.margin, tone: "margin" }].map((card) => <article key={card.label} className={styles.metric} data-tone={card.tone}><p className={styles.metricLabel}>{card.label}</p><p className={`${styles.metricValue} ${card.value.lt(0) ? "text-danger-ink" : ""}`}>{money(card.value.toFixed(2))}</p></article>)}</div>
+        <p className={styles.summaryHint}>Totais de todos os registros dos filtros selecionados. Margem = comissão da empresa − comissão do parceiro, independentemente do recebimento e pagamento.</p>
+      </div>
+      <section className={styles.panel} aria-labelledby="commissions-title">
+      <div className={styles.filters}>
       <ManagementFilters basePath="/comissoes" values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={statusOptions} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
       <form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-2 text-sm">Competência<input type="month" name="competencia" defaultValue={competence} className={fieldClass} /></label>
@@ -69,17 +81,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         <div className="flex items-center gap-4 sm:col-span-2 lg:col-span-4"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Aplicar filtros</button><Link href="/comissoes" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
       </form>
       </ManagementFilters>
-      {data.unassignedCount > 0 && <p role="status" className="rounded-lg bg-accent-soft p-4 text-sm text-accent-ink">{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
+      </div>
+      {data.unassignedCount > 0 && <p role="status" className={styles.notice}>{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
       {/* A visão geral concentra consulta e edição; criação e importação têm páginas próprias. */}
-      <section className="rounded-2xl border border-line bg-surface p-5"><h2 className="mb-5 text-lg font-semibold">Comissões ({data.count})</h2>
+      <div className={styles.tableHeader}><h2 id="commissions-title">Comissões <span className={styles.count}>({data.count})</span></h2><p id="commissions-scroll-hint">Role a tabela para consultar todas as colunas <span aria-hidden="true">↔</span></p></div>
         <CommissionTable key={JSON.stringify(data.rows)} rows={data.rows} options={data.options} />
-        <Pagination page={data.page} pages={data.pages} href={href} label="Paginação de comissões" />
+        <div className={styles.pagination}><Pagination page={data.page} pages={data.pages} href={href} label="Paginação de comissões" /></div>
       </section>
     </>;
   } else {
     content = <p role="alert" className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">{loadError} <Link href="/comissoes" className="underline">Recarregar sem filtros</Link></p>;
   }
-  return <div className="mx-auto w-full max-w-7xl space-y-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Comissões</h1><p className="mt-3 text-sm text-muted-ink">Comissões recebidas das geradoras, pagas aos gestores das unidades Allp Fit e margem por cliente.</p></div>{data && <CreateRecord label="Nova comissão" title="Nova comissão"><CommissionForm options={data.options} /></CreateRecord>}</div>{content}</div>;
+  return <div className={styles.page}><header className={styles.header}><div><h1>Comissões</h1><p>Comissões recebidas das geradoras, pagas aos gestores das unidades Allp Fit e margem por cliente.</p></div>{data && <CreateRecord label="Nova comissão" title="Nova comissão"><CommissionForm options={data.options} /></CreateRecord>}</header>{content}</div>;
 }
 
 async function loadCommissions(db: ReturnType<typeof getPrisma>, where: Prisma.ComissaoWhereInput, requestedPage: number) {

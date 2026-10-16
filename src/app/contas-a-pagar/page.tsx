@@ -1,4 +1,5 @@
-import { CreateRecord, ManagementHeader } from "@/components/management-drawer";
+import styles from "./payables.module.css";
+import { CreateRecord } from "@/components/management-drawer";
 import type { Metadata } from "next";
 import { PayableForm } from "@/components/payable-form";
 import { PayablesHistory } from "@/components/payables-history";
@@ -17,5 +18,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<His
   } catch {
     return <p role="alert">Não foi possível carregar os parceiros. Verifique a conexão e tente novamente.</p>;
   }
-  return <div className="mx-auto w-full max-w-7xl"><ManagementHeader title="Contas a pagar" description="Consulte e gerencie os registros financeiros." action={<CreateRecord label="Nova conta" title="Nova conta"><PayableForm types={types} partners={partners} /></CreateRecord>} /><PayablesHistory params={params} types={types} partners={partners} /></div>;
+  return <div className={styles.page}><header className={styles.header}><div><h1>Contas a pagar</h1><p>Consulte e gerencie os registros financeiros.</p></div><CreateRecord label="Nova conta" title="Nova conta"><PayableForm types={types} partners={partners} /></CreateRecord></header><PayablesHistory params={params} types={types} partners={partners} /></div>;
 }

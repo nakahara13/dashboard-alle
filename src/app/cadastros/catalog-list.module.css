@@ -1,0 +1,56 @@
+/* Shared only by the four catalog listings that opt into this module. */
+.page { display: grid; gap: 24px; width: 100%; max-width: 1280px; min-width: 0; margin-inline: auto; }
+.page > div { max-width: none; min-width: 0; }
+.header, .page > div > div:first-child { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.page h1 { border-left: 0; padding-left: 0; font-size: 26px; line-height: 1.3; font-weight: 600; letter-spacing: -.035em; }
+.header p, .page > div > div:first-child > div > p { margin-top: 8px; font-size: 13px; color: var(--muted-ink); }
+.headerActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.headerActions > a, .headerActions > div > button, .page > div > div:first-child > div > button { min-height: 40px; padding: 10px 16px; border-radius: 8px; font-size: 13px; }
+.panel, .partners > div > section { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: none; }
+.partners > div > section { margin-top: 0; }
+.panel > h2, .partners > div > section > h2 { margin: 0 0 16px; font-size: 17px; font-weight: 600; }
+.tableScroll, .partners > div > section > div { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.table, .partners table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.wideTable { min-width: 1050px; }
+.table thead, .partners thead { background: var(--muted); color: var(--secondary); }
+.table th, .partners th { padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.table td, .partners td { height: 60px; padding: 8px 16px; border-bottom: 1px solid var(--subtle); vertical-align: middle; }
+.wideTable th, .wideTable td { padding-inline: 12px; }
+.table tbody tr, .partners tbody tr { background: var(--surface); }
+.table tbody tr:hover, .partners tbody tr:hover { background: var(--muted); }
+.table tr:last-child td, .partners tr:last-child td { border-bottom: 0; }
+.table th:last-child, .table td:last-child, .partners th:last-child, .partners td:last-child { width: 1%; text-align: right; white-space: nowrap; }
+.nameText { display: block; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.wideTable .nameText { max-width: 200px; }
+.cellText { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partners td:first-child { font-weight: 500; }
+.partners td:not(:last-child) { max-width: 280px; overflow-wrap: anywhere; }
+/* Override the vertical shared actions only inside these listings. */
+.actionCell > div > [role="group"], .partners td:last-child > div > [role="group"] { flex-direction: row; justify-content: flex-end; gap: 8px; margin-left: auto; }
+.actionCell > div > [role="group"] > button, .partners td:last-child > div > [role="group"] > button { min-height: 36px; padding: 8px 10px; border-radius: 8px; font-size: 12px; }
+.actionCell > div > p, .partners td:last-child > div > p { text-align: left; white-space: normal; }
+.filters { margin: 0 0 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.filters > div { margin: 0; }
+.filters input, .filters select { min-height: 40px; font-size: 13px; }
+.filters label { min-width: 0; font-size: 12px; }
+.filters > div > div:first-child > form { flex-basis: 260px; }
+.filters button { min-height: 40px; padding-block: 8px; font-size: 13px; }
+.filters summary { padding: 10px 16px; font-size: 12px; }
+.filters details { background: var(--muted); }
+.filters details > div { background: var(--surface); border-radius: 0 0 12px 12px; }
+.pagination { margin-top: 16px; }
+.pagination > nav { margin-top: 0; padding-top: 16px; }
+/* Keep the existing dialogs and native form behavior; refine their controls locally. */
+.page dialog input:not([type="hidden"]):not([type="checkbox"]), .page dialog select { min-height: 40px; border-radius: 8px; font-size: 13px; }
+.page dialog label { font-size: 12px; }
+.page dialog fieldset { gap: 16px; }
+.page dialog form button { min-height: 40px; padding-block: 8px; font-size: 13px; }
+@media (max-width: 639px) {
+  .panel, .partners > div > section { padding: 16px; }
+  .table th, .table td, .partners th, .partners td { padding-inline: 12px; }
+  .nameText { max-width: 42vw; }
+  .wideTable .nameText { max-width: 200px; }
+  .actionCell > div > [role="group"], .partners td:last-child > div > [role="group"] { gap: 6px; }
+  .actionCell > div > [role="group"] > button, .partners td:last-child > div > [role="group"] > button { min-height: 40px; min-width: 40px; padding: 10px; }
+  .actionCell > div > [role="group"] > button > span, .partners td:last-child > div > [role="group"] > button > span { display: none; }
+}

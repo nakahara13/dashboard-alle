@@ -74,17 +74,22 @@ async function main() {
   paid.entries.set(BigInt(10), { status_do_pagamento: "Pendente", data_do_pagamento: null });
   assert.equal(await updateCommissionPayments(paid.db, [BigInt(1), BigInt(2), BigInt(3)], "Pago", date), 2);
   assert.equal(paid.rows[0].status_pagamento, "Pago");
-  assert.equal(paid.rows[0].status_recebimento, "Recebido");
+  assert.equal(paid.rows[0].status_recebimento, "Pendente");
   assert.deepEqual(paid.rows[0].data_pagamento, date);
-  assert.deepEqual(paid.rows[0].data_recebimento, date);
+  assert.equal(paid.rows[0].data_recebimento, null);
+  assert.equal(paid.rows[1].status_recebimento, "Recebido");
   assert.deepEqual(paid.rows[1].data_recebimento, receivedDate, "O recebimento anterior deve manter sua data.");
   assert.deepEqual(paid.rows[1].data_pagamento, date);
   assert.equal(paid.rows[1].entrada_id, BigInt(10));
   assert.equal(paid.rows[1].saida_id, BigInt(20));
-  assert.deepEqual(paid.entries.get(BigInt(10)), { status_do_pagamento: "Recebido", data_do_pagamento: receivedDate });
+  assert.deepEqual(paid.entries.get(BigInt(10)), { status_do_pagamento: "Pendente", data_do_pagamento: null }, "O pagamento ao parceiro não deve gravar ou corrigir a entrada da empresa.");
   assert.deepEqual(paid.exits.get(BigInt(20)), { status: "Pago", vencimento: date });
   assert.deepEqual(paid.rows[2], withoutPartner, "Comissões sem parceiro devem continuar sem alteração.");
   assert.equal(paid.writes.some((write) => write.model === "comissao" && write.id === BigInt(3)), false);
+  assert.equal(paid.writes.some((write) => write.model === "entrada"), false);
+  for (const write of paid.writes.filter((item) => item.model === "comissao")) {
+    assert.deepEqual(Object.keys(write.data as object).sort(), ["data_pagamento", "status_pagamento"], "O lote deve escrever somente os campos de pagamento da comissão.");
+  }
 
   // Desfazer o pagamento ao parceiro não desfaz o recebimento da empresa.
   const pending = fixture([row(BigInt(1), {
@@ -97,6 +102,7 @@ async function main() {
   assert.equal(pending.rows[0].status_recebimento, "Recebido");
   assert.deepEqual(pending.rows[0].data_recebimento, receivedDate);
   assert.deepEqual(pending.entries.get(BigInt(10)), { status_do_pagamento: "Recebido", data_do_pagamento: receivedDate });
+  assert.equal(pending.writes.some((write) => write.model === "entrada"), false);
 
   // Todas as restrições precisam ser verificadas antes da primeira alteração.
   const blocked = fixture([row(BigInt(1)), received]);
@@ -118,7 +124,7 @@ async function main() {
   assert.equal(inapplicable.writes.length, 0);
   assert.deepEqual(inapplicable.rows[0], withoutPartner);
 
-  console.log("PASSOU: Pago implica Recebido, datas preservadas, movimentos vinculados sincronizados, parceiro obrigatório e bloqueios antes de alterações.");
+  console.log("PASSOU: pagamento em lote independente do recebimento, entradas preservadas, saídas sincronizadas, comissões sem parceiro ignoradas e bloqueios antes de alterações.");
 }
 
 void main().catch((error) => { console.error(error); process.exitCode = 1; });

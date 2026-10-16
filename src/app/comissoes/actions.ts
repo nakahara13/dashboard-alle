@@ -7,9 +7,21 @@ import { saveCommissionCatalogData } from "@/lib/comissao-catalog";
 import { parseCompetence, parsePayableDate } from "@/lib/contas-a-pagar";
 import { parseRecordId } from "@/lib/record-id";
 import { updateCommissionPayments } from "@/lib/comissao-payments";
+import { updateCommissionReceipts } from "@/lib/comissao-receipts";
 
 export type State = { success: boolean; message: string };
 export type PreviewState = State & { rows?: ImportRow[]; geradora_id?: string; geradora_nome?: string; competencia?: string; total?: string };
+export async function updateCommissionReceiptsAction(form: FormData): Promise<State> {
+  try {
+    const values = form.getAll("ids");
+    if (!values.length || values.length > 20) throw new Error("Selecione até 20 comissões da página atual.");
+    const ids = [...new Set(values.map((value) => parseRecordId(String(value))))];
+    const date = parsePayableDate(String(form.get("data_recebimento") ?? ""));
+    const count = await getPrisma().$transaction((db) => updateCommissionReceipts(db, ids, date), { isolationLevel: "Serializable" });
+    refresh();
+    return { success: true, message: `${count} comissão(ões) marcada(s) como recebida(s).` };
+  } catch (error) { return { success: false, message: message(error) }; }
+}
 export async function updateCommissionPaymentsAction(form: FormData): Promise<State> {
   try {
     const values = form.getAll("ids");
@@ -20,7 +32,7 @@ export async function updateCommissionPaymentsAction(form: FormData): Promise<St
     const date = status === "Pago" ? parsePayableDate(String(form.get("data_pagamento") ?? "")) : null;
     const count = await getPrisma().$transaction((db) => updateCommissionPayments(db, ids, status, date), { isolationLevel: "Serializable" });
     refresh();
-    return { success: true, message: `${count} comissão(ões) marcada(s) como ${status === "Pago" ? "paga(s) e recebida(s)" : "pendente(s)"}.${ids.length > count ? ` ${ids.length - count} sem parceiro, sem alteração.` : ""}` };
+    return { success: true, message: `${count} comissão(ões) marcada(s) como ${status === "Pago" ? "paga(s)" : "pendente(s)"}.${ids.length > count ? ` ${ids.length - count} sem parceiro, sem alteração.` : ""}` };
   } catch (error) { return { success: false, message: message(error) }; }
 }
 function message(error: unknown) {

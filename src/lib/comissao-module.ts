@@ -23,8 +23,8 @@ export function validateCommission(input: CommissionInput) {
   const payment = parceiro_id ? input.status_pagamento : "Não se aplica";
   if (parceiro_id && !["Pendente", "Pago"].includes(payment)) throw new Error("Status de pagamento inválido.");
   if (payment === "Pago" && !input.data_pagamento) throw new Error("Informe a data de pagamento.");
-  const receipt = payment === "Pago" ? "Recebido" : input.status_recebimento;
-  const receiptDate = input.data_recebimento || (payment === "Pago" ? input.data_pagamento : "");
+  const receipt = input.status_recebimento;
+  const receiptDate = input.data_recebimento;
   if (receipt === "Recebido" && !receiptDate) throw new Error("Informe a data de recebimento.");
   return {
     cliente_id: positiveId(input.cliente_id), geradora_id: positiveId(input.geradora_id), distribuidora_id: positiveId(input.distribuidora_id), parceiro_id,
@@ -37,9 +37,8 @@ export function validateCommission(input: CommissionInput) {
 }
 // Called inside a serializable transaction: commission and financial movements commit together.
 export async function saveCommission(db: Prisma.TransactionClient, input: CommissionInput) {
+  const data = validateCommission(input);
   const previous = input.id ? await db.comissao.findUniqueOrThrow({ where: { id: parseRecordId(input.id) } }) : null;
-  const previousReceiptDate = input.parceiro_id && input.status_pagamento === "Pago" ? previous?.data_recebimento?.toISOString().slice(0, 10) ?? "" : "";
-  const data = validateCommission({ ...input, data_recebimento: input.data_recebimento || previousReceiptDate });
   const client = await db.cliente.findUniqueOrThrow({ where: { id: data.cliente_id }, include: { unidade: true } });
   const generator = await db.geradora.findUniqueOrThrow({ where: { id: data.geradora_id } });
   await db.distribuidora.findUniqueOrThrow({ where: { id: data.distribuidora_id } });

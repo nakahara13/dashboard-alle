@@ -6,7 +6,7 @@ A interface usa branco e laranja, com detalhes em roxo. Inclui sidebar responsiv
 
 O dashboard consulta a soma real de `valor_total` em `criar_pagamento`, filtrando por `data_do_pagamento`. Entradas representam os recebimentos registrados, sem inferir liquidação pelo campo livre de status. Registros sem data não entram no resumo diário. Balanço, saídas e alertas ficam indisponíveis até suas fontes serem implementadas. Não há dados ou gráficos simulados; Recharts permanece instalado para gráficos futuros.
 
-O cabeçalho informa que não há usuário conectado. Não há usuários fictícios ou autenticação nesta etapa.
+O cabeçalho informa que não há usuário conectado. A interface ainda não possui login. A API HTTP usa uma credencial interna Bearer, conforme a documentação abaixo.
 
 ## Desenvolvimento
 
@@ -65,6 +65,40 @@ src/
 
 O alias `@/*` aponta para `src/*`. O Tailwind é carregado por `@tailwindcss/postcss` e pelo import em `globals.css`.
 
+## API interna
+
+A API está disponível no mesmo servidor da aplicação, com base `/api/v1` (local: `http://localhost:3000/api/v1`). Oferece 65 operações para clientes, parceiros, distribuidoras, geradoras, unidades, contas bancárias, métodos de pagamento, tipos, usuários, contas a receber, contas a pagar, comissões e indicadores.
+
+O manual de consumo está em [docs/api-v1.pdf](docs/api-v1.pdf). O [contrato OpenAPI](docs/api-v1.openapi.json) pode ser importado no Postman e também é servido em `GET /api/v1/openapi.json`, com autenticação.
+
+```bash
+npm run api:token  # Gera e salva API_TOKEN em .env sem exibir a credencial
+npm run dev        # Reinicie o servidor se já estava em execução
+```
+
+Configure o valor de `API_TOKEN` no ambiente seguro da integração e envie `Authorization: Bearer SEU_TOKEN` em todas as chamadas, incluindo `/health`. A credencial precisa ter pelo menos 32 caracteres, sem espaços, e permite ler e alterar todos os recursos. Trata-se de autenticação da integração; o cadastro de usuários não implementa login ou permissões por usuário. O token protege somente a API e não deve ser usado em código público no navegador.
+
+```bash
+curl 'http://localhost:3000/api/v1/clientes?pagina=1&limite=20' \
+  -H "Authorization: Bearer $ALLE_API_TOKEN"
+```
+
+POST e PUT recebem JSON com `Content-Type: application/json`, até 64 KB. PUT substitui os campos editáveis, limpando opcionais ausentes. As coleções aceitam `pagina` e `limite` (padrão 20; máximo 100). IDs financeiros/comissões e valores monetários retornam strings para preservar precisão. Os serviços existentes validam as gravações; vínculos financeiros de comissões permanecem protegidos e sincronizados em transações. Lotes de recebimento/pagamento de comissões aceitam até 100 IDs. Importações de planilhas continuam pela interface.
+
+```bash
+npm run api:test       # Autenticação, contratos e fluxos com banco simulado
+npm run api:test:db    # Integração PostgreSQL com rollback; sequências podem avançar
+npm run api:test:http  # Servidor em 127.0.0.1:3200; ALLE_API_BASE permite outro endereço
+npm run api:docs       # Regenera HTML e OpenAPI a partir do contrato compartilhado
+```
+
+Para atualizar o PDF após regenerar o HTML, use o LibreOffice instalado:
+
+```bash
+libreoffice -env:UserInstallation=file:///tmp/alle-api-pdf-profile \
+  --headless --convert-to pdf --outdir docs docs/api-v1.html
+```
+
 O TypeScript permanece na versão 6 e o ESLint na versão 9 por compatibilidade com os plugins do `eslint-config-next`. Em ambientes que bloqueiam as portas internas do Turbopack, use `npm run build -- --webpack` para gerar o build.
 
 Referências: [Next.js](https://nextjs.org/docs/app/getting-started/installation) e [Prisma](https://www.prisma.io/docs).
@@ -73,7 +107,7 @@ Referências: [Next.js](https://nextjs.org/docs/app/getting-started/installation
 
 Em **Contas a receber**, o formulário grava na tabela existente `criar_pagamento` por uma Server Action e Prisma. Valores monetários são enviados como decimais, IDs como BigInt e datas como datas sem horário. O ID do registro é gerado pelo banco e exibido após salvar.
 
-`npm run db:test-payment` testa criação, leitura e rollback usando o mesmo serviço do formulário. Não mantém registros de teste, mas a sequência de IDs pode avançar. O teste não aplica migrações. A aplicação ainda não possui autenticação; mantenha o uso local até implementar controle de acesso.
+`npm run db:test-payment` testa criação, leitura e rollback usando o mesmo serviço do formulário. Não mantém registros de teste, mas a sequência de IDs pode avançar. O teste não aplica migrações. A interface ainda não possui login; o Bearer da API protege apenas as rotas `/api/v1`.
 
 ## Parceiros
 

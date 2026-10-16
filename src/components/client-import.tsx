@@ -1,4 +1,5 @@
 "use client";
+import styles from "@/app/cadastros/clientes/client-registration.module.css";
 
 import { useActionState, useState } from "react";
 import { confirmClientImport, previewClientImport, type ClientImportState } from "@/app/cadastros/clientes/actions";
@@ -46,11 +47,11 @@ function ClientImportPreview({ initialRows, distributors, onImported }: { initia
 // Enviar o arquivo mostra somente a prévia; o cadastro exige a confirmação seguinte.
 function ClientImportSession({ distributors, onImported }: { distributors: Distributor[]; onImported: (message: string) => void }) {
   const [state, action, pending] = useActionState(previewClientImport, initial);
-  return <section className="rounded-2xl border border-line bg-surface p-5">
-    <h2 className="text-lg font-semibold">Cadastrar clientes por planilha</h2>
-    <p className="mt-3 text-sm text-muted-ink">Importe UC, nome, distribuidora e CPF (opcional). As outras colunas são ignoradas. Clientes existentes não serão alterados.</p>
-    <form action={action} className="mt-5"><label className="grid gap-2 text-sm font-medium">Planilha XLSX *<input type="file" name="arquivo" accept=".xlsx" required disabled={pending} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm" /></label>
-      <p className="mt-3 text-xs text-muted-ink">Até 5 MB e 500 linhas de dados, na primeira aba, com cabeçalhos na primeira linha. Aceita UC / Unidades Consumidoras, Nome / Nome Cooperado e Distribuidora / Distribuidoras. CPF é opcional; aceita CPF, CNPJ/CPF ou CPF/CNPJ como cabeçalho, com valores de CPF válidos de 11 dígitos. Preserve zeros iniciais da UC e do CPF usando texto. Unidade e parceiro ficam sem vínculo.</p>
+  return <section className={styles.importCard}>
+    <h2>Importar clientes por planilha</h2>
+    <p className={styles.description}>Importe UC, nome, distribuidora e CPF (opcional). As outras colunas são ignoradas. Clientes existentes não serão alterados.</p>
+    <form action={action} className="mt-5"><label className={`grid gap-2 text-sm font-medium ${styles.upload}`}>Planilha XLSX *<input type="file" name="arquivo" accept=".xlsx" required disabled={pending} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm" /><span className={styles.uploadHint}>Formato .xlsx · Até 5 MB · Até 500 linhas de dados</span></label>
+      <details className={styles.requirements}><summary>Requisitos da planilha</summary><ul><li>Até 5 MB e 500 linhas de dados, na primeira aba, com cabeçalhos na primeira linha.</li><li>Aceita UC / Unidades Consumidoras, Nome / Nome Cooperado e Distribuidora / Distribuidoras.</li><li>CPF é opcional; aceita CPF, CNPJ/CPF ou CPF/CNPJ como cabeçalho, com valores de CPF válidos de 11 dígitos.</li><li>Preserve zeros iniciais da UC e do CPF usando texto. Unidade e parceiro ficam sem vínculo.</li></ul></details>
       <button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Lendo planilha…" : "Visualizar clientes"}</button>
     </form>
     <Notice state={state} />
