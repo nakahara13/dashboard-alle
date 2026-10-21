@@ -47,7 +47,7 @@ export function ManagementDrawer({ title, children, onClose, onSaved }: { title:
     onClose();
   }
   return <dialog ref={dialog} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); close(); }} className="management-drawer text-primary">
-    <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface p-5"><h2 id={titleId} className="text-lg font-semibold">{title}</h2><button type="button" onClick={close} disabled={pending} aria-label="Fechar painel" className="rounded-lg border border-line px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Fechar ✕</button></header>
+    <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface p-5"><h2 id={titleId} className="text-lg font-semibold">{title}</h2><button type="button" onClick={close} disabled={pending} aria-label="Fechar modal" className="rounded-lg border border-line px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Fechar ✕</button></header>
     <FeedbackContext.Provider value={feedback}><div className="drawer-content p-5" onChangeCapture={() => { dirty.current = true; }} onInputCapture={() => { dirty.current = true; }}>{children}</div></FeedbackContext.Provider>
     <footer className="border-t border-line p-5"><button type="button" disabled={pending} onClick={close} className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-muted disabled:opacity-50">Cancelar / fechar</button></footer>
   </dialog>;

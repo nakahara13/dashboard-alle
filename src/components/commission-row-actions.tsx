@@ -43,7 +43,7 @@ function CommissionDetails({ row, options, onClose, onSaved, initialEditing }: {
       {/* A edição reutiliza o formulário e as validações existentes, sem sair da visão geral. */}
       {editing ? <CommissionForm options={options} row={row} /> : <>
         <RecordDetails items={details} />
-        {row.parceiro_id && Number(row.margem) <= 0 && <p role="status" className="mt-5 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">Atenção: margem zero ou negativa.</p>}
+        {Number(row.margem) <= 0 && <p role="status" className="mt-5 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">Atenção: margem zero ou negativa.</p>}
         <button type="button" onClick={() => setEditing(true)} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Editar comissão</button>
       </>}
     </div>

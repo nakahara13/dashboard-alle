@@ -151,15 +151,28 @@ async function main() {
   assert.equal(created.status, 201);
   const createdBody = await created.json();
   assert.equal(createdBody.data.id, "4");
-  assert.equal(createdBody.data.margem, "50.00");
+  assert.equal(createdBody.data.margem, "118.00");
   assert.equal(createdBody.data.cliente.nome, "Cliente");
   assert.equal(plain.transactions, 1);
   assert.deepEqual(plain.transactionLevels, ["Serializable"]);
   assert.equal(plain.entries.size, 1); assert.equal(plain.exits.size, 1);
   const changed = await call(plain.db, "comissoes/4", "PUT", { ...base, valor_comissao_empresa: "125.25", gerar_entrada: false, gerar_saida: false }); assert.ok(changed);
-  assert.equal((await changed.json()).data.margem, "55.25");
+  assert.equal((await changed.json()).data.margem, "123.25");
   assert.equal(plain.entries.size, 1); assert.equal(plain.exits.size, 1);
   await rejects(() => call(plain.db, "comissoes/999"), 404);
+
+  const unassigned = fixture();
+  const noPartner = await call(unassigned.db, "comissoes", "POST", { ...base, parceiro_id: null, valor_comissao_parceiro: "999" }); assert.ok(noPartner);
+  const noPartnerData = (await noPartner.json()).data;
+  assert.equal(noPartnerData.valor_comissao_parceiro, "2.00");
+  assert.equal(noPartnerData.status_pagamento, "Pendente");
+  assert.equal(noPartnerData.margem, "118.00");
+  const omitted = fixture();
+  const { valor_comissao_parceiro: ignored, ...withoutAmount } = base;
+  void ignored;
+  const serverCalculated = await call(omitted.db, "comissoes", "POST", withoutAmount); assert.ok(serverCalculated);
+  assert.equal((await serverCalculated.json()).data.valor_comissao_parceiro, "2.00");
+  await rejects(() => call(noDb, "comissoes", "POST", { ...base, parceiro_id: null, status_pagamento: "Pago", data_pagamento: "2026-10-15" }), 422, /beneficiário/);
 
   const financial = fixture();
   const generated = await call(financial.db, "comissoes", "POST", { ...base, status_recebimento: "Recebido", data_recebimento: "2026-10-15", status_pagamento: "Pago", data_pagamento: "2026-10-15", gerar_entrada: true, gerar_saida: true, conta_bancaria_id: 1, metodo_id: 1 }); assert.ok(generated);

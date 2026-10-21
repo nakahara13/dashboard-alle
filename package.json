@@ -23,7 +23,9 @@
     "prebuild": "prisma generate",
     "pretypecheck": "prisma generate",
     "db:test-payment": "prisma generate && tsx scripts/test-payment.ts",
+    "db:test-fixed-partner-commission": "node --import tsx scripts/test-fixed-partner-commission.ts",
     "db:test-commissions": "tsx scripts/test-commission-module.ts",
+    "db:test-client-reconciliation": "node --import tsx scripts/test-client-reconciliation.ts",
     "db:test-commission-upgrade": "tsx scripts/test-commission-upgrade.ts"
   },
   "engines": {

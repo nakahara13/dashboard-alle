@@ -32,16 +32,17 @@ assert.throws(() => validateCommission({ ...input, status_recebimento: "inválid
 
 const withoutPartnerInput = { ...input, parceiro_id: "", valor_comissao_parceiro: "0" };
 for (const status_recebimento of ["Pendente", "Recebido"]) {
-  const result = validateCommission({ ...withoutPartnerInput, status_recebimento, status_pagamento: "Pago", data_recebimento: receiptDate, data_pagamento: paymentDate });
+  const result = validateCommission({ ...withoutPartnerInput, status_recebimento, status_pagamento: "Pendente", data_recebimento: receiptDate, data_pagamento: paymentDate });
   assert.equal(result.parceiro_id, null);
-  assert.equal(result.valor_comissao_parceiro.toFixed(2), "0.00");
-  assert.equal(result.margem.toFixed(2), "20.00");
-  assert.equal(result.status_pagamento, "Não se aplica");
+  assert.equal(result.valor_comissao_parceiro.toFixed(2), "2.00");
+  assert.equal(result.margem.toFixed(2), "18.00");
+  assert.equal(result.status_pagamento, "Pendente");
   assert.equal(result.data_pagamento, null);
   assert.equal(result.status_recebimento, status_recebimento);
   assert.equal(isoDate(result.data_recebimento), status_recebimento === "Recebido" ? receiptDate : null);
 }
-assert.throws(() => validateCommission({ ...input, parceiro_id: "" }), /parceiro/, "Um repasse positivo ainda precisa identificar quem recebe.");
+assert.throws(() => validateCommission({ ...input, parceiro_id: "", status_pagamento: "Pago", data_pagamento: paymentDate }), /beneficiário/, "Pagar exige identificar o beneficiário.");
+for (const value of ["0", "70", "999", ""]) assert.equal(validateCommission({ ...input, valor_comissao_parceiro: value }).valor_comissao_parceiro.toFixed(2), "2.00");
 
 type StoredCommission = ReturnType<typeof validateCommission> & { id: bigint; entrada_id: bigint | null; saida_id: bigint | null };
 function fixture(options: { previous?: Partial<StoredCommission>; clientPartner?: number | null; unitPartner?: number | null } = {}) {
@@ -109,9 +110,9 @@ async function main() {
     const optional = fixture(partnerOrigin);
     const noPartner = await saveCommission(optional.db, { ...withoutPartnerInput, status_recebimento: "Recebido", data_recebimento: receiptDate, gerar_entrada: "on", conta_bancaria_id: "1", metodo_id: "1" });
     assert.equal(noPartner.parceiro_id, null, "Escolher sem parceiro no cadastro prevalece sobre o gestor sugerido do cliente/unidade.");
-    assert.equal(noPartner.status_pagamento, "Não se aplica");
-    assert.equal(noPartner.valor_comissao_parceiro.toFixed(2), "0.00");
-    assert.equal(noPartner.margem.toFixed(2), "20.00");
+    assert.equal(noPartner.status_pagamento, "Pendente");
+    assert.equal(noPartner.valor_comissao_parceiro.toFixed(2), "2.00");
+    assert.equal(noPartner.margem.toFixed(2), "18.00");
     assert.equal(noPartner.status_recebimento, "Recebido");
     assert.equal(noPartner.entrada_id, BigInt(10));
     assert.equal(noPartner.saida_id, null);
@@ -121,8 +122,14 @@ async function main() {
   const removedPartner = fixture({ previous: { status_pagamento: "Pago", data_pagamento: new Date(`${paymentDate}T00:00:00Z`) }, clientPartner: 1 });
   const withoutPartner = await saveCommission(removedPartner.db, { ...withoutPartnerInput, id: "1" });
   assert.equal(withoutPartner.parceiro_id, null);
-  assert.equal(withoutPartner.status_pagamento, "Não se aplica");
+  assert.equal(withoutPartner.status_pagamento, "Pendente");
   assert.equal(withoutPartner.data_pagamento, null);
+
+  const historic = fixture({ previous: { status_pagamento: "Pago", data_pagamento: new Date(`${paymentDate}T00:00:00Z`), valor_comissao_parceiro: validateCommission(input).valor_comissao_parceiro.plus(68) } });
+  const preserved = await saveCommission(historic.db, { ...input, id: "1", status_pagamento: "Pago", data_pagamento: paymentDate });
+  assert.equal(preserved.valor_comissao_parceiro.toFixed(2), "70.00", "Edições de valores já pagos preservam o histórico.");
+  const pendingAgain = await saveCommission(historic.db, { ...input, id: "1", status_pagamento: "Pendente" });
+  assert.equal(pendingAgain.valor_comissao_parceiro.toFixed(2), "2.00");
 
   const linkedEntry = fixture({ previous: { entrada_id: BigInt(10), status_recebimento: "Recebido", data_recebimento: new Date(`${receiptDate}T00:00:00Z`) } });
   await assert.rejects(() => saveCommission(linkedEntry.db, { ...input, id: "1", status_pagamento: "Pago", data_pagamento: paymentDate }), /entrada já foi gerada/);

@@ -59,7 +59,7 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
           <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("Pendente")}>Marcar como pendente</button>
         </div>
       </div>
-      <p className={styles.paymentHint}>“Marcar como recebido” altera o recebimento da geradora. As ações de pagamento alteram somente o pagamento ao gestor / parceiro. Os status e as datas são independentes. Comissões sem parceiro permanecem com pagamento “Não se aplica”.</p>
+      <p className={styles.paymentHint}>“Marcar como recebido” altera o recebimento da geradora. As ações de pagamento alteram somente o pagamento ao gestor / parceiro. Os status e as datas são independentes. A comissão do parceiro é R$ 2,00, mesmo sem unidade vinculada. Sem beneficiário identificado, o pagamento permanece pendente até o vínculo.</p>
     </>}
     {pending && <p role="status" className={styles.feedback}>Atualizando comissões…</p>}
     {result && <p role={result.success ? "status" : "alert"} className={`${styles.feedback} ${result.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{result.message}</p>}
@@ -70,7 +70,7 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
           <th scope="col" className={styles.selectionCell}><input ref={allCheckbox} type="checkbox" aria-label="Selecionar todas as comissões desta página" checked={allSelected} disabled={pending} onChange={() => setSelected(allSelected ? [] : rows.map((row) => row.id))} /></th>
           {["Cliente / UC", "Geradora", "Distribuidora", "Unidade Allp Fit", "Gestor / parceiro", "Competência", "Economia", "Comissão da empresa", "Comissão do parceiro", "Margem", "Recebimento", "Pagamento", "Ações"].map((label) => <th scope="col" key={label} className={label === "Cliente / UC" ? styles.clientCell : ["Economia", "Comissão da empresa", "Comissão do parceiro", "Margem"].includes(label) ? styles.moneyCell : undefined}>{label}</th>)}
         </tr></thead>
-        <tbody>{rows.map((row) => <tr key={row.id} className={`${styles.row} ${selected.includes(row.id) ? styles.selectedRow : row.parceiro_id && Number(row.margem) <= 0 ? styles.warningRow : ""}`}>
+        <tbody>{rows.map((row) => <tr key={row.id} className={`${styles.row} ${selected.includes(row.id) ? styles.selectedRow : Number(row.margem) <= 0 ? styles.warningRow : ""}`}>
           <td className={styles.selectionCell}><input type="checkbox" aria-label={`Selecionar comissão de ${row.cliente.nome}, UC ${row.cliente.uc}`} checked={selected.includes(row.id)} disabled={pending} onChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} /></td>
           <td className={styles.clientCell}><span className={styles.clientName} title={row.cliente.nome}>{row.cliente.nome}</span><span className={styles.clientUC} title={row.cliente.uc}>{row.cliente.uc}</span></td>
           <td><CellText value={row.geradora?.nome ?? "Geradora não informada"} /></td>
@@ -81,7 +81,7 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
           <td className={styles.moneyCell}>{money(row.valor_economia)}</td>
           <td className={`${styles.moneyCell} ${styles.commissionValue}`}>{money(row.valor_comissao_empresa)}</td>
           <td className={`${styles.moneyCell} ${styles.commissionValue}`}>{money(row.valor_comissao_parceiro)}</td>
-          <td className={`${styles.moneyCell} ${styles.commissionValue}`}>{money(row.margem)}{row.parceiro_id && Number(row.margem) <= 0 && <p className={styles.marginWarning}>Atenção: margem zero ou negativa</p>}</td>
+          <td className={`${styles.moneyCell} ${styles.commissionValue}`}>{money(row.margem)}{Number(row.margem) <= 0 && <p className={styles.marginWarning}>Atenção: margem zero ou negativa</p>}</td>
           <td><PaymentStatusBadge status={row.status_recebimento} /></td>
           <td>{row.status_pagamento === "Não se aplica" ? <span className={styles.notApplicable}>Não se aplica</span> : <PaymentStatusBadge status={row.status_pagamento} />}</td>
           <td className={styles.rowActions}><CommissionRowActions row={row} options={options} /></td>

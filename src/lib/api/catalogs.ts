@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
 import { saveCommissionCatalogData } from "../comissao-catalog";
-import { normalizeClientCpf } from "../clientes";
+import { normalizeClientCpf, parseClientActive } from "../clientes";
 import { normalizeUC, positiveId } from "../comissao-module";
 import { validateDistributorName } from "../distribuidoras";
 import { createPartner, validatePartner } from "../parceiros";
@@ -11,7 +11,7 @@ import { createUser, validateUser } from "../usuarios";
 import { ApiError, apiJson, business, found, pagination, queryParams, readJson, requireMethod, stringFields } from "./http";
 
 const catalogFields = {
-  clientes: ["nome", "cpf", "uc", "parceiro_id", "distribuidora_id", "unidade_id"],
+  clientes: ["nome", "cpf", "uc", "parceiro_id", "distribuidora_id", "unidade_id", "ativo"],
   parceiros: ["nome", "documento", "email", "telefone"],
   distribuidoras: ["nome"],
   geradoras: ["nome"],
@@ -35,6 +35,7 @@ function catalogId(value: string) {
 
 function clientWhere(params: Record<string, string>): Prisma.ClienteWhereInput {
   const where: Prisma.ClienteWhereInput = {};
+  if (params.ativo !== undefined) where.ativo = parseClientActive(params.ativo);
   for (const key of ["distribuidora_id", "unidade_id", "parceiro_id"] as const) {
     const value = params[key];
     if (value) where[key] = value === "sem-vinculo" ? null : positiveId(value);
@@ -107,7 +108,7 @@ async function writeCatalog(db: PrismaClient, resource: Catalog, fields: Record<
       await business(() => validateCommissionCatalog(resource, fields));
       const kinds = { clientes: "cliente", distribuidoras: "distribuidora", geradoras: "geradora", unidades: "unidade" } as const;
       const form = new FormData();
-      for (const key of catalogFields[resource]) form.set(key, fields[key]);
+      for (const key of catalogFields[resource]) if (key !== "ativo" || fields[key] !== "") form.set(key, fields[key]);
       form.set("cadastro", kinds[resource]);
       if (id !== undefined) form.set("id", String(id));
       return business(() => db.$transaction(async (tx) => {
@@ -167,7 +168,7 @@ export async function handleCatalog(request: Request, segments: string[], db: Pr
 
   if (request.method === "GET" && id === undefined) {
     const params = queryParams(url.searchParams, catalog === "clientes"
-      ? ["pagina", "limite", "busca", "distribuidora_id", "unidade_id", "parceiro_id"]
+      ? ["pagina", "limite", "busca", "distribuidora_id", "unidade_id", "parceiro_id", "ativo"]
       : ["pagina", "limite", "busca"]);
     const { pagina, limite, skip } = pagination(url.searchParams);
     const query = params.busca?.trim() ?? "";
@@ -184,6 +185,10 @@ export async function handleCatalog(request: Request, segments: string[], db: Pr
     return new Response(null, { status: 204 });
   }
   const body = await readJson(request, [...catalogFields[catalog]]);
+  if (catalog === "clientes" && Object.hasOwn(body, "ativo")) {
+    if (typeof body.ativo !== "boolean") throw new ApiError(422, "invalid_field", "Envie ativo como booleano (true ou false).");
+    body.ativo = String(body.ativo);
+  }
   const fields = stringFields(body, catalogFields[catalog]);
   const row = await writeCatalog(db, catalog, fields, id);
   return apiJson({ data: row }, request.method === "POST" ? 201 : 200);

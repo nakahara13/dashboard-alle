@@ -24,7 +24,7 @@
         ],
         "operationId": "listar_clientes",
         "summary": "Listar clientes",
-        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Relações parceiro, distribuidora e unidade são devolvidas nas consultas.",
+        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Clientes novos são ativos por padrão. Inativos não podem ter novas comissões; o histórico é preservado. Relações parceiro, distribuidora e unidade são devolvidas nas consultas.",
         "parameters": [
           {
             "name": "pagina",
@@ -51,6 +51,14 @@
             "in": "query",
             "name": "busca",
             "description": "Pesquisa por nome, UC ou CPF com/sem máscara; máximo 255 caracteres.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ativo",
+            "description": "true para ativos ou false para inativos. Omitir retorna ambos.",
             "schema": {
               "type": "string"
             }
@@ -230,7 +238,7 @@
         ],
         "operationId": "criar_clientes",
         "summary": "Criar registro em clientes",
-        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Relações parceiro, distribuidora e unidade são devolvidas nas consultas.",
+        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Clientes novos são ativos por padrão. Inativos não podem ter novas comissões; o histórico é preservado. Relações parceiro, distribuidora e unidade são devolvidas nas consultas.",
         "requestBody": {
           "required": true,
           "content": {
@@ -405,7 +413,7 @@
         ],
         "operationId": "consultar_clientes",
         "summary": "Consultar por ID",
-        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Relações parceiro, distribuidora e unidade são devolvidas nas consultas.",
+        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Clientes novos são ativos por padrão. Inativos não podem ter novas comissões; o histórico é preservado. Relações parceiro, distribuidora e unidade são devolvidas nas consultas.",
         "responses": {
           "200": {
             "description": "Operação concluída.",
@@ -549,7 +557,7 @@
         ],
         "operationId": "atualizar_clientes",
         "summary": "Substituir campos editáveis",
-        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Relações parceiro, distribuidora e unidade são devolvidas nas consultas. PUT exige os campos obrigatórios completos; opcionais ausentes são limpos. Flags opcionais voltam a false. IDs e campos calculados não são aceitos no corpo.",
+        "description": "Clientes e unidades consumidoras. UC é única, preserva zeros iniciais e é normalizada sem espaços e em maiúsculas. CPF é opcional, validado e salvo com 11 dígitos. Clientes novos são ativos por padrão. Inativos não podem ter novas comissões; o histórico é preservado. Relações parceiro, distribuidora e unidade são devolvidas nas consultas. PUT exige os campos obrigatórios completos; opcionais ausentes são limpos. Flags opcionais voltam a false. IDs e campos calculados não são aceitos no corpo.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9121,7 +9129,7 @@
                 "competencia": "2026-10",
                 "valor_economia": "300.00",
                 "valor_comissao_empresa": "150.00",
-                "valor_comissao_parceiro": "50.00",
+                "valor_comissao_parceiro": "2.00",
                 "status_recebimento": "Pendente",
                 "status_pagamento": "Pendente",
                 "gerar_entrada": false,
@@ -9447,7 +9455,7 @@
                 "competencia": "2026-10",
                 "valor_economia": "300.00",
                 "valor_comissao_empresa": "150.00",
-                "valor_comissao_parceiro": "50.00",
+                "valor_comissao_parceiro": "2.00",
                 "status_recebimento": "Pendente",
                 "status_pagamento": "Pendente",
                 "gerar_entrada": false,
@@ -9792,7 +9800,7 @@
           "Comissões"
         ],
         "summary": "Atualizar pagamentos em lote",
-        "description": "Pago exige data_pagamento; Pendente limpa a data. Comissões sem parceiro são ignoradas e atualizadas pode ser menor que o lote. Uma saída já vinculada impede retorno a Pendente. Atualiza datas de saídas vinculadas e não cria movimentos. O lote é atômico.",
+        "description": "Pago exige data_pagamento e ignora comissões sem parceiro; atualizadas pode ser menor que o lote. Pendente limpa a data e recalcula a comissão em R$ 2,00 e a margem, inclusive sem parceiro. Uma saída já vinculada impede retorno a Pendente. Atualiza datas de saídas vinculadas e não cria movimentos. O lote é atômico.",
         "operationId": "comissoes_pagamentos",
         "requestBody": {
           "required": true,
@@ -10808,6 +10816,10 @@
             "type": "integer",
             "nullable": true
           },
+          "ativo": {
+            "type": "boolean",
+            "description": "Situação atual. Na criação, omitir usa true; na edição, omitir preserva a situação."
+          },
           "id": {
             "type": "integer"
           }
@@ -10882,6 +10894,10 @@
               }
             ],
             "description": "ID do cadastro (inteiro de 1 a 2147483647)."
+          },
+          "ativo": {
+            "type": "boolean",
+            "description": "Situação atual. Na criação, omitir usa true; na edição, omitir preserva a situação."
           }
         }
       },
@@ -11599,7 +11615,7 @@
             "type": "string",
             "pattern": "^[0-9]{1,10}(\\.[0-9]{1,2})?$",
             "example": "150.50",
-            "description": "Valor decimal em reais, sem separador de milhar. Use string e ponto decimal; até 10 dígitos inteiros e 2 casas. Entradas/saídas exigem valor maior que zero; comissões permitem zero."
+            "description": "Valor calculado pelo servidor: R$ 2,00, mesmo sem unidade/parceiro vinculado. O campo é opcional e valores enviados são ignorados. Edições de comissões já pagas preservam o valor histórico."
           },
           "status_recebimento": {
             "type": "string",
@@ -11616,7 +11632,7 @@
               "Pago",
               "Não se aplica"
             ],
-            "description": "Com parceiro: Pendente ou Pago. Sem parceiro, o servidor usa Não se aplica e o valor do parceiro deve ser zero."
+            "description": "Com parceiro: Pendente ou Pago. Sem parceiro, o valor de R$ 2,00 permanece Pendente; vincule o beneficiário antes de pagar. Não se aplica é aceito para compatibilidade e convertido em Pendente na gravação."
           },
           "data_recebimento": {
             "type": "string",
@@ -11661,7 +11677,6 @@
           "competencia",
           "valor_economia",
           "valor_comissao_empresa",
-          "valor_comissao_parceiro",
           "status_recebimento",
           "status_pagamento"
         ],
@@ -11745,7 +11760,7 @@
             "type": "string",
             "pattern": "^[0-9]{1,10}(\\.[0-9]{1,2})?$",
             "example": "150.50",
-            "description": "Valor decimal em reais, sem separador de milhar. Use string e ponto decimal; até 10 dígitos inteiros e 2 casas. Entradas/saídas exigem valor maior que zero; comissões permitem zero."
+            "description": "Valor calculado pelo servidor: R$ 2,00, mesmo sem unidade/parceiro vinculado. O campo é opcional e valores enviados são ignorados. Edições de comissões já pagas preservam o valor histórico."
           },
           "status_recebimento": {
             "type": "string",
@@ -11762,7 +11777,7 @@
               "Pago",
               "Não se aplica"
             ],
-            "description": "Com parceiro: Pendente ou Pago. Sem parceiro, o servidor usa Não se aplica e o valor do parceiro deve ser zero."
+            "description": "Com parceiro: Pendente ou Pago. Sem parceiro, o valor de R$ 2,00 permanece Pendente; vincule o beneficiário antes de pagar. Não se aplica é aceito para compatibilidade e convertido em Pendente na gravação."
           },
           "data_recebimento": {
             "type": "string",

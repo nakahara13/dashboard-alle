@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { money, normalizeUC, positiveId, saveCommission, referringPartner } from "./comissao-module";
 import { Prisma as PrismaRuntime } from "../generated/prisma/client";
 import type { Prisma } from "../generated/prisma/client";
+import { PARTNER_COMMISSION } from "./commission-rules";
 
 export type ImportRow = { linha: number; uc: string; nome: string; economia: string; empresa: string; parceiro: string; cliente_id: string; duplicada: boolean; erro: string; excluir: boolean; cpf?: string; distribuidora?: string; distribuidora_id?: string; legado?: boolean };
 const normalized = (value: string) => value.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -10,13 +11,13 @@ function cellText(cell: ExcelJS.Cell) {
   if (cell.type === ExcelJS.ValueType.Formula) throw new Error("Use valores na planilha, sem fórmulas.");
   return cell.text.trim();
 }
-function cellMoney(cell: ExcelJS.Cell, optional = false) {
+function cellMoney(cell: ExcelJS.Cell) {
   const text = cellText(cell);
   if (typeof cell.value === "number") {
     if (!Number.isFinite(cell.value) || cell.value < 0) throw new Error("Valor monetário inválido.");
     return money(new PrismaRuntime.Decimal(String(cell.value)).toDecimalPlaces(2).toFixed(2)).toFixed(2);
   }
-  return money(text || (optional ? "0" : "")).toFixed(2);
+  return money(text).toFixed(2);
 }
 export async function parseCommissionFile(buffer: Buffer, filename: string) {
   const book = new ExcelJS.Workbook();
@@ -35,18 +36,17 @@ export async function parseCommissionFile(buffer: Buffer, filename: string) {
   const ucColumn = column(["uc", "instalacao", "numerodainstalacao", "unidadeconsumidora", "unidadesconsumidoras", "codigocliente", "codigodocliente", "clienteuc"]);
   const economyColumn = column(["economiames", "economiamesrs", "economiamesr", "economia", "valoreconomia", "valordaeconomia"]);
   const companyColumn = column(["valorapagar", "comissao", "comissaoempresa", "comissaodaempresa", "valorcomissaoempresa", "valorcomissao"]);
-  const partnerColumn = column(["comissaoparceiro", "comissaodoparceiro", "valorcomissaoparceiro"]);
   const nameColumn = column(["nomecooperado", "cliente", "nome", "nomecliente"]);
   const cpfColumn = column(["cpf", "cnpjcpf", "cpfcnpj"]);
   const distributorColumn = column(["distribuidora", "distribuidoras", "distirbuidoras"]);
-  if (!ucColumn || !economyColumn || !companyColumn) throw new Error("Inclua os cabeçalhos Unidade consumidora, Economia mês e Valor a pagar (ou UC, Economia e Comissão). Comissão parceiro é opcional.");
+  if (!ucColumn || !economyColumn || !companyColumn) throw new Error("Inclua os cabeçalhos Unidade consumidora, Economia mês e Valor a pagar (ou UC, Economia e Comissão). A comissão do parceiro é fixa em R$ 2,00.");
   const rows: ImportRow[] = [];
   for (let index = 2; index <= sheet.rowCount; index++) {
     const row = sheet.getRow(index);
     if (!row.hasValues) continue;
     // Blank lines and totals have no client identifiers and are not commissions.
     if (!row.getCell(ucColumn).text.trim() && !(nameColumn && row.getCell(nameColumn).text.trim()) && !(cpfColumn && row.getCell(cpfColumn).text.trim())) continue;
-    const result: ImportRow = { linha: index, uc: "", nome: "", economia: "", empresa: "", parceiro: "0.00", cliente_id: "", duplicada: false, erro: "", excluir: false };
+    const result: ImportRow = { linha: index, uc: "", nome: "", economia: "", empresa: "", parceiro: PARTNER_COMMISSION, cliente_id: "", duplicada: false, erro: "", excluir: false };
     try {
       result.uc = normalizeUC(cellText(row.getCell(ucColumn)));
       result.nome = nameColumn ? cellText(row.getCell(nameColumn)) : "";
@@ -54,7 +54,6 @@ export async function parseCommissionFile(buffer: Buffer, filename: string) {
       result.distribuidora = distributorColumn ? cellText(row.getCell(distributorColumn)) : "";
       result.economia = cellMoney(row.getCell(economyColumn));
       result.empresa = cellMoney(row.getCell(companyColumn));
-      result.parceiro = partnerColumn ? cellMoney(row.getCell(partnerColumn), true) : "0.00";
     } catch (error) { result.erro = error instanceof Error ? error.message : "Linha inválida."; result.excluir = true; }
     rows.push(result);
   }
@@ -77,7 +76,8 @@ export async function matchImport(db: Pick<Prisma.TransactionClient, "cliente" |
     // Generator and competence are fixed for the file: a UC can occur only once.
     const duplicada = (!!client && existing.has(client.id)) || (!!row.uc && seen.has(row.uc));
     if (row.uc && !row.erro) seen.add(row.uc);
-    return { ...row, legado: !!client && legacyClients.has(client.id), distribuidora_id, cliente_id: client ? String(client.id) : "", nome: client?.nome ?? row.nome, duplicada, excluir: row.excluir || duplicada };
+    const inactive = client?.ativo === false ? "Cliente inativo. Reative o cadastro antes de importar comissões." : "";
+    return { ...row, parceiro: PARTNER_COMMISSION, erro: row.erro || inactive, legado: !!client && legacyClients.has(client.id), distribuidora_id, cliente_id: client ? String(client.id) : "", nome: client?.nome ?? row.nome, duplicada, excluir: row.excluir || duplicada || !!inactive };
   });
 }
 
@@ -95,8 +95,8 @@ export async function importCommissions(db: Prisma.TransactionClient, rows: Impo
     await saveCommission(db, {
       id: "", cliente_id: String(client.id), geradora_id, distribuidora_id: distributor, competencia,
       parceiro_id: partner ? String(partner) : "", valor_economia: row.economia,
-      valor_comissao_empresa: row.empresa, valor_comissao_parceiro: row.parceiro,
-      status_recebimento: "Pendente", status_pagamento: partner ? "Pendente" : "Não se aplica",
+      valor_comissao_empresa: row.empresa, valor_comissao_parceiro: PARTNER_COMMISSION,
+      status_recebimento: "Pendente", status_pagamento: "Pendente",
       data_recebimento: "", data_pagamento: "", gerar_entrada: "", gerar_saida: "", conta_bancaria_id: "", metodo_id: "",
     });
   }

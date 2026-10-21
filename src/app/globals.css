@@ -190,11 +190,11 @@ button, select { cursor: pointer; }
   *, *::before, *::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
-/* Native dialogs provide a keyboard focus trap for side panels. */
+/* Centraliza os modais e mantém o conteúdo longo dentro da altura da tela. */
 .management-drawer {
-  position: fixed; inset: 0 0 0 auto; margin: 0; width: min(720px, 100%);
-  max-width: 100%; height: 100dvh; max-height: 100dvh; overflow-y: auto;
-  border: 0; border-left: 1px solid var(--line); border-radius: 0;
+  position: fixed; inset: 0; margin: auto; width: min(720px, calc(100% - 2rem));
+  max-width: calc(100% - 2rem); height: fit-content; max-height: calc(100dvh - 2rem); overflow-y: auto;
+  border: 1px solid var(--line); border-radius: 16px;
   background: var(--surface); padding: 0; white-space: normal;
 }
 .drawer-content form.bg-surface { border: 0; padding: 0; box-shadow: none; }

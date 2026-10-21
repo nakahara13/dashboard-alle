@@ -1,4 +1,4 @@
-import { normalizeClientCpf } from "./clientes";
+import { normalizeClientCpf, parseClientActive } from "./clientes";
 import { validateDistributorName } from "./distribuidoras";
 import type { Prisma } from "../generated/prisma/client";
 import { normalizeUC, positiveId } from "./comissao-module";
@@ -17,7 +17,7 @@ export async function saveCommissionCatalogData(db: Prisma.TransactionClient, fo
     const distribuidora_id = text("distribuidora_id") ? positiveId(text("distribuidora_id")) : null;
     if (unidade_id) await db.unidadeAllpFit.findUniqueOrThrow({ where: { id: unidade_id } });
     if (distribuidora_id) await db.distribuidora.findUniqueOrThrow({ where: { id: distribuidora_id } });
-    const data = { nome, uc, unidade_id, distribuidora_id, parceiro_id: partner, ...(form.has("cpf") ? { cpf: normalizeClientCpf(text("cpf")) } : {}) };
+    const data = { nome, uc, unidade_id, distribuidora_id, parceiro_id: partner, ...(form.has("ativo") ? { ativo: parseClientActive(text("ativo")) } : {}), ...(form.has("cpf") ? { cpf: normalizeClientCpf(text("cpf")) } : {}) };
     return id ? db.cliente.update({ where: { id }, data }) : db.cliente.create({ data });
   }
   if (kind === "unidade") {

@@ -156,3 +156,15 @@ A entrada financeira identifica a geradora como pagadora; a saída identifica o 
 A migration `20261005000200_geradoras_unidades` preserva comissões e movimentos existentes, deixando a geradora antiga como não informada. A página destaca esses registros para atribuição manual da geradora correta. Uma comissão antiga sem geradora bloqueia um novo cadastro/importação do mesmo cliente e competência até ser completada. A distribuidora antiga só é copiada ao cadastro do cliente quando inequívoca.
 
 `npm run db:test-commissions` verifica os fluxos e as regras financeiras com rollback. `npm run db:test-commission-upgrade` reproduz a migration em um schema isolado com dados antigos, verifica a preservação dos registros e desfaz todo o schema por rollback.
+
+## Cruzamento mensal de clientes
+
+Em **Clientes → Cruzamento de dados** (`/cadastros/clientes/cruzamento`), envie a lista completa de clientes atuais e escolha a distribuidora, os clientes sem distribuidora ou toda a base. A primeira aba do XLSX deve ter cabeçalho UC, Instalação ou Unidade consumidora; aceita até 5 MB, 5.000 linhas e 100 colunas. Outras colunas são ignoradas. Preserve zeros iniciais como texto e remova totais/linhas incompletas. Fórmulas e UCs inválidas bloqueiam a comparação; repetições são consolidadas.
+
+A prévia separa ativos ausentes (inativar), inativos presentes (reativar), UCs não cadastradas, ativos presentes e inativos ausentes. Revise as seleções e confirme a abrangência da planilha antes de salvar. UCs novas são cadastradas pelo fluxo de importação existente. O servidor recalcula a comparação em uma transação serializável e recusa uma prévia se a base tiver mudado. A comparação não exclui clientes nem altera comissões/lançamentos existentes.
+
+A visão geral permite filtrar ativos/inativos e alterar a situação individualmente. Clientes inativos não podem receber novas comissões, inclusive pela API e pela importação; o histórico continua consultável e editável. A migration `20261021000100_cliente_ativo` mantém todos os clientes existentes ativos por padrão. A API de clientes devolve `ativo`, aceita booleano no cadastro/edição e filtro `?ativo=true` ou `?ativo=false`. Omitir `ativo` na edição preserva a situação.
+
+Validação do fluxo com banco, sem deixar dados de teste: `npm run db:test-client-reconciliation`.
+
+A comissão do parceiro é fixa em **R$ 2,00** por comissão no cadastro, edição e importação, inclusive sem unidade/beneficiário vinculado. O servidor calcula a margem descontando esse valor e ignora valores enviados pela planilha/API. Sem beneficiário, o pagamento fica **Pendente** até o vínculo. A migration `20261021000200_comissao_parceiro_fixa` recalcula também todas as comissões antigas ainda não pagas; comissões já pagas e seus lançamentos mantêm os valores históricos, inclusive em edições posteriores.

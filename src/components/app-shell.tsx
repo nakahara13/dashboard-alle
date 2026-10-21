@@ -30,7 +30,10 @@ const navigation: { label: string; items: NavigationItem[] }[] = [
   ] },
   { label: "Gestão", items: [
     // A consulta e gestão de clientes ficam separadas dos formulários de cadastro.
-    { title: "Clientes", href: "/cadastros/clientes/visao-geral", icon: "users" },
+    { title: "Clientes", href: "/cadastros/clientes/visao-geral", icon: "users", children: [
+      { title: "Visão geral", href: "/cadastros/clientes/visao-geral" },
+      { title: "Cruzamento de dados", href: "/cadastros/clientes/cruzamento" },
+    ] },
     { title: "Tipos de Pagamento", href: "/tipos", icon: "file" },
     { title: "Contas bancárias", href: "/contas-bancarias", icon: "partners" },
     { title: "Métodos de pagamento", href: "/metodos-de-pagamento", icon: "commission" },
@@ -66,7 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const currentPath = pathname === "/parceiros" ? "/cadastros/parceiros" : pathname;
   const matchesPath = (href: string) => currentPath === href || (href !== "/" && currentPath.startsWith(`${href}/`));
   // Prioriza a rota exata para reconhecer Clientes em Gestão, mesmo sob /cadastros.
-  const currentGroup = navigation.find((group) => group.items.some((item) => item.href === currentPath))
+  const currentGroup = navigation.find((group) => group.items.some((item) => item.href === currentPath || item.children?.some((child) => child.href === currentPath)))
     ?? navigation.find((group) => group.items.some((item) => matchesPath(item.href)));
 
   return (
@@ -83,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {navigation.map((group) => {
               const items = <ul className="space-y-1">
                   {group.items.map((item) => {
-                    const active = currentGroup === group && matchesPath(item.href);
+                    const active = currentGroup === group && (matchesPath(item.href) || !!item.children?.some((child) => child.href === currentPath));
                     // Details oferece abertura por teclado; o grupo da página atual inicia expandido.
                     if (item.children) return <li key={item.href}><details key={`${item.href}-${currentPath}`} open={active} className="group/item">
                       <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden ${active ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="ml-auto size-4 transition-transform group-open/item:rotate-180"><path d="m5 7 5 5 5-5" /></svg></summary>

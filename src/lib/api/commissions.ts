@@ -14,7 +14,7 @@ const scalarFields = [
 ] as const;
 const requiredFields = [
   "cliente_id", "geradora_id", "distribuidora_id", "competencia", "valor_economia",
-  "valor_comissao_empresa", "valor_comissao_parceiro", "status_recebimento", "status_pagamento",
+  "valor_comissao_empresa", "status_recebimento", "status_pagamento",
 ] as const;
 const flagFields = ["gerar_entrada", "gerar_saida"] as const;
 const listParams = [

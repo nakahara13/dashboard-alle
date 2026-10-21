@@ -121,6 +121,7 @@ model Usuario {
 }
 
 model Cliente {
+  ativo Boolean @default(true)
   // CPF opcional no cadastro manual, na importação e na pesquisa de clientes.
   cpf String? @db.VarChar(11)
   id Int @id @default(autoincrement())
@@ -160,10 +161,10 @@ model Comissao {
   competencia String @db.VarChar(7)
   valor_economia Decimal @db.Decimal(12, 2)
   valor_comissao_empresa Decimal @db.Decimal(12, 2)
-  valor_comissao_parceiro Decimal @db.Decimal(12, 2)
+  valor_comissao_parceiro Decimal @default(2) @db.Decimal(12, 2)
   margem Decimal @db.Decimal(12, 2)
   status_recebimento String @default("Pendente") @db.VarChar(20)
-  status_pagamento String @default("Não se aplica") @db.VarChar(20)
+  status_pagamento String @default("Pendente") @db.VarChar(20)
   data_recebimento DateTime? @db.Date
   data_pagamento DateTime? @db.Date
   entrada_id BigInt? @unique

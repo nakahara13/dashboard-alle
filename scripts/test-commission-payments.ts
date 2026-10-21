@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { updateCommissionPayments } from "../src/lib/comissao-payments";
+import { Prisma } from "../src/generated/prisma/client";
 
 type Row = {
+  valor_comissao_empresa: Prisma.Decimal;
+  valor_comissao_parceiro: Prisma.Decimal;
+  margem: Prisma.Decimal;
   id: bigint;
   parceiro_id: number | null;
   status_pagamento: string;
@@ -15,6 +19,7 @@ type Write = { model: string; id: bigint; data: unknown };
 const date = new Date("2026-10-15T00:00:00.000Z");
 const receivedDate = new Date("2026-10-01T00:00:00.000Z");
 const row = (id: bigint, changes: Partial<Row> = {}): Row => ({
+  valor_comissao_empresa: new Prisma.Decimal(20), valor_comissao_parceiro: new Prisma.Decimal(2), margem: new Prisma.Decimal(18),
   id, parceiro_id: 1, status_pagamento: "Pendente", data_pagamento: null,
   status_recebimento: "Pendente", data_recebimento: null, entrada_id: null, saida_id: null,
   ...changes,
@@ -93,11 +98,14 @@ async function main() {
 
   // Desfazer o pagamento ao parceiro não desfaz o recebimento da empresa.
   const pending = fixture([row(BigInt(1), {
+    valor_comissao_parceiro: new Prisma.Decimal(7), margem: new Prisma.Decimal(13),
     status_recebimento: "Recebido", data_recebimento: receivedDate,
     status_pagamento: "Pago", data_pagamento: date, entrada_id: BigInt(10),
   })]);
   assert.equal(await updateCommissionPayments(pending.db, [BigInt(1)], "Pendente", null), 1);
   assert.equal(pending.rows[0].status_pagamento, "Pendente");
+  assert.equal(pending.rows[0].valor_comissao_parceiro.toFixed(2), "2.00", "Retornar um pagamento antigo para pendente aplica a regra atual.");
+  assert.equal(pending.rows[0].margem.toFixed(2), "18.00");
   assert.equal(pending.rows[0].data_pagamento, null);
   assert.equal(pending.rows[0].status_recebimento, "Recebido");
   assert.deepEqual(pending.rows[0].data_recebimento, receivedDate);
@@ -123,6 +131,9 @@ async function main() {
   await assert.rejects(() => updateCommissionPayments(inapplicable.db, [BigInt(3)], "Pago", date), /não possuem parceiro/);
   assert.equal(inapplicable.writes.length, 0);
   assert.deepEqual(inapplicable.rows[0], withoutPartner);
+  assert.equal(await updateCommissionPayments(inapplicable.db, [BigInt(3)], "Pendente", null), 1);
+  assert.equal(inapplicable.rows[0].status_pagamento, "Pendente");
+  assert.equal(inapplicable.rows[0].valor_comissao_parceiro.toFixed(2), "2.00");
 
   console.log("PASSOU: pagamento em lote independente do recebimento, entradas preservadas, saídas sincronizadas, comissões sem parceiro ignoradas e bloqueios antes de alterações.");
 }

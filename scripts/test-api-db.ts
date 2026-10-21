@@ -150,7 +150,7 @@ async function exercise(tx: Prisma.TransactionClient) {
     conta_bancaria_id: account.id, metodo_id: method.id, gerar_entrada: false, gerar_saida: false,
   };
   const commission = await create<CommissionRow>("comissoes", commissionBody);
-  assert.equal(commission.margem, "175.00");
+  assert.equal(commission.margem, "248.00");
   assert.equal(commission.entrada_id, null);
   assert.equal(commission.saida_id, null);
   // The service detects duplicates before INSERT; this yields a domain 422 and
@@ -160,7 +160,7 @@ async function exercise(tx: Prisma.TransactionClient) {
   const filtered = await call<List<CommissionRow>>("GET", `comissoes?competencia=08/2099&geradora_id=${generator.id}&distribuidora_id=${distributor.id}&unidade_id=${unit.id}&parceiro_id=${partner.id}&busca=${encodeURIComponent(marker)}&status_recebimento=Pendente&status_pagamento=Pendente`);
   assert.equal(filtered.meta.total, 1);
   assert.equal(filtered.meta.totais?.valor_comissao_empresa, "250.00");
-  assert.equal(filtered.meta.totais?.margem, "175.00");
+  assert.equal(filtered.meta.totais?.margem, "248.00");
 
   const received = await call<Data<{ atualizadas: number }>>("POST", "comissoes/recebimentos", { ids: [commission.id], data_recebimento: "2099-08-16" });
   const paid = await call<Data<{ atualizadas: number }>>("POST", "comissoes/pagamentos", { ids: [commission.id], status_pagamento: "Pago", data_pagamento: "2099-08-16" });
@@ -195,7 +195,7 @@ async function exercise(tx: Prisma.TransactionClient) {
   assert.equal(linkedEntry.data_do_pagamento, finalCommission.data_recebimento);
   assert.equal(linkedExit.vencimento, finalCommission.data_pagamento);
   assert.equal(linkedEntry.valor_total, "250.00");
-  assert.equal(linkedExit.valor, "75.00");
+  assert.equal(linkedExit.valor, "2.00");
   assert.equal(linkedEntry.comissao?.id, commission.id);
   assert.equal(linkedExit.comissao?.id, commission.id);
 
@@ -203,8 +203,8 @@ async function exercise(tx: Prisma.TransactionClient) {
   const increasedBy = (key: keyof Dashboard, amount: string) => {
     assert.equal(dashboard[key], new Prisma.Decimal(baseline[key]).plus(amount).toFixed(2), `Dashboard ${key}`);
   };
-  increasedBy("entradas", "250.00"); increasedBy("saidas", "75.00"); increasedBy("saldo", "175.00");
-  increasedBy("comissoes_recebidas", "250.00"); increasedBy("comissoes_pagas", "75.00");
+  increasedBy("entradas", "250.00"); increasedBy("saidas", "2.00"); increasedBy("saldo", "248.00");
+  increasedBy("comissoes_recebidas", "250.00"); increasedBy("comissoes_pagas", "2.00");
   assert.equal(dashboard.a_receber, baseline.a_receber);
   assert.equal(dashboard.a_pagar, baseline.a_pagar);
   assert.equal(dashboard.quantidade_entradas, baseline.quantidade_entradas + 1);

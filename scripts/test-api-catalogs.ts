@@ -124,6 +124,8 @@ async function main() {
   await rejectsApi(() => response(forbiddenDb, "clientes/7", "PUT", { nome: "Cliente", uc: "UC", id: 8 }), 400, "unknown_field");
   await rejectsApi(() => response(forbiddenDb, "clientes/7", "PUT", { nome: "Cliente", uc: "UC", cpf: "123" }), 422, "validation_error");
   await rejectsApi(() => response(forbiddenDb, "clientes", "POST", { nome: "Cliente" }), 422, "validation_error");
+  for (const ativo of [null, "false", 0, []]) await rejectsApi(() => response(forbiddenDb, "clientes", "POST", { nome: "Cliente", uc: "UC", ativo }), 422, "invalid_field");
+  await rejectsApi(() => response(forbiddenDb, "clientes?ativo=outro"), 422, "validation_error");
   await rejectsApi(() => response(forbiddenDb, "unidades/5", "PUT", { nome: "Unidade", parceiro_id: "-1" }), 422, "validation_error");
   await rejectsApi(() => response(forbiddenDb, "usuarios", "POST", { nome: "Pessoa", email: "pessoa@example.com", role: "owner" }), 422, "validation_error");
   await rejectsApi(() => response(forbiddenDb, "contas-bancarias", "POST", { nome: "Conta" }), 422, "validation_error");
@@ -140,6 +142,15 @@ async function main() {
   assert.deepEqual(customerReload.args.include, { parceiro: true, distribuidora: true, unidade: { include: { parceiro: true } } });
 
   const unit = fixture();
+  const activity = fixture();
+  const deactivated = await response(activity.db, "clientes/7", "PUT", { nome: "Cliente", uc: "UC-7", ativo: false });
+  assert.equal((await deactivated.json()).data.ativo, false);
+  const retained = await response(activity.db, "clientes/7", "PUT", { nome: "Cliente editado", uc: "UC-7" });
+  assert.equal((await retained.json()).data.ativo, false, "Omitir ativo na edição preserva a situação.");
+  const reactivated = await response(activity.db, "clientes/7", "PUT", { nome: "Cliente", uc: "UC-7", ativo: true });
+  assert.equal((await reactivated.json()).data.ativo, true);
+  await response(activity.db, "clientes?ativo=false");
+  assert.deepEqual(activity.calls.find((call) => call.method === "findMany")!.args.where, { ativo: false });
   const unitUpdated = await response(unit.db, "unidades/5", "PUT", { nome: "Unidade atualizada" });
   assert.equal((await unitUpdated.json()).data.parceiro_id, null, "Omitting a unit's optional partner clears the old relationship.");
   assert.deepEqual(unit.isolation, ["Serializable"]);

@@ -13,15 +13,15 @@ import { createPayment } from "../src/lib/pagamentos";
 import { createPayable } from "../src/lib/contas-a-pagar";
 
 const base: CommissionInput = { id: "", cliente_id: "1", geradora_id: "1", distribuidora_id: "1", parceiro_id: "1", competencia: "09/2026", valor_economia: "350,00", valor_comissao_empresa: "120,00", valor_comissao_parceiro: "70,00", status_recebimento: "Pendente", status_pagamento: "Pendente", data_recebimento: "", data_pagamento: "", gerar_entrada: "", gerar_saida: "", conta_bancaria_id: "", metodo_id: "" };
-assert.equal(validateCommission(base).margem.toFixed(2), "50.00");
-assert.equal(validateCommission({ ...base, valor_comissao_empresa: "0.30", valor_comissao_parceiro: "0.10" }).margem.toFixed(2), "0.20");
-assert.equal(validateCommission({ ...base, valor_comissao_parceiro: "130" }).margem.toFixed(2), "-10.00");
+assert.equal(validateCommission(base).margem.toFixed(2), "118.00");
+assert.equal(validateCommission({ ...base, valor_comissao_empresa: "0.30", valor_comissao_parceiro: "0.10" }).margem.toFixed(2), "-1.70");
+assert.equal(validateCommission({ ...base, valor_comissao_parceiro: "130" }).margem.toFixed(2), "118.00");
 assert.equal(money("R$ 1.234,56").toFixed(2), "1234.56");
 assert.throws(() => validateCommission({ ...base, geradora_id: "" }), /geradora/);
 assert.throws(() => money("-1")); assert.throws(() => money("1.234"));
-assert.throws(() => validateCommission({ ...base, parceiro_id: "" }));
+assert.equal(validateCommission({ ...base, parceiro_id: "" }).valor_comissao_parceiro.toFixed(2), "2.00");
 const noPartner = validateCommission({ ...base, parceiro_id: "", valor_comissao_parceiro: "0" });
-assert.equal(noPartner.parceiro_id, null); assert.equal(noPartner.status_pagamento, "Não se aplica"); assert.equal(noPartner.margem.toFixed(2), "120.00");
+assert.equal(noPartner.parceiro_id, null); assert.equal(noPartner.status_pagamento, "Pendente"); assert.equal(noPartner.margem.toFixed(2), "118.00");
 assert.throws(() => validateCommission({ ...base, status_recebimento: "Recebido" }));
 assert.throws(() => validateCommission({ ...base, status_pagamento: "Pago", data_pagamento: "2026-02-30" }));
 
@@ -30,12 +30,13 @@ const marker = `MODULE-TEST-${randomUUID()}`;
 const rollback = new Error("ROLLBACK-TEST");
 async function main() {
   const csv = await parseCommissionFile(Buffer.from('\uFEFFUC;Cliente;Economia;Comissão;Comissão parceiro\n000123;Pessoa;350,00;120,00;70,00\nUNKNOWN;Pessoa;100;10;0\nBAD;Pessoa;-1;20;0\n000123;Pessoa;350;120;70'), "teste.csv");
+  assert.equal(csv[0].parceiro, "2.00"); assert.equal(csv[1].parceiro, "2.00");
   assert.equal(csv[0].uc, "000123"); assert.equal(csv[0].empresa, "120.00"); assert.ok(csv[2].erro);
   const book = new ExcelJS.Workbook(); const sheet = book.addWorksheet("Comissões");
   sheet.addRow(["Instalação", "Economia", "Comissão"]); sheet.addRow(["000123", 350, 120]);
   sheet.addRow(["000124", 100, { formula: "1+2", result: 3 }]);
   const xlsx = await parseCommissionFile(Buffer.from(await book.xlsx.writeBuffer()), "teste.xlsx");
-  assert.equal(xlsx[0].empresa, "120.00"); assert.ok(xlsx[1].erro.includes("fórmulas"));
+  assert.equal(xlsx[0].parceiro, "2.00"); assert.equal(xlsx[0].empresa, "120.00"); assert.ok(xlsx[1].erro.includes("fórmulas"));
   const recurrence = new ExcelJS.Workbook(); const recurrenceSheet = recurrence.addWorksheet("Recorrência");
   recurrenceSheet.addRow(["Nome Cooperado", "CNPJ/CPF", "Unidades Consumidoras", "Distribuidoras", "Economia Mês (R$)", "Regra de comissionamento", "LP Origem", "Valor a pagar"]);
   recurrenceSheet.addRow(["Cliente Exemplo", "000.000.000-00", "000123", "COPEL", 40.340000000000003, "", "", 8.0680000000000014]);
@@ -72,12 +73,12 @@ async function main() {
       assert.equal(mapped[1].distribuidora_id, "");
       await assert.rejects(() => importCommissions(tx, [{ ...mapped[1], cliente_id: String(client.id) }], String(generator.id), "2026-09"), /Vincule uma distribuidora/);
       const pending = await saveCommission(tx, input);
-      assert.equal(pending.margem.toFixed(2), "50.00"); assert.equal(pending.entrada_id, null);
+      assert.equal(pending.margem.toFixed(2), "118.00"); assert.equal(pending.entrada_id, null);
       const paid = await saveCommission(tx, { ...input, id: String(pending.id), status_recebimento: "Recebido", status_pagamento: "Pago", data_recebimento: "2026-09-30", data_pagamento: "2026-10-01", gerar_entrada: "on", gerar_saida: "on" });
       assert.ok(paid.entrada_id); assert.ok(paid.saida_id);
       const changed = await saveCommission(tx, { ...input, id: String(paid.id), status_recebimento: "Recebido", status_pagamento: "Pago", data_recebimento: "2026-09-30", data_pagamento: "2026-10-01", gerar_entrada: "on", gerar_saida: "on", valor_comissao_empresa: "125.25" });
       assert.equal(changed.entrada_id, paid.entrada_id); assert.equal(changed.saida_id, paid.saida_id);
-      assert.equal(changed.margem.toFixed(2), "55.25");
+      assert.equal(changed.margem.toFixed(2), "123.25");
       const entry = await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: paid.entrada_id! } });
       assert.equal(entry.valor_total.toFixed(2), "125.25"); assert.ok(entry.descricao?.includes(marker)); assert.equal(entry.pagador, generator.nome); assert.ok(entry.descricao?.includes("Geradora"));
       assert.equal(await tx.criar_pagamento.count({ where: { descricao: { contains: marker } } }), 1);
@@ -90,7 +91,12 @@ async function main() {
       const manual = { ...matched[1], cliente_id: String(other.id), distribuidora_id: String(distributor.id) };
       assert.equal(await importCommissions(tx, [manual], String(generator.id), "2026-09"), 1);
       const imported = await tx.comissao.findUniqueOrThrow({ where: { cliente_id_geradora_id_competencia: { cliente_id: other.id, geradora_id: generator.id, competencia: "2026-09" } } });
-      assert.equal(imported.status_pagamento, "Pendente"); assert.equal(imported.parceiro_id, partner.id); assert.equal(imported.valor_comissao_parceiro.toFixed(2), "0.00");
+      assert.equal(imported.status_pagamento, "Pendente"); assert.equal(imported.parceiro_id, partner.id); assert.equal(imported.valor_comissao_parceiro.toFixed(2), "2.00");
+      const unlinked = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-unlinked`, distribuidora_id: distributor.id } });
+      await importCommissions(tx, [{ ...manual, cliente_id: String(unlinked.id), parceiro: "999" }], String(generator.id), "2026-09");
+      const unlinkedCommission = await tx.comissao.findUniqueOrThrow({ where: { cliente_id_geradora_id_competencia: { cliente_id: unlinked.id, geradora_id: generator.id, competencia: "2026-09" } } });
+      assert.equal(unlinkedCommission.parceiro_id, null); assert.equal(unlinkedCommission.valor_comissao_parceiro.toFixed(2), "2.00");
+      assert.equal(unlinkedCommission.status_pagamento, "Pendente"); assert.equal(unlinkedCommission.margem.toFixed(2), "8.00");
       await assert.rejects(() => importCommissions(tx, [{ ...matched[1], excluir: false }], String(generator.id), "2026-10"), /Vincule/);
       const forSecondGenerator = await saveCommission(tx, { ...input, geradora_id: String(secondGenerator.id) });
       assert.equal(forSecondGenerator.geradora_id, secondGenerator.id);
@@ -107,10 +113,10 @@ async function main() {
       const legacyPreview = await matchImport(tx, [{ ...csv[0], uc: legacyClient.uc }], generator.id, "2026-09");
       assert.ok(legacyPreview[0].legado); assert.ok(legacyPreview[0].duplicada); assert.ok(legacyPreview[0].excluir);
       const assigned = await saveCommission(tx, { ...input, id: String(legacy.id), cliente_id: String(legacyClient.id), parceiro_id: "", valor_comissao_parceiro: "0", status_pagamento: "Não se aplica" });
-      assert.equal(assigned.id, legacy.id); assert.equal(assigned.geradora_id, generator.id); assert.equal(assigned.margem.toFixed(2), legacy.margem.toFixed(2));
+      assert.equal(assigned.id, legacy.id); assert.equal(assigned.geradora_id, generator.id); assert.equal(assigned.margem.toFixed(2), "118.00");
       const linkedClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-linked`, parceiro_id: partner.id } });
       const existingEntry = await tx.criar_pagamento.create({ data: { valor_total: "120", beneficiario: marker, competencia_financeira: "2026-09", status_do_pagamento: "Recebido", data_do_pagamento: new Date("2026-09-30T00:00:00Z") } });
-      const existingExit = await tx.contaPagar.create({ data: { favorecido_id: partner.id, tipo_id: entry.tipo_id!, descricao: marker, competencia: "2026-09", valor: "70", status: "Pago", lancamento: new Date("2026-09-30T00:00:00Z"), vencimento: new Date("2026-10-01T00:00:00Z") } });
+      const existingExit = await tx.contaPagar.create({ data: { favorecido_id: partner.id, tipo_id: entry.tipo_id!, descricao: marker, competencia: "2026-09", valor: "2", status: "Pago", lancamento: new Date("2026-09-30T00:00:00Z"), vencimento: new Date("2026-10-01T00:00:00Z") } });
       const linkInput = { ...input, cliente_id: String(linkedClient.id), status_recebimento: "Recebido", status_pagamento: "Pago", data_recebimento: "2026-09-30", data_pagamento: "2026-10-01", entrada_existente_id: String(existingEntry.id_do_registro), saida_existente_id: String(existingExit.id) };
       await assert.rejects(() => saveCommission(tx, { ...linkInput, valor_comissao_empresa: "121" }), /mesmo valor/);
       await assert.rejects(() => saveCommission(tx, { ...linkInput, gerar_entrada: "on" }), /Escolha vincular/);
@@ -124,7 +130,7 @@ async function main() {
       const prepaid = await saveCommission(tx, { ...input, cliente_id: String(prepaidClient.id), status_pagamento: "Pago", data_pagamento: "2026-10-01", gerar_saida: "on" });
       assert.equal(prepaid.status_recebimento, "Pendente"); assert.equal(prepaid.data_recebimento, null); assert.equal(prepaid.entrada_id, null); assert.ok(prepaid.saida_id);
       const prepaidExit = await tx.contaPagar.findUniqueOrThrow({ where: { id: prepaid.saida_id! } });
-      assert.equal(prepaidExit.status, "Pago"); assert.equal(prepaidExit.valor.toFixed(2), "70.00");
+      assert.equal(prepaidExit.status, "Pago"); assert.equal(prepaidExit.valor.toFixed(2), "2.00");
       await assert.rejects(() => saveCommission(tx, { ...input, id: String(prepaid.id), cliente_id: String(prepaidClient.id) }), /saída já foi gerada/);
 
       // A ausência de parceiro no formulário prevalece sobre qualquer sugestão do cliente ou da unidade.
@@ -134,8 +140,8 @@ async function main() {
       ] as const) {
         const optionalClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-optional-${origin}`, ...clientData } });
         const optional = await saveCommission(tx, { ...input, cliente_id: String(optionalClient.id), parceiro_id: "", valor_comissao_parceiro: "0", status_recebimento: "Recebido", data_recebimento: "2026-09-30", gerar_entrada: "on" });
-        assert.equal(optional.parceiro_id, null); assert.equal(optional.status_pagamento, "Não se aplica"); assert.equal(optional.data_pagamento, null);
-        assert.equal(optional.valor_comissao_parceiro.toFixed(2), "0.00"); assert.equal(optional.margem.toFixed(2), "120.00");
+        assert.equal(optional.parceiro_id, null); assert.equal(optional.status_pagamento, "Pendente"); assert.equal(optional.data_pagamento, null);
+        assert.equal(optional.valor_comissao_parceiro.toFixed(2), "2.00"); assert.equal(optional.margem.toFixed(2), "118.00");
         assert.equal(optional.status_recebimento, "Recebido"); assert.ok(optional.entrada_id); assert.equal(optional.saida_id, null);
         const optionalEntry = await tx.criar_pagamento.findUniqueOrThrow({ where: { id_do_registro: optional.entrada_id! } });
         assert.equal(optionalEntry.status_do_pagamento, "Recebido"); assert.equal(optionalEntry.pagador, generator.nome);
@@ -144,7 +150,7 @@ async function main() {
       const removePartnerClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-remove-partner`, parceiro_id: partner.id } });
       const toRemovePartner = await saveCommission(tx, { ...input, cliente_id: String(removePartnerClient.id) });
       const removedPartner = await saveCommission(tx, { ...input, id: String(toRemovePartner.id), cliente_id: String(removePartnerClient.id), parceiro_id: "", valor_comissao_parceiro: "0" });
-      assert.equal(removedPartner.parceiro_id, null); assert.equal(removedPartner.status_pagamento, "Não se aplica"); assert.equal(removedPartner.margem.toFixed(2), "120.00");
+      assert.equal(removedPartner.parceiro_id, null); assert.equal(removedPartner.status_pagamento, "Pendente"); assert.equal(removedPartner.margem.toFixed(2), "118.00");
 
       // O lote altera apenas o pagamento: preserva os recebimentos e cada entrada financeira.
       assert.ok(optionalReceiptId);

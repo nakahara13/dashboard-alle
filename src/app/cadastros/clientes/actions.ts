@@ -3,8 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { importClients, matchClientImport, parseClientFile, type ClientImportRow } from "@/lib/client-import";
+import { refreshClientPages } from "@/lib/client-cache";
 
 export type ClientImportState = { success: boolean; message: string; rows?: ClientImportRow[] };
+export async function setClientActive(id: number, ativo: boolean): Promise<ClientImportState> {
+  try {
+    if (!Number.isSafeInteger(id) || id < 1 || typeof ativo !== "boolean") throw new Error("Cliente ou situação inválida.");
+    await getPrisma().$transaction(async (db) => {
+      const result = await db.cliente.updateMany({ where: { id, ativo: !ativo }, data: { ativo } });
+      if (!result.count) throw new Error("A situação deste cliente mudou. Atualize a lista.");
+    }, { isolationLevel: "Serializable" });
+    refreshClientPages();
+    return { success: true, message: `Cliente ${ativo ? "ativado" : "inativado"} com sucesso.` };
+  } catch (error) { return { success: false, message: failure(error) }; }
+}
 function failure(error: unknown) {
   if (error && typeof error === "object" && "code" in error) {
     if (error.code === "P2002") return "Uma UC já está cadastrada. Atualize a prévia. Nenhum cliente deste lote foi salvo.";

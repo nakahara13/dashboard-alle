@@ -45,7 +45,7 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : "Não foi possível concluir a operação.";
 }
 // Atualiza as páginas separadas que compartilham cadastros e vínculos.
-function refresh() { for (const path of ["/cadastros/clientes/visao-geral", "/comissoes/nova", "/comissoes/importar", "/cadastros/clientes", "/cadastros/geradores", "/cadastros/distribuidoras", "/cadastros/unidades", "/cadastros/parceiros", "/comissoes", "/contas-a-receber", "/contas-a-pagar", "/"]) revalidatePath(path); }
+function refresh() { for (const path of ["/cadastros/clientes/cruzamento", "/cadastros/clientes/visao-geral", "/comissoes/nova", "/comissoes/importar", "/cadastros/clientes", "/cadastros/geradores", "/cadastros/distribuidoras", "/cadastros/unidades", "/cadastros/parceiros", "/comissoes", "/contas-a-receber", "/contas-a-pagar", "/"]) revalidatePath(path); }
 export async function saveCommissionAction(_state: State, form: FormData): Promise<State> {
   try {
     const input = Object.fromEntries(form.entries()) as CommissionInput;
