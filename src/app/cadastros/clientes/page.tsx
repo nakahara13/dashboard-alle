@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import styles from "./client-registration.module.css";
 import { ClientImport } from "@/components/client-import";
@@ -9,7 +10,8 @@ export const metadata: Metadata = { title: "Cadastro de cliente | Financeiro All
 export const dynamic = "force-dynamic";
 
 // Página exclusiva reutiliza as ações e validações do fluxo existente.
-export default function Page() {
+export default async function Page() {
+  await requireUser();
   return <div className={styles.page}><CommissionWorkspacePage action={() => <Link href="/cadastros/clientes/visao-geral" className={styles.viewAll}>Ver todos os clientes <span aria-hidden="true">→</span></Link>} title="Cadastro de cliente" description="Cadastre ou edite clientes e suas unidades consumidoras.">{(options) => <>
     <section className={styles.manual}><ClientCommissionCatalog options={options} /></section>
     {/* Cadastro em massa considera UC, nome, distribuidora e CPF opcional, com confirmação prévia. */}

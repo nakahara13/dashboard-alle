@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import { CreateRecord, ManagementHeader } from "@/components/management-drawer";
 import { ManagementRowActions } from "@/components/management-row-actions";
 import type { Metadata } from "next";
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: "Parceiros | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  await requireUser();
   let partners;
   try { partners = await getPrisma().parceiro.findMany({ orderBy: [{ nome: "asc" }, { id: "asc" }] }); } catch {
     return <p role="alert">Não foi possível carregar os parceiros. Verifique a conexão e tente novamente.</p>;

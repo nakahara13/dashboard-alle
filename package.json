@@ -9,6 +9,9 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "api:token": "node scripts/create-api-token.mjs",
+    "auth:admin": "node --import tsx scripts/bootstrap-admin.ts",
+    "auth:test": "node --import tsx scripts/test-auth.ts && node --import tsx scripts/test-user-access.ts",
+    "auth:test:http": "node --import tsx scripts/test-auth-http.ts",
     "api:test": "node --import tsx scripts/test-api.ts && node --import tsx scripts/test-api-catalogs.ts && node --import tsx scripts/test-api-finance.ts && node --import tsx scripts/test-api-commissions.ts",
     "api:test:db": "node --import tsx scripts/test-api-db.ts",
     "api:test:http": "node --import tsx scripts/test-api-http.ts",
@@ -25,6 +28,8 @@
     "db:test-payment": "prisma generate && tsx scripts/test-payment.ts",
     "db:test-fixed-partner-commission": "node --import tsx scripts/test-fixed-partner-commission.ts",
     "db:test-commissions": "tsx scripts/test-commission-module.ts",
+    "db:test-commission-overwrite": "node --import tsx scripts/test-commission-overwrite.ts",
+    "db:test-commission-overwrite:http": "node --import tsx scripts/test-commission-overwrite-http.ts",
     "db:test-client-reconciliation": "node --import tsx scripts/test-client-reconciliation.ts",
     "db:test-commission-upgrade": "tsx scripts/test-commission-upgrade.ts"
   },

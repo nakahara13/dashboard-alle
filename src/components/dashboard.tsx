@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PERIODS, displayDate, money, type TrendPoint } from "@/lib/dashboard";
 import { DashboardTrend } from "@/components/dashboard-trend";
 
-type DashboardData = { pendingIncoming: number; pendingOutgoing: number; incoming: number; outgoing: number; balance: number; commissionIncoming: number; commissionOutgoing: number; entriesCount: number; exitsCount: number; points: TrendPoint[]; monthly: boolean };
+type DashboardData = { activeStudents: number; inactiveStudents: number; pendingIncoming: number; pendingOutgoing: number; incoming: number; outgoing: number; balance: number; commissionIncoming: number; commissionOutgoing: number; entriesCount: number; exitsCount: number; points: TrendPoint[]; monthly: boolean };
 export function Dashboard({ range, data, error }: { range: { inicio: string; fim: string; period: string }; data: DashboardData | null; error: string | null }) {
   const cards = [
     { title: "Entradas", value: data ? money(data.incoming) : "—", description: `${data?.entriesCount ?? 0} recebimento(s) com status Recebido.`, color: "dashboard-kpi-incoming text-white", icon: "↗" },
@@ -27,6 +27,13 @@ export function Dashboard({ range, data, error }: { range: { inicio: string; fim
     </div>
     {error && <p role="alert" className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">{error}</p>}
     <div className="grid gap-4 md:grid-cols-3">{cards.map((card) => <article key={card.title} className={`dashboard-kpi flex min-h-52 min-w-0 flex-col rounded-2xl border px-5 py-4 ${card.color}`}><div className="flex items-center justify-between"><h2 className="text-sm font-medium text-current">{card.title}</h2><span aria-hidden="true" className="dashboard-kpi-icon flex size-9 items-center justify-center rounded-xl text-lg font-semibold">{card.icon}</span></div><p className="flex flex-1 items-center justify-start py-4 text-left text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl [overflow-wrap:anywhere]">{card.value}</p><p className="mt-3 text-xs leading-5 text-current opacity-90">{card.description}</p></article>)}</div>
+    <section aria-label="Alunos por situação" className="grid gap-4 sm:grid-cols-2">
+      {[{ title: "Alunos ativos", status: "ativo", count: data?.activeStudents, tone: "text-accent-ink" }, { title: "Alunos inativos", status: "inativo", count: data?.inactiveStudents, tone: "text-muted-ink" }].map((card) => <Link key={card.status} href={`/cadastros/clientes/visao-geral?status=${card.status}`} className="min-w-0 rounded-2xl border border-line bg-surface p-5 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+        <h2 className={`text-sm font-medium ${card.tone}`}>{card.title}</h2>
+        <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums [overflow-wrap:anywhere]">{card.count === undefined ? "—" : card.count.toLocaleString("pt-BR")}</p>
+        <p className="mt-3 text-xs text-muted-ink">Total atual no cadastro · Ver alunos <span aria-hidden="true">→</span></p>
+      </Link>)}
+    </section>
     <div className="grid gap-6 xl:grid-cols-3">
       <BalanceDonut data={data} />
       <FinancialBars title="Entradas × saídas" description="Compare os valores recebidos e pagos no período." rows={data ? [{ label: "Entradas recebidas", value: data.incoming, color: "bg-brand-purple" }, { label: "Saídas pagas", value: data.outgoing, color: "bg-[var(--brand-orange)]" }] : null} emptyMessage="Nenhum recebimento ou pagamento no período." />

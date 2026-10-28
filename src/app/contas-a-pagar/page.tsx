@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import styles from "./payables.module.css";
 import { CreateRecord } from "@/components/management-drawer";
 import type { Metadata } from "next";
@@ -10,6 +11,7 @@ export const metadata: Metadata = { title: "Contas a pagar | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page({ searchParams }: { searchParams: Promise<HistoryParams> }) {
+  await requireUser();
   const params = await searchParams;
   let partners;
   let types;

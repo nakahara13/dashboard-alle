@@ -7,7 +7,7 @@ import { createPartner, validatePartner } from "../parceiros";
 import { createBankAccount, validateBankAccount } from "../contas-bancarias";
 import { createMethod, validateMethod } from "../metodos-pagamento";
 import { createTipo, validateTipo } from "../tipos";
-import { createUser, validateUser } from "../usuarios";
+import { createUser, deleteUser, updateUser, USER_PUBLIC_SELECT, UserManagementError, validateUser } from "../usuarios";
 import { ApiError, apiJson, business, found, pagination, queryParams, readJson, requireMethod, stringFields } from "./http";
 
 const catalogFields = {
@@ -25,6 +25,14 @@ const catalogFields = {
 type Catalog = keyof typeof catalogFields;
 const clientInclude = { parceiro: true, distribuidora: true, unidade: { include: { parceiro: true } } } as const;
 const unitInclude = { parceiro: true } as const;
+
+async function userOperation<T>(work: () => Promise<T>): Promise<T> {
+  try { return await business(work); }
+  catch (error) {
+    if (error instanceof UserManagementError) throw new ApiError(422, "validation_error", error.message);
+    throw error;
+  }
+}
 
 function catalogId(value: string) {
   if (!/^[1-9]\d*$/.test(value) || Number(value) > 2147483647) {
@@ -65,7 +73,7 @@ async function listCatalog(db: Prisma.TransactionClient, resource: Catalog, skip
     case "contas-bancarias": return [await db.contaBancaria.findMany({ ...options, where }), await db.contaBancaria.count({ where })];
     case "metodos-pagamento": return [await db.metodoPagamento.findMany({ ...options, where }), await db.metodoPagamento.count({ where })];
     case "tipos": return [await db.tipo.findMany({ ...options, where }), await db.tipo.count({ where })];
-    case "usuarios": return [await db.usuario.findMany({ ...options, where }), await db.usuario.count({ where })];
+    case "usuarios": return [await db.usuario.findMany({ ...options, where, select: USER_PUBLIC_SELECT }), await db.usuario.count({ where })];
   }
 }
 
@@ -80,7 +88,7 @@ async function detailCatalog(db: Prisma.TransactionClient, resource: Catalog, id
     case "contas-bancarias": return found(await db.contaBancaria.findUnique({ where }));
     case "metodos-pagamento": return found(await db.metodoPagamento.findUnique({ where }));
     case "tipos": return found(await db.tipo.findUnique({ where }));
-    case "usuarios": return found(await db.usuario.findUnique({ where }));
+    case "usuarios": return found(await db.usuario.findUnique({ where, select: USER_PUBLIC_SELECT }));
   }
 }
 
@@ -136,8 +144,10 @@ async function writeCatalog(db: PrismaClient, resource: Catalog, fields: Record<
     }
     case "usuarios": {
       const input = { nome: fields.nome, email: fields.email, role: fields.role };
-      const data = await business(() => validateUser(input));
-      return where ? db.usuario.update({ where, data }) : business(() => createUser(db, input));
+      await business(() => validateUser(input));
+      return where
+        ? userOperation(() => db.$transaction((tx) => updateUser(tx, where.id, input), { isolationLevel: "Serializable" }))
+        : business(() => createUser(db, input));
     }
   }
 }
@@ -153,7 +163,7 @@ async function deleteCatalog(db: PrismaClient, resource: Catalog, id: number) {
     case "contas-bancarias": return db.contaBancaria.delete({ where });
     case "metodos-pagamento": return db.metodoPagamento.delete({ where });
     case "tipos": return db.tipo.delete({ where });
-    case "usuarios": return db.usuario.delete({ where });
+    case "usuarios": return userOperation(() => db.$transaction((tx) => deleteUser(tx, id), { isolationLevel: "Serializable" }));
   }
 }
 

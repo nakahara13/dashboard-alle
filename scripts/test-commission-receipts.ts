@@ -87,14 +87,41 @@ async function main() {
   assert.equal(received.entries.size, 1);
   assert.deepEqual(received.exits, exitsBefore);
 
+  // Desfazer o recebimento limpa apenas sua data, inclusive se o parceiro já foi pago.
+  const pendingInitial = [
+    row(BigInt(1), { status_recebimento: "Recebido", data_recebimento: receivedDate, status_pagamento: "Pago", data_pagamento: date, saida_id: BigInt(20) }),
+    row(BigInt(2), { parceiro_id: null, status_recebimento: "Recebido", data_recebimento: receivedDate }),
+  ];
+  const pending = fixture(pendingInitial);
+  const pendingExitsBefore = new Map([...pending.exits].map(([id, exit]) => [id, { ...exit }]));
+  assert.equal(await updateCommissionReceipts(pending.db, pendingInitial.map(item => item.id), null, "Pendente"), 2);
+  for (const [index, item] of pending.rows.entries()) {
+    assert.deepEqual(item, { ...pendingInitial[index], status_recebimento: "Pendente", data_recebimento: null }, "Retornar para pendente preserva pagamentos e vínculos do parceiro.");
+  }
+  assert.deepEqual(pending.exits, pendingExitsBefore);
+  assert.equal(pending.writes.some(write => write.model !== "comissao"), false);
+  assert.equal(pending.entries.size, 0);
+  assert.equal(await updateCommissionReceipts(pending.db, pendingInitial.map(item => item.id), receivedDate, "Pendente"), 2);
+  assert.ok(pending.rows.every(item => item.data_recebimento === null), "Pendente ignora a data preenchida na barra de ações.");
+
+  // Uma entrada vinculada bloqueia o lote inteiro antes da primeira gravação.
+  const blocked = fixture(initial);
+  await assert.rejects(() => updateCommissionReceipts(blocked.db, initial.map(item => item.id), null, "Pendente"), /entrada financeira vinculada/);
+  assert.equal(blocked.writes.length, 0);
+  assert.deepEqual(blocked.rows, initial);
+  assert.deepEqual(blocked.entries.get(BigInt(10)), { status_do_pagamento: "Recebido", data_do_pagamento: receivedDate });
+
   const missing = fixture(initial);
   await assert.rejects(() => updateCommissionReceipts(missing.db, [BigInt(1), BigInt(999)], date), /não encontrada/);
+  await assert.rejects(() => updateCommissionReceipts(missing.db, [BigInt(1), BigInt(999)], null, "Pendente"), /não encontrada/);
   assert.equal(missing.writes.length, 0, "Um ID inválido deve impedir todo o lote antes de gravar.");
   const invalid = fixture(initial);
   await assert.rejects(() => updateCommissionReceipts(invalid.db, [BigInt(1)], null), /data de recebimento/);
   await assert.rejects(() => updateCommissionReceipts(invalid.db, [BigInt(1)], new Date("inválida")), /data de recebimento/);
   await assert.rejects(() => updateCommissionReceipts(invalid.db, [], date), /Selecione/);
+  await assert.rejects(() => updateCommissionReceipts(invalid.db, [], null, "Pendente"), /Selecione/);
+  await assert.rejects(() => updateCommissionReceipts(invalid.db, [BigInt(1)], date, "Pago" as "Recebido"), /Status de recebimento inválido/);
   assert.equal(invalid.writes.length, 0);
-  console.log("PASSOU: recebimento em lote com e sem parceiro, pagamento independente, entradas vinculadas sincronizadas, nenhuma nova entrada, repetição e validações antes de gravar.");
+  console.log("PASSOU: recebimento e retorno para pendente em lote, data de recebimento limpa, pagamentos preservados, entradas vinculadas protegidas, repetição e validações antes de gravar.");
 }
 void main().catch((error) => { console.error(error); process.exitCode = 1; });

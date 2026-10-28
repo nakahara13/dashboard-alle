@@ -6358,7 +6358,7 @@
         ],
         "operationId": "listar_usuarios",
         "summary": "Listar usuários",
-        "description": "Cadastro de usuários, sem login ou sessão. O perfil cadastral não altera as permissões do token da API. E-mail único e normalizado em minúsculas.",
+        "description": "Metadados de usuários. A API não recebe nem devolve senhas; configure o acesso em Usuários na interface. O token da API possui autorização independente das sessões da interface. Alterações de e-mail ou perfil encerram as sessões do usuário. O último administrador com senha não pode ser removido ou rebaixado. E-mail único e normalizado em minúsculas.",
         "parameters": [
           {
             "name": "pagina",
@@ -6540,7 +6540,7 @@
         ],
         "operationId": "criar_usuarios",
         "summary": "Criar registro em usuários",
-        "description": "Cadastro de usuários, sem login ou sessão. O perfil cadastral não altera as permissões do token da API. E-mail único e normalizado em minúsculas.",
+        "description": "Metadados de usuários. A API não recebe nem devolve senhas; configure o acesso em Usuários na interface. O token da API possui autorização independente das sessões da interface. Alterações de e-mail ou perfil encerram as sessões do usuário. O último administrador com senha não pode ser removido ou rebaixado. E-mail único e normalizado em minúsculas.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6713,7 +6713,7 @@
         ],
         "operationId": "consultar_usuarios",
         "summary": "Consultar por ID",
-        "description": "Cadastro de usuários, sem login ou sessão. O perfil cadastral não altera as permissões do token da API. E-mail único e normalizado em minúsculas.",
+        "description": "Metadados de usuários. A API não recebe nem devolve senhas; configure o acesso em Usuários na interface. O token da API possui autorização independente das sessões da interface. Alterações de e-mail ou perfil encerram as sessões do usuário. O último administrador com senha não pode ser removido ou rebaixado. E-mail único e normalizado em minúsculas.",
         "responses": {
           "200": {
             "description": "Operação concluída.",
@@ -6857,7 +6857,7 @@
         ],
         "operationId": "atualizar_usuarios",
         "summary": "Substituir campos editáveis",
-        "description": "Cadastro de usuários, sem login ou sessão. O perfil cadastral não altera as permissões do token da API. E-mail único e normalizado em minúsculas. PUT exige os campos obrigatórios completos; opcionais ausentes são limpos. Flags opcionais voltam a false. IDs e campos calculados não são aceitos no corpo.",
+        "description": "Metadados de usuários. A API não recebe nem devolve senhas; configure o acesso em Usuários na interface. O token da API possui autorização independente das sessões da interface. Alterações de e-mail ou perfil encerram as sessões do usuário. O último administrador com senha não pode ser removido ou rebaixado. E-mail único e normalizado em minúsculas. PUT exige os campos obrigatórios completos; opcionais ausentes são limpos. Flags opcionais voltam a false. IDs e campos calculados não são aceitos no corpo.",
         "requestBody": {
           "required": true,
           "content": {
@@ -11221,7 +11221,7 @@
               "admin",
               "gestor"
             ],
-            "description": "Perfil cadastral."
+            "description": "Perfil de acesso à interface."
           },
           "id": {
             "type": "integer"
@@ -11258,7 +11258,7 @@
               "admin",
               "gestor"
             ],
-            "description": "Perfil cadastral."
+            "description": "Perfil de acesso à interface."
           }
         }
       },

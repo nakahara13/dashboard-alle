@@ -17,7 +17,7 @@ async function rejectsApi(work: () => Promise<unknown>, status: number, code: st
 }
 
 type Row = Record<string, unknown> & { id: number };
-type Args = { where?: Record<string, unknown>; data?: Record<string, unknown>; include?: unknown; orderBy?: unknown; skip?: number; take?: number };
+type Args = { where?: Record<string, unknown>; data?: Record<string, unknown>; include?: unknown; select?: Record<string, boolean>; orderBy?: unknown; skip?: number; take?: number };
 type Call = { model: string; method: string; args: Args; transaction: boolean };
 const models = ["cliente", "parceiro", "distribuidora", "geradora", "unidadeAllpFit", "contaBancaria", "metodoPagamento", "tipo", "usuario"] as const;
 type Model = typeof models[number];
@@ -33,6 +33,10 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
   storage.get("distribuidora")!.set(4, { id: 4, nome: "Distribuidora" });
   const calls: Call[] = [], events: string[] = [], isolation: string[] = [];
 
+  function selected(row: Row | null, args: Args): Row | null {
+    return row && args.select ? Object.fromEntries(Object.entries(row).filter(([key]) => args.select![key])) as Row : row;
+  }
+
   function delegates(source: Storage, transaction: boolean) {
     return Object.fromEntries(models.map((model) => {
       const rows = source.get(model)!;
@@ -45,25 +49,25 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
         findUnique: async (args: Args) => {
           record("findUnique", args);
           if (options.readFailure && transaction && (model === "cliente" || model === "unidadeAllpFit")) throw options.readFailure;
-          return lookup(args);
+          return selected(lookup(args), args);
         },
         findUniqueOrThrow: async (args: Args) => {
           record("findUniqueOrThrow", args);
           const row = lookup(args);
           if (!row) throw new Prisma.PrismaClientKnownRequestError("Missing related record", { code: "P2025", clientVersion: "test" });
-          return row;
+          return selected(row, args);
         },
         findMany: async (args: Args) => {
           record("findMany", args);
           const sorted = [...rows.values()].sort((left, right) => String(left.nome).localeCompare(String(right.nome)) || left.id - right.id);
-          return sorted.slice(args.skip ?? 0, (args.skip ?? 0) + (args.take ?? sorted.length));
+          return sorted.slice(args.skip ?? 0, (args.skip ?? 0) + (args.take ?? sorted.length)).map((row) => selected(row, args));
         },
         count: async (args: Args) => { record("count", args); return rows.size; },
         create: async (args: Args) => {
           record("create", args);
           const row = { id: Math.max(0, ...rows.keys()) + 1, ...args.data };
           rows.set(row.id, row);
-          return row;
+          return selected(row, args);
         },
         update: async (args: Args) => {
           record("update", args);
@@ -71,7 +75,7 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
           assert.ok(previous, "A test attempted to update a missing fixture record.");
           const row = { ...previous, ...args.data };
           rows.set(row.id, row);
-          return row;
+          return selected(row, args);
         },
         delete: async (args: Args) => {
           record("delete", args);
@@ -79,7 +83,7 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
           const previous = lookup(args);
           if (!previous) throw new Prisma.PrismaClientKnownRequestError("Missing record", { code: "P2025", clientVersion: "test" });
           rows.delete(previous.id);
-          return previous;
+          return selected(previous, args);
         },
       }];
     }));
@@ -198,6 +202,18 @@ async function main() {
     assert.equal((await response(catalog.db, `${resource}/${row.id}`, "DELETE")).status, 204);
     assert.equal(catalog.storage.get(model)!.has(row.id), false);
   }
+
+  const secretUser = fixture();
+  secretUser.storage.get("usuario")!.set(9, { id: 9, nome: "Pessoa", email: "pessoa@example.com", role: "gestor", senha_hash: "private-password-hash", criado_em: new Date() });
+  for (const path of ["usuarios", "usuarios/9"]) {
+    const result = await response(secretUser.db, path);
+    const text = await result.text();
+    assert.ok(!text.includes("senha_hash") && !text.includes("private-password-hash"), "User API reads must not expose password hashes.");
+  }
+  const secretUpdated = await response(secretUser.db, "usuarios/9", "PUT", { nome: "Pessoa editada", email: "pessoa@example.com", role: "gestor" });
+  assert.ok(!Object.hasOwn((await secretUpdated.json()).data, "senha_hash"), "User API writes must not expose password hashes.");
+  assert.equal(secretUser.storage.get("usuario")!.get(9)!.senha_hash, "private-password-hash", "Metadata edits preserve existing credentials.");
+  await rejectsApi(() => response(forbiddenDb, "usuarios", "POST", { nome: "Pessoa", email: "pessoa@example.com", role: "gestor", senha: "12345678" }), 400, "unknown_field");
 
   const listing = fixture();
   const listed = await response(listing.db, "clientes?pagina=2&limite=1&busca=529.982&distribuidora_id=sem-vinculo&unidade_id=5&parceiro_id=3");

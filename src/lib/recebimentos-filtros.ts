@@ -1,5 +1,6 @@
 import { validateTipoId } from "./tipos";
 import { PAYMENT_STATUSES } from "./pagamentos";
+import { parseCompetence } from "./contas-a-pagar";
 import type { Prisma } from "../generated/prisma/client";
 
 export type HistoryParams = Record<string, string | string[] | undefined>;
@@ -7,8 +8,12 @@ export const PAGE_SIZE = 20;
 
 export function parseHistoryFilters(params: HistoryParams) {
   const text = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
-  const values = { inicio: text("inicio"), fim: text("fim"), parceiro: text("parceiro"), conta: text("conta"), metodo: text("metodo"), tipo: text("tipo"), status: text("status") };
+  const values = { inicio: text("inicio"), fim: text("fim"), competencia: text("competencia"), parceiro: text("parceiro"), conta: text("conta"), metodo: text("metodo"), tipo: text("tipo"), status: text("status") };
   const where: Prisma.criar_pagamentoWhereInput = {};
+  if (values.competencia) {
+    values.competencia = parseCompetence(values.competencia);
+    where.competencia_financeira = values.competencia;
+  }
   const date = (value: string) => {
     const result = new Date(`${value}T00:00:00.000Z`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(result.getTime()) || result.toISOString().slice(0, 10) !== value) throw new Error("Informe um período válido.");

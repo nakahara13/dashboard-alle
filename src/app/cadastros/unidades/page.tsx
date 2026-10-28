@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import { CreateRecord } from "@/components/management-drawer";
 import type { Metadata } from "next";
 import { SimpleCommissionCatalog } from "@/components/commission-forms";
@@ -8,7 +9,8 @@ import styles from "../catalog-list.module.css";
 export const metadata: Metadata = { title: "Cadastro de unidades | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function Page() {
+  await requireUser();
   return <div className={styles.page}><CommissionWorkspacePage title="Cadastro de unidades" description="Unidade Allp Fit — origem da indicação" action={(options) => <CreateRecord label="Nova unidade" title="Nova unidade"><SimpleCommissionCatalog kind="unidade" title="Nova unidade" options={options.units} partners={options.partners} createOnly /></CreateRecord>}>{(options) => <>
     <section className={styles.panel}>
       <h2 className="text-lg font-semibold">Unidades cadastradas ({options.units.length})</h2>

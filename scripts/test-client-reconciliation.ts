@@ -22,7 +22,7 @@ async function main() {
   const parsed = await parseReconciliationFile(await spreadsheet([["Unidades consumidoras", "CPF"], [" 00 abc ", "CPF ignorado"], ["00ABC"], ["00012"]]), "mes.xlsx");
   assert.deepEqual(parsed, { ucs: ["00012", "00ABC"], duplicates: 1 });
   assert.deepEqual((await parseReconciliationFile(await spreadsheet([["UC"], [12]], "00000"), "mes.xlsx")).ucs, ["00012"]);
-  await assert.rejects(() => parseReconciliationFile(Buffer.from(""), "mes.csv"), /xlsx/);
+  await assert.rejects(() => parseReconciliationFile(Buffer.from(""), "mes.csv"), /não contém clientes/);
   for (const rows of [
     [["Nome"], ["Cliente"]], [["UC", "Instalação"], ["1", "2"]], [["UC", "Nome"], ["", "Cliente sem UC"]],
     [["UC"], [{ formula: "1+1", result: 2 }]], [["UC"], [1.5]], [["UC"], [Number.MAX_SAFE_INTEGER + 1]], [["UC"]],

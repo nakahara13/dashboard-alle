@@ -1,5 +1,7 @@
 "use server";
 
+import { requireUser } from "@/lib/auth";
+
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
@@ -7,6 +9,7 @@ import { createPayable, validatePayable, type PayableInput } from "@/lib/contas-
 
 type State = { success: boolean; message: string };
 export async function savePayable(_previous: State, form: FormData): Promise<State> {
+  await requireUser();
   let id: bigint | undefined;
   try {
     if (form.has("id")) id = parseRecordId(String(form.get("id")));
@@ -36,6 +39,7 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
 }
 
 export async function deletePayable(id: string) {
+  await requireUser();
   try {
     await getPrisma().contaPagar.delete({ where: { id: parseRecordId(id) } });
     revalidatePath("/contas-a-pagar");

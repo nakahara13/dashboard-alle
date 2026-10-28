@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import { Pagination } from "@/components/pagination";
 import { ManagementFilters } from "@/components/management-filters";
 import { CreateRecord } from "@/components/management-drawer";
@@ -22,15 +23,20 @@ const statusOptions = [
   { value: "pago", label: "Pagas" },
 ];
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  await requireUser();
   const params = await searchParams;
   const text = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
   const generator = text("geradora"), unit = text("unidade");
-  const competence = text("competencia"), distributor = text("distribuidora"), partner = text("parceiro"), status = text("status"), query = text("busca").trim();
+  let competence = text("competencia");
+  const distributor = text("distribuidora"), partner = text("parceiro"), status = text("status"), query = text("busca").trim();
   let data: Awaited<ReturnType<typeof loadCommissions>> | undefined;
   let loadError = "";
   try {
     const where: Prisma.ComissaoWhereInput = {};
-    if (competence) where.competencia = parseCompetence(competence);
+    if (competence) {
+      competence = parseCompetence(competence);
+      where.competencia = competence;
+    }
     if (generator) where.geradora_id = generator === "nao-informada" ? null : positiveId(generator);
     if (unit) where.cliente = { unidade_id: positiveId(unit) };
     if (distributor) where.distribuidora_id = positiveId(distributor);
@@ -69,7 +75,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       </div>
       <section className={styles.panel} aria-labelledby="commissions-title">
       <div className={styles.filters}>
-      <ManagementFilters basePath="/comissoes" values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={statusOptions} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
+      <ManagementFilters basePath="/comissoes" competence values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={statusOptions} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
       <form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-2 text-sm">Competência<input type="month" name="competencia" defaultValue={competence} className={fieldClass} /></label>
         <label className="grid gap-2 text-sm">Geradora<select name="geradora" defaultValue={generator} className={fieldClass}><option value="">Todas</option><option value="nao-informada">Geradora não informada</option>{data.options.generators.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
@@ -81,6 +87,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         <div className="flex items-center gap-4 sm:col-span-2 lg:col-span-4"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Aplicar filtros</button><Link href="/comissoes" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
       </form>
       </ManagementFilters>
+      <p className="mt-3 text-xs text-muted-ink"><Link href={`/cadastros/clientes/visao-geral${competence ? `?${new URLSearchParams({ competencia: competence })}` : ""}`} className="text-accent-ink underline">{competence ? "Conferir clientes que constam ou não nesta competência" : "Consultar histórico mensal dos clientes"}</Link></p>
       </div>
       {data.unassignedCount > 0 && <p role="status" className={styles.notice}>{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
       {/* A visão geral concentra consulta e edição; criação e importação têm páginas próprias. */}

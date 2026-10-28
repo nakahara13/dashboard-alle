@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { CreateRecord, ManagementDrawer, RecordDetails, useDrawerFeedback } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
+import { ClientPaymentHistory } from "@/components/client-payment-history";
 import { saveCommissionCatalog } from "@/app/comissoes/actions";
 import { setClientActive } from "@/app/cadastros/clientes/actions";
 
@@ -40,7 +41,7 @@ function ClientRecordForm({ mode, record, options, onSaved }: { mode: "create" |
         {[{ name: "distribuidora_id", label: "Distribuidora", items: options.distributors, value: record.distribuidora_id }, { name: "unidade_id", label: "Unidade", items: options.units, value: record.unidade_id }, { name: "parceiro_id", label: "Parceiro específico", items: options.partners, value: record.parceiro_id }].map((field) => <label key={field.name} className="grid gap-2 text-sm">{field.label}<select name={field.name} defaultValue={field.value ?? ""} className={fieldClass}><option value="">Sem vínculo</option>{field.items.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>)}
       </fieldset> : <p className="text-sm">Deseja {record.ativo ? "inativar" : "ativar"} <strong>{record.nome}</strong> (UC {record.uc})? {record.ativo ? "O cliente ficará bloqueado para novas comissões. Comissões e pagamentos já registrados serão preservados." : "O cliente poderá receber novas comissões."} Você pode alterar esta situação novamente quando precisar.</p>}
       {error && <p role="alert" className="mt-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">{error}</p>}
-      <div className="mt-6 flex gap-4"><button disabled={pending} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50">{pending ? "Processando…" : mode === "create" ? "Cadastrar cliente" : mode === "edit" ? "Salvar alterações" : record.ativo ? "Confirmar inativação" : "Confirmar ativação"}</button></div>
+      <div className="mt-6 flex gap-4"><button disabled={pending} className={`rounded-lg px-5 py-3 text-sm font-semibold disabled:opacity-50 ${mode === "status" && record.ativo ? "bg-danger-soft text-danger-ink hover:bg-danger-ink/15" : "bg-accent text-white hover:bg-accent-hover"}`}>{pending ? "Processando…" : mode === "create" ? "Cadastrar cliente" : mode === "edit" ? "Salvar alterações" : record.ativo ? "Confirmar inativação" : "Confirmar ativação"}</button></div>
     </form>
   </>;
 }
@@ -52,7 +53,7 @@ export function ClientRowActions({ record, options }: { record: ClientRecord; op
   return <div><RowActions label={record.nome}>
     <RowActionButton action="view" label={record.nome} type="button" onClick={() => setMode("details")}>Visualizar</RowActionButton>
     <RowActionButton action="edit" label={record.nome} type="button" onClick={() => { setMessage(""); setMode("edit"); }}>Editar</RowActionButton>
-    <button type="button" aria-label={`${record.ativo ? "Inativar" : "Ativar"} ${record.nome}`} onClick={() => { setMessage(""); setMode("status"); }} className="min-h-10 rounded-lg border border-line px-3 py-2 text-xs font-medium hover:bg-muted">{record.ativo ? "Inativar" : "Ativar"}</button>
+    <button type="button" aria-label={`${record.ativo ? "Inativar" : "Ativar"} ${record.nome}`} onClick={() => { setMessage(""); setMode("status"); }} className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-medium ${record.ativo ? "border-danger-ink bg-danger-soft text-danger-ink hover:bg-danger-ink/15" : "border-line hover:bg-muted"}`}>{record.ativo ? "Inativar" : "Ativar"}</button>
   </RowActions>{message && <p role="status" className="mt-2 text-xs text-accent-ink">{message}</p>}
   {mode && <ManagementDrawer title={mode === "details" ? "Detalhes do cliente" : mode === "edit" ? "Editar cliente" : record.ativo ? "Inativar cliente" : "Ativar cliente"} onClose={() => setMode(null)} onSaved={setMessage}>
     {mode === "details" ? <>
@@ -61,7 +62,9 @@ export function ClientRowActions({ record, options }: { record: ClientRecord; op
         { label: "Distribuidora", value: options.distributors.find(item => item.id === record.distribuidora_id)?.nome },
         { label: "Unidade", value: options.units.find(item => item.id === record.unidade_id)?.nome },
         { label: "Parceiro específico", value: options.partners.find(item => item.id === record.parceiro_id)?.nome },
-      ]} /><button type="button" onClick={() => setMode("edit")} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-white">Editar cliente</button>
+      ]} />
+      <ClientPaymentHistory clientId={record.id} />
+      <button type="button" onClick={() => setMode("edit")} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-white">Editar cliente</button>
     </> : <ClientRecordForm mode={mode} record={record} options={options} onSaved={setMessage} />}
   </ManagementDrawer>}</div>;
 }

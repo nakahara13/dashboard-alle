@@ -1,5 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { positiveId } from "./comissao-module";
+import { parseCompetence } from "./contas-a-pagar";
+
+export const clientPresenceOptions = [
+  { id: "consta", nome: "Constam na competência" },
+  { id: "nao-consta", nome: "Sem registro na competência" },
+  { id: "todos", nome: "Todos os clientes" },
+];
 
 export function parseClientActive(value: string) {
   if (value !== "true" && value !== "false") throw new Error("Selecione uma situação válida para o cliente.");
@@ -24,10 +31,15 @@ export function normalizeClientCpf(value: string) {
 export function clientFilters(params: Record<string, string | string[] | undefined>) {
   const text = (key: string) => typeof params[key] === "string" ? (params[key] as string).trim() : "";
   const distributor = text("distribuidora"), unit = text("unidade"), query = text("busca"), status = text("status");
+  const competence = text("competencia") ? parseCompetence(text("competencia")) : "";
+  const requestedPresence = text("presenca");
+  if (requestedPresence && !clientPresenceOptions.some((option) => option.id === requestedPresence)) throw new Error("Selecione uma presença válida na competência.");
+  const presence = competence ? requestedPresence || "consta" : "";
   const requested = text("pagina") || "1";
   if (!/^[1-9]\d*$/.test(requested) || !Number.isSafeInteger(Number(requested))) throw new Error("Página inválida.");
   if (query.length > 255) throw new Error("Use uma pesquisa com até 255 caracteres.");
   const where: Prisma.ClienteWhereInput = {};
+  if (competence && presence !== "todos") where.comissoes = presence === "consta" ? { some: { competencia: competence } } : { none: { competencia: competence } };
   if (status) {
     if (!["ativo", "inativo"].includes(status)) throw new Error("Selecione uma situação válida para o cliente.");
     where.ativo = status === "ativo";
@@ -39,5 +51,5 @@ export function clientFilters(params: Record<string, string | string[] | undefin
     const digits = query.replace(/\D/g, "");
     if (/^[\d.\-\s]+$/.test(query) && digits) where.OR.push({ cpf: { contains: digits } });
   }
-  return { where, distributor, unit, query, status, requestedPage: Number(requested) };
+  return { where, distributor, unit, query, status, competence, presence, requestedPage: Number(requested) };
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { requireUser } from "@/lib/auth";
+
 import { getPrisma } from "@/lib/prisma";
 import { parseRecordId } from "@/lib/record-id";
 
@@ -30,6 +32,7 @@ async function loadPayableForm(id: bigint) {
 }
 
 export async function loadFinancialEdit(kind: "receber" | "pagar", value: string) {
+  await requireUser();
   const id = parseRecordId(value);
   if (kind === "receber") return loadPaymentForm(id);
   if (kind === "pagar") return loadPayableForm(id);

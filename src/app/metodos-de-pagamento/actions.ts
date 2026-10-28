@@ -1,10 +1,13 @@
 "use server";
 
+import { requireUser } from "@/lib/auth";
+
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { createMethod, validateMethod } from "@/lib/metodos-pagamento";
 
 export async function saveMethod(_previous: { success: boolean; message: string }, form: FormData) {
+  await requireUser();
   const nome = String(form.get("nome") ?? "");
   try { validateMethod(nome); } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Verifique o nome." };

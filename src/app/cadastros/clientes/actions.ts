@@ -1,5 +1,7 @@
 "use server";
 
+import { requireUser } from "@/lib/auth";
+
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { importClients, matchClientImport, parseClientFile, type ClientImportRow } from "@/lib/client-import";
@@ -7,6 +9,7 @@ import { refreshClientPages } from "@/lib/client-cache";
 
 export type ClientImportState = { success: boolean; message: string; rows?: ClientImportRow[] };
 export async function setClientActive(id: number, ativo: boolean): Promise<ClientImportState> {
+  await requireUser();
   try {
     if (!Number.isSafeInteger(id) || id < 1 || typeof ativo !== "boolean") throw new Error("Cliente ou situação inválida.");
     await getPrisma().$transaction(async (db) => {
@@ -27,28 +30,33 @@ function failure(error: unknown) {
 }
 // A leitura da planilha somente prepara a prévia; nenhum dado é salvo nesta etapa.
 export async function previewClientImport(_state: ClientImportState, form: FormData): Promise<ClientImportState> {
+  await requireUser();
   try {
     const file = form.get("arquivo");
-    if (!(file instanceof File) || !file.size || file.size > 5 * 1024 * 1024) throw new Error("Envie uma planilha .xlsx com até 5 MB.");
+    if (!(file instanceof File) || !file.size || file.size > 5 * 1024 * 1024) throw new Error("Envie uma planilha .xlsx ou .csv com até 5 MB.");
     const rows = await matchClientImport(getPrisma(), await parseClientFile(Buffer.from(await file.arrayBuffer()), file.name));
     return { success: true, message: "Confira os clientes e os vínculos de distribuidora antes de confirmar.", rows };
   } catch (error) { return { success: false, message: failure(error) }; }
 }
 // Apenas a confirmação explícita cadastra o lote, sem criar comissões ou alterar clientes existentes.
 export async function confirmClientImport(_state: ClientImportState, form: FormData): Promise<ClientImportState> {
+  await requireUser();
   try {
     const count = await getPrisma().$transaction((db) => importClients(db, JSON.parse(String(form.get("rows") ?? "[]"))), { isolationLevel: "Serializable", timeout: 30000 });
-    for (const path of ["/cadastros/clientes/visao-geral", "/cadastros/clientes", "/comissoes", "/comissoes/nova", "/comissoes/importar"]) revalidatePath(path);
-    return { success: true, message: `${count} cliente(s) cadastrado(s) com sucesso.` };
+    for (const path of ["/", "/cadastros/clientes/visao-geral", "/cadastros/clientes", "/comissoes", "/comissoes/nova", "/comissoes/importar"]) revalidatePath(path);
+    return { success: true, message: count > 0
+      ? `${count} cliente(s) novo(s) cadastrado(s) com sucesso. Os cadastros já existentes foram preservados.`
+      : "Nenhum cliente novo para cadastrar. Os cadastros já existentes foram preservados." };
   } catch (error) { return { success: false, message: failure(error) }; }
 }
 
 // A remoção preserva comissões existentes: o banco bloqueia clientes com vínculos.
 export async function removeClient(id: number): Promise<ClientImportState> {
+  await requireUser();
   try {
     if (!Number.isSafeInteger(id) || id < 1) throw new Error("Cliente inválido.");
     await getPrisma().cliente.delete({ where: { id } });
-    for (const path of ["/cadastros/clientes", "/cadastros/clientes/visao-geral", "/comissoes", "/comissoes/nova", "/comissoes/importar"]) revalidatePath(path);
+    for (const path of ["/", "/cadastros/clientes", "/cadastros/clientes/visao-geral", "/comissoes", "/comissoes/nova", "/comissoes/importar"]) revalidatePath(path);
     return { success: true, message: "Cliente removido com sucesso." };
   } catch (error) {
     if (error && typeof error === "object" && "code" in error) {

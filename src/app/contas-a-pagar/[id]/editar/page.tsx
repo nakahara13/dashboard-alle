@@ -1,9 +1,11 @@
+import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { PayableForm } from "@/components/payable-form";
 import { getPrisma } from "@/lib/prisma";
 import { parseRecordId } from "@/lib/record-id";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
   let id: bigint;
   try { id = parseRecordId((await params).id); } catch { notFound(); }
   const db = getPrisma();

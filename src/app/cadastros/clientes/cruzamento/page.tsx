@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: "Cruzamento de clientes | Financeiro 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  await requireUser();
   let distributors;
   try { distributors = await getPrisma().distribuidora.findMany({ select: { id: true, nome: true }, orderBy: { nome: "asc" } }); }
   catch { return <p role="alert" className="rounded-xl bg-danger-soft p-4 text-sm text-danger-ink">Não foi possível carregar as distribuidoras. Atualize a página e tente novamente.</p>; }

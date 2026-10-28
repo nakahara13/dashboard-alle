@@ -20,7 +20,10 @@ export function parsePayableFilters(params: HistoryParams) {
   if (values.descricao.length > 500) throw new Error("Descrição excede o tamanho permitido.");
   if (values.descricao) where.descricao = { contains: values.descricao, mode: "insensitive" };
 
-  if (values.competencia) where.competencia = parseCompetence(values.competencia);
+  if (values.competencia) {
+    values.competencia = parseCompetence(values.competencia);
+    where.competencia = values.competencia;
+  }
   if (values.status) {
     if (!PAYABLE_STATUSES.some((status) => status === values.status)) throw new Error("Selecione Pago ou Pendente.");
     where.status = values.status;

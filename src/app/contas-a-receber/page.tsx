@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import styles from "./receivables.module.css";
 import { CreateRecord } from "@/components/management-drawer";
 import { ReceivablesHistory } from "@/components/receivables-history";
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Contas a receber | Financeiro Alle" 
 export const dynamic = "force-dynamic";
 
 export default async function Page({ searchParams }: { searchParams: Promise<HistoryParams> }) {
+  await requireUser();
   const params = await searchParams;
   let partners;
   let types;

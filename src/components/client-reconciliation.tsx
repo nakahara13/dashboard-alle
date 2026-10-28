@@ -80,9 +80,9 @@ function Session({ distributors, onDone }: { distributors: { id: number; nome: s
       <form action={action} className="mt-5 space-y-5">
         <fieldset disabled={pending} className="grid gap-5 sm:grid-cols-2">
           <label className="grid gap-2 text-sm">Clientes que esta planilha representa *<select name="escopo" required defaultValue="" className={field}><option value="" disabled>Selecione o escopo</option>{distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}<option value="sem-vinculo">Clientes sem distribuidora</option><option value="todos">Toda a base de clientes (todas as distribuidoras)</option></select></label>
-          <label className="grid gap-2 text-sm">Planilha mensal XLSX *<input name="arquivo" type="file" accept=".xlsx" required className={`${field} py-2`} /></label>
+          <label className="grid gap-2 text-sm">Planilha mensal XLSX ou CSV *<input name="arquivo" type="file" accept=".xlsx,.csv" required className={`${field} py-2`} /></label>
         </fieldset>
-        <p className="text-xs text-muted-ink">Até 5 MB e 5.000 linhas, na primeira aba. Cabeçalho UC, Instalação ou Unidade consumidora na primeira linha. Outras colunas são ignoradas. Preserve zeros iniciais usando texto; remova totais e linhas sem UC.</p>
+        <p className="text-xs text-muted-ink">Até 5 MB e 5.000 linhas. XLSX: primeira aba. CSV: UTF-8, separado por vírgula ou ponto e vírgula. Cabeçalho UC, Instalação ou Unidade consumidora na primeira linha. Outras colunas são ignoradas. Preserve zeros iniciais usando texto; remova totais e linhas sem UC.</p>
         <button disabled={pending} className={button}>{pending ? "Cruzando dados…" : "Cruzar dados e revisar"}</button>
       </form>
       <div className="mt-4"><Notice state={state} /></div>

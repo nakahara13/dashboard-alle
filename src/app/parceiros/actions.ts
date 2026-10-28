@@ -1,10 +1,13 @@
 "use server";
 
+import { requireUser } from "@/lib/auth";
+
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { createPartner, validatePartner } from "@/lib/parceiros";
 
 export async function savePartner(_previous: { success: boolean; message: string }, form: FormData) {
+  await requireUser();
   const input = { nome: String(form.get("nome") ?? ""), documento: String(form.get("documento") ?? ""), email: String(form.get("email") ?? ""), telefone: String(form.get("telefone") ?? "") };
   try { validatePartner(input); } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Verifique os dados." };

@@ -1,8 +1,8 @@
 "use client";
 import clientStyles from "@/app/cadastros/clientes/client-registration.module.css";
 import { useDrawerFeedback } from "@/components/management-drawer";
-import { useActionState, useState } from "react";
-import { saveCommissionAction, saveCommissionCatalog, previewCommissionImport, confirmCommissionImport, type State } from "@/app/comissoes/actions";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { saveCommissionAction, saveCommissionCatalog, previewCommissionImport, confirmCommissionImport, type ImportConfirmState, type State } from "@/app/comissoes/actions";
 import type { CommissionRow } from "@/lib/comissao-module";
 import type { ImportRow } from "@/lib/comissao-import";
 import { PARTNER_COMMISSION } from "@/lib/commission-rules";
@@ -101,9 +101,18 @@ export function ClientCommissionCatalog({ options }: { options: CommissionOption
   </form>;
 }
 
-function ImportPreview({ initialRows, generator, generatorName, competence, options, total, onCancel }: { initialRows: ImportRow[]; generator: string; generatorName: string; competence: string; options: CommissionOptions; total: string; onCancel: () => void }) {
+type ImportPreviewProps = { initialRows: ImportRow[]; generator: string; generatorName: string; competence: string; options: CommissionOptions; onCancel: () => void };
+function ImportPreview(props: ImportPreviewProps) {
+  const [session, setSession] = useState({ rows: props.initialRows, revision: 0 });
+  return <ImportPreviewSession {...props} key={session.revision} initialRows={session.rows} onReturnToSelection={(rows) => setSession((current) => ({ rows, revision: current.revision + 1 }))} />;
+}
+function ImportPreviewSession({ initialRows, generator, generatorName, competence, options, onCancel, onReturnToSelection }: ImportPreviewProps & { onReturnToSelection: (rows: ImportRow[]) => void }) {
   const [rows, setRows] = useState(initialRows);
-  const [state, action, pending] = useActionState(confirmCommissionImport, initial);
+  const [state, action, pending] = useActionState(confirmCommissionImport, initial as ImportConfirmState);
+  const reviewing = !state.success && !!state.conflicts?.length && !!state.reviewKey;
+  const reviewTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (reviewing) reviewTitle.current?.focus(); }, [reviewing, state.reviewKey]);
+  const currency = (value: string | number) => Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const clientsById = new Map(options.clients.map((client) => [String(client.id), client]));
   const partnersById = new Map(options.partners.map((partner) => [partner.id, partner.nome]));
   const partnerForClient = (id: string) => {
@@ -111,32 +120,43 @@ function ImportPreview({ initialRows, generator, generatorName, competence, opti
     return client?.parceiro_id ?? client?.unidade?.parceiro_id ?? null;
   };
   const mismatchedDistributor = (row: ImportRow) => {
+    if (row.existente) return false;
     const client = clientsById.get(row.cliente_id);
     return !!client?.distribuidora_id && !!row.distribuidora_id && String(client.distribuidora_id) !== row.distribuidora_id;
   };
   const identified = rows.filter((row) => row.cliente_id).length;
-  const selected = rows.filter((row) => !row.excluir);
+  const selected = rows.filter((row) => row.excluir === false);
+  const selectedTotal = selected.reduce((sum, row) => sum + Math.round(Number(row.empresa) * 100), 0) / 100;
   const ids = selected.map((row) => row.cliente_id);
   const repeated = new Set(ids).size !== ids.length;
-  const unresolved = selected.some((row) => clientsById.get(row.cliente_id)?.ativo === false || !row.cliente_id || !row.distribuidora_id || mismatchedDistributor(row) || row.erro || row.duplicada);
+  const unresolved = selected.some((row) => clientsById.get(row.cliente_id)?.ativo === false || !row.cliente_id || (!row.existente && !row.distribuidora_id) || mismatchedDistributor(row) || row.erro || row.duplicada || row.legado);
   const setRow = (index: number, changes: Partial<ImportRow>) => setRows((current) => current.map((row, i) => i === index ? { ...row, ...changes } : row));
   return <form action={action} className="mt-5 space-y-4">
     <input name="geradora_id" type="hidden" value={generator} />
-    <p className="text-sm font-medium">Geradora pagadora: {generatorName} · Competência: {competence.split("-").reverse().join("/")}</p><input name="competencia" type="hidden" value={competence} /><input name="rows" type="hidden" value={JSON.stringify(rows)} />
-    <p className="text-sm">{rows.length} registros encontrados · {identified} clientes identificados · {rows.length - identified} não identificados · {rows.filter((row) => row.duplicada).length} duplicatas · Total das comissões: {Number(total).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
-    <p className="text-sm text-muted-ink">Duplicatas e linhas inválidas estão desmarcadas. Clientes inativos precisam ser reativados antes da importação. Vincule os clientes e as distribuidoras não identificados ou desmarque suas linhas. As comissões entram como pendentes. A comissão do parceiro será sempre R$ 2,00, inclusive sem unidade ou beneficiário vinculado. A coluna Comissão parceiro da planilha é ignorada.</p>
-    <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Importar", "Linha", "UC", "CPF / CNPJ", "Distribuidora", "Cliente / vínculo manual", "Unidade Allp Fit / gestor", "Economia", "Comissão da empresa", "Comissão do gestor / parceiro", "Situação"].map((label) => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.linha} className={`border-t border-line ${row.erro || row.duplicada || !row.cliente_id ? "bg-danger-soft" : ""}`}>
-      <td className="p-3"><input aria-label={`Importar linha ${row.linha}`} type="checkbox" disabled={pending || state.success || !!row.erro || row.duplicada} checked={!row.excluir} onChange={(event) => setRow(index, { excluir: !event.target.checked })} /></td><td className="p-3">{row.linha}</td><td className="p-3">{row.uc || "—"}</td>
-      <td className="p-3">{row.cpf || "—"}</td><td className="min-w-56 p-3"><select aria-label={`Distribuidora da linha ${row.linha}`} value={row.distribuidora_id ?? ""} disabled={pending || state.success || !!row.erro || row.duplicada} onChange={(event) => setRow(index, { distribuidora_id: event.target.value })} className={fieldClass}><option value="">Não identificada{row.distribuidora ? `: ${row.distribuidora}` : ""}</option>{options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></td>
-      <td className="min-w-64 p-3"><select aria-label={`Cliente da linha ${row.linha}`} value={row.cliente_id} disabled={pending || state.success || !!row.erro || row.duplicada} onChange={(event) => setRow(index, { cliente_id: event.target.value, distribuidora_id: row.distribuidora_id || (!row.distribuidora ? String(clientsById.get(event.target.value)?.distribuidora_id ?? "") : "") })} className={fieldClass}><option value="">Cliente não identificado{row.nome ? `: ${row.nome}` : ""}</option>{options.clients.filter((client) => client.ativo || rows.some((row) => row.cliente_id === String(client.id))).map((client) => <option disabled={!client.ativo} value={client.id} key={client.id}>{client.nome} · {client.uc}{!client.ativo && " (Inativo)"}</option>)}</select></td>
-      <td className="min-w-48 p-3">{clientsById.get(row.cliente_id)?.unidade?.nome ?? "Sem unidade vinculada"}<p className="text-xs text-muted-ink">{partnersById.get(partnerForClient(row.cliente_id) ?? -1) ?? "Sem gestor / parceiro vinculado"}</p></td>
-      <td className="p-3">{row.economia}</td><td className="p-3">{row.empresa}</td><td className="p-3">{row.parceiro}</td><td className="min-w-48 p-3">{row.erro || (row.duplicada ? row.legado ? "Comissão antiga sem geradora — atribua a geradora nos detalhes antes de importar" : "Comissão duplicada — não será importada" : !row.distribuidora_id ? "Distribuidora não identificada" : !row.cliente_id ? "Cliente não identificado" : clientsById.get(row.cliente_id)?.ativo === false ? "Cliente inativo — reative antes de importar" : mismatchedDistributor(row) ? "Distribuidora difere do cadastro da UC — confira o vínculo" : !partnerForClient(row.cliente_id) ? "Pronto para importar — beneficiário ainda não vinculado" : "Identificado")}</td>
-    </tr>)}</tbody></table></div>
-    <p className="text-sm">{selected.length} registro(s) selecionado(s).{repeated && " O mesmo cliente/UC foi selecionado em mais de uma linha para esta geradora e competência; desmarque a duplicata."}</p>
-    <Notice state={state} />
+    <p className="text-sm font-medium">Geradora pagadora: {generatorName} · Competência: {competence.split("-").reverse().join("/")}</p><input name="competencia" type="hidden" value={competence} /><input name="rows" type="hidden" value={JSON.stringify(selected)} />
+    <p className="text-sm">{rows.length} registros encontrados · {identified} clientes identificados · {rows.length - identified} não identificados · {rows.filter((row) => row.existente).length} já cadastradas · {rows.filter((row) => row.duplicada).length} duplicatas</p>
+    <p className="text-sm text-muted-ink">Somente as comissões marcadas serão registradas. Quando já existir uma comissão para o mesmo cliente, geradora e competência, você poderá conferir os valores e confirmar a substituição. Repetições dentro da planilha e linhas inválidas estão desmarcadas. Vincule clientes e distribuidoras não identificados ou desmarque suas linhas. Novas comissões entram como pendentes, com comissão do parceiro de R$ 2,00; a coluna Comissão parceiro da planilha é ignorada. Substituições preservam os status, as datas e os vínculos financeiros existentes.</p>
+    {reviewing ? <section aria-labelledby="commission-overwrite-title" className="space-y-4 rounded-xl border border-accent-line bg-accent-soft p-5">
+      <h2 id="commission-overwrite-title" ref={reviewTitle} tabIndex={-1} className="text-lg font-semibold text-primary">Deseja substituir as comissões de {competence.split("-").reverse().join("/")} pelos valores desta planilha?</h2>
+      <p className="text-sm text-secondary">Encontramos {state.conflicts!.length} comissão(ões) já cadastrada(s) para {generatorName}. Confira os valores atuais e os novos antes de confirmar.</p>
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface"><table className="w-full text-left text-sm"><caption className="sr-only">Comissões que serão substituídas</caption><thead><tr>{["Cliente / UC", "Economia atual", "Nova economia", "Comissão atual", "Nova comissão"].map((label) => <th scope="col" key={label} className="whitespace-nowrap p-3 font-semibold">{label}</th>)}</tr></thead><tbody>{state.conflicts!.map((conflict) => <tr key={conflict.id} className="border-t border-line"><td className="min-w-48 p-3"><p className="font-medium">{conflict.nome}</p><p className="text-xs text-muted-ink">UC {conflict.uc} · Linha {conflict.linha}</p><p className="mt-1 text-xs text-muted-ink">Parceiro: {currency(conflict.parceiro_atual)} → {currency(conflict.parceiro_novo)}</p></td><td className="whitespace-nowrap p-3 text-muted-ink">{currency(conflict.economia_atual)}</td><td className="whitespace-nowrap p-3 font-medium">{currency(conflict.economia_nova)}</td><td className="whitespace-nowrap p-3 text-muted-ink">{currency(conflict.empresa_atual)}</td><td className="whitespace-nowrap p-3 font-semibold">{currency(conflict.empresa_nova)}</td></tr>)}</tbody></table></div>
+      <p className="text-sm font-medium">Total das comissões a substituir: {currency(state.conflicts!.reduce((sum, conflict) => sum + Math.round(Number(conflict.empresa_atual) * 100), 0) / 100)} → {currency(state.conflicts!.reduce((sum, conflict) => sum + Math.round(Number(conflict.empresa_nova) * 100), 0) / 100)}.</p>
+      <p className="text-sm text-secondary">A confirmação substitui somente as comissões selecionadas e importa as novas linhas marcadas. Recebimentos, pagamentos e vínculos financeiros serão preservados.</p>
+      <input type="hidden" name="review_key" value={state.reviewKey} />
+      <input type="hidden" name="overwrite" value={JSON.stringify(state.conflicts!.map(({ id, fingerprint }) => ({ id, fingerprint })))} />
+    </section> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{["Importar", "Linha", "UC", "CPF / CNPJ", "Distribuidora", "Cliente / vínculo manual", "Unidade Allp Fit / gestor", "Economia", "Comissão da empresa", "Comissão do gestor / parceiro", "Situação"].map((label) => <th key={label} className="p-3">{label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={row.linha} className={`border-t border-line ${row.erro || row.duplicada || row.legado || !row.cliente_id ? "bg-danger-soft" : row.existente ? "bg-accent-soft" : ""}`}>
+      <td className="p-3"><input aria-label={`Importar linha ${row.linha}`} type="checkbox" disabled={pending || state.success || !!row.erro || row.duplicada || row.legado} checked={row.excluir === false} onChange={(event) => setRow(index, { excluir: !event.target.checked })} /></td><td className="p-3">{row.linha}</td><td className="p-3">{row.uc || "—"}</td>
+      <td className="p-3">{row.cpf || "—"}</td><td className="min-w-56 p-3"><select aria-label={`Distribuidora da linha ${row.linha}`} value={row.distribuidora_id ?? ""} disabled={pending || state.success || !!row.erro || row.duplicada || row.legado || !!row.existente} onChange={(event) => setRow(index, { distribuidora_id: event.target.value })} className={fieldClass}><option value="">Não identificada{row.distribuidora ? `: ${row.distribuidora}` : ""}</option>{options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select>{row.existente && <p className="mt-1 text-xs text-muted-ink">A distribuidora do registro será mantida.</p>}</td>
+      <td className="min-w-64 p-3"><select aria-label={`Cliente da linha ${row.linha}`} value={row.cliente_id} disabled={pending || state.success || !!row.erro || row.duplicada || row.legado} onChange={(event) => setRow(index, { cliente_id: event.target.value, existente: undefined, distribuidora_id: row.distribuidora_id || (!row.distribuidora ? String(clientsById.get(event.target.value)?.distribuidora_id ?? "") : "") })} className={fieldClass}><option value="">Cliente não identificado{row.nome ? `: ${row.nome}` : ""}</option>{options.clients.filter((client) => client.ativo || rows.some((row) => row.cliente_id === String(client.id))).map((client) => <option disabled={!client.ativo} value={client.id} key={client.id}>{client.nome} · {client.uc}{!client.ativo && " (Inativo)"}</option>)}</select></td>
+      <td className="min-w-48 p-3">{clientsById.get(row.cliente_id)?.unidade?.nome ?? "Sem unidade vinculada"}<p className="text-xs text-muted-ink">{row.existente ? "O gestor / parceiro da comissão será mantido" : partnersById.get(partnerForClient(row.cliente_id) ?? -1) ?? "Sem gestor / parceiro vinculado"}</p></td>
+      <td className="p-3">{row.economia}</td><td className="p-3">{row.empresa}</td><td className="p-3">{row.existente ? "Conferir na substituição" : row.parceiro}</td><td className="min-w-48 p-3">{row.erro || (row.legado ? "Comissão antiga sem geradora — atribua a geradora nos detalhes antes de importar" : row.duplicada ? "UC repetida na planilha — não será importada" : !row.cliente_id ? "Cliente não identificado" : clientsById.get(row.cliente_id)?.ativo === false ? "Cliente inativo — reative antes de importar" : row.existente ? `Já cadastrada: ${currency(row.existente.empresa)} — a substituição exige confirmação` : !row.distribuidora_id ? "Distribuidora não identificada" : mismatchedDistributor(row) ? "Distribuidora difere do cadastro da UC — confira o vínculo" : !partnerForClient(row.cliente_id) ? "Pronto para importar — beneficiário ainda não vinculado" : "Identificado")}</td>
+    </tr>)}</tbody></table></div>}
+    <p role="status" className="text-sm">{selected.length} registro(s) selecionado(s) · {rows.length - selected.length} linha(s) desmarcada(s) · Total a importar: {selectedTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.{repeated && " O mesmo cliente/UC foi selecionado em mais de uma linha para esta geradora e competência; desmarque a duplicata."}</p>
+    <Notice state={reviewing ? { success: true, message: state.message } : state} />
     {/* Cancelar descarta a prévia; durante a gravação, aguarda o resultado da transação. */}
     <div className="flex flex-wrap items-center gap-4">
-      <button disabled={pending || state.success || unresolved || repeated || !selected.length} className={buttonClass}>{pending ? "Importando…" : "Confirmar importação"}</button>
+      <button disabled={pending || state.success || unresolved || repeated || !selected.length} className={buttonClass}>{pending ? reviewing ? "Substituindo…" : "Importando…" : reviewing ? "Sim, substituir e importar" : "Confirmar importação"}</button>
+      {reviewing && <button type="button" disabled={pending} onClick={() => onReturnToSelection(rows)} className="rounded-lg border border-line px-5 py-3 text-sm font-semibold text-secondary hover:bg-muted disabled:opacity-60">Voltar à seleção</button>}
       {!state.success && <button type="button" disabled={pending} onClick={onCancel} className="rounded-lg border border-line px-5 py-3 text-sm font-semibold text-secondary hover:bg-muted disabled:opacity-60">Cancelar importação</button>}
     </div>
   </form>;
@@ -146,7 +166,7 @@ function CommissionImportSession({ options, onCancel }: { options: CommissionOpt
   // A página de importação exibe o fluxo diretamente, sem um segundo dropdown.
   return <section className="rounded-2xl border border-line bg-surface p-5">
     <form action={action} className="mt-5"><fieldset disabled={pending} className="grid gap-4 sm:grid-cols-3"><Select name="geradora_id" label="Geradora que paga à Alle *" options={options.generators} required /><label className="grid gap-2 text-sm">Competência *<input type="month" name="competencia" required className={fieldClass} /></label><label className="grid gap-2 text-sm">Arquivo CSV ou XLSX *<input type="file" name="arquivo" accept=".csv,.xlsx" required className={fieldClass} /></label></fieldset><p className="mt-3 text-xs text-muted-ink">Até 500 registros e 5 MB. Primeira aba, cabeçalhos na primeira linha: Nome cooperado, CPF (ou CNPJ/CPF), Unidade consumidora, Distribuidoras (ou Distirbuidoras), Economia mês e Valor a pagar. Também aceita UC, Economia e Comissão. A comissão do parceiro é fixa em R$ 2,00; uma coluna com esse valor será ignorada. Valor a pagar corresponde à comissão da empresa. Valores numéricos são arredondados por linha para centavos; o total pode diferir do total calculado sobre valores sem arredondamento. A geradora selecionada vale para todo o arquivo. A distribuidora da coluna é usada por linha; sem essa coluna, usamos a distribuidora cadastrada para a UC ou o vínculo manual no preview. Preserve zeros iniciais da UC como texto. CSV em UTF-8; valores como 120,00 ou 120.00.</p><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Lendo arquivo…" : "Visualizar importação"}</button></form>
-    <Notice state={state} />{state.rows && <ImportPreview key={JSON.stringify(state)} initialRows={state.rows} generator={state.geradora_id!} generatorName={state.geradora_nome!} competence={state.competencia!} total={state.total!} options={options} onCancel={onCancel} />}
+    <Notice state={state} />{state.rows && <ImportPreview key={JSON.stringify(state)} initialRows={state.rows} generator={state.geradora_id!} generatorName={state.geradora_nome!} competence={state.competencia!} options={options} onCancel={onCancel} />}
   </section>;
 }
 

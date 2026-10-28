@@ -115,9 +115,32 @@ model Usuario {
   nome String @db.VarChar(255)
   email String @unique @db.VarChar(255)
   role UserRole @default(gestor)
+  senha_hash String? @db.VarChar(255)
   criado_em DateTime @default(now()) @db.Timestamptz(6)
+  sessoes SessaoUsuario[]
 
   @@map("usuarios")
+}
+
+model SessaoUsuario {
+  token_hash String @id @db.VarChar(64)
+  usuario_id Int
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  expira_em DateTime @db.Timestamptz(6)
+  criado_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([usuario_id])
+  @@index([expira_em])
+  @@map("sessoes_usuarios")
+}
+
+model LoginTentativa {
+  chave String @id @db.VarChar(64)
+  tentativas Int @default(0)
+  iniciada_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([iniciada_em])
+  @@map("tentativas_login")
 }
 
 model Cliente {

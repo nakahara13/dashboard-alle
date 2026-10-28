@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import { Dashboard } from "@/components/dashboard";
 import { getPrisma } from "@/lib/prisma";
@@ -7,6 +8,7 @@ export const metadata: Metadata = { title: "Dashboard | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Home({ searchParams }: { searchParams: Promise<DashboardParams> }) {
+  await requireUser();
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
   let range = dashboardRange({}, today);
   let error: string | null = null;
@@ -22,6 +24,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
         const payables = await db.contaPagar.aggregate({ where: { vencimento: dates, status: "Pendente" }, _sum: { valor: true } });
         const commissionEntries = await db.comissao.aggregate({ where: { data_recebimento: dates, status_recebimento: "Recebido" }, _sum: { valor_comissao_empresa: true } });
         const commissionExits = await db.comissao.aggregate({ where: { data_pagamento: dates, status_pagamento: "Pago" }, _sum: { valor_comissao_parceiro: true } });
+        const students = await db.cliente.groupBy({ by: ["ativo"], _count: true });
         const { monthly, points } = trendBuckets(range.start, range.end);
         const buckets = new Map(points.map((point) => [point.date, point]));
         let incoming = 0; let outgoing = 0;
@@ -37,7 +40,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
           const point = buckets.get(row.vencimento.toISOString().slice(0, monthly ? 7 : 10));
           if (point) point.saidas = Math.round(point.saidas * 100 + cents) / 100;
         }
-        return { pendingIncoming: Number(receivables._sum.valor_total?.toFixed(2) ?? 0), pendingOutgoing: Number(payables._sum.valor?.toFixed(2) ?? 0), incoming: incoming / 100, outgoing: outgoing / 100, balance: (incoming - outgoing) / 100, commissionIncoming: Number(commissionEntries._sum.valor_comissao_empresa?.toFixed(2) ?? 0), commissionOutgoing: Number(commissionExits._sum.valor_comissao_parceiro?.toFixed(2) ?? 0), entriesCount: entries.reduce((sum, row) => sum + row._count, 0), exitsCount: exits.reduce((sum, row) => sum + row._count, 0), points, monthly };
+        return { activeStudents: students.find((group) => group.ativo)?._count ?? 0, inactiveStudents: students.find((group) => !group.ativo)?._count ?? 0, pendingIncoming: Number(receivables._sum.valor_total?.toFixed(2) ?? 0), pendingOutgoing: Number(payables._sum.valor?.toFixed(2) ?? 0), incoming: incoming / 100, outgoing: outgoing / 100, balance: (incoming - outgoing) / 100, commissionIncoming: Number(commissionEntries._sum.valor_comissao_empresa?.toFixed(2) ?? 0), commissionOutgoing: Number(commissionExits._sum.valor_comissao_parceiro?.toFixed(2) ?? 0), entriesCount: entries.reduce((sum, row) => sum + row._count, 0), exitsCount: exits.reduce((sum, row) => sum + row._count, 0), points, monthly };
       }, { isolationLevel: "RepeatableRead" });
     } catch { error = "Não foi possível carregar os indicadores. Verifique a conexão e tente novamente."; }
   }

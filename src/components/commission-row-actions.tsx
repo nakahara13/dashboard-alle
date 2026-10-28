@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ManagementDrawer, RecordDetails } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
 import { CommissionForm, type CommissionOptions } from "@/components/commission-forms";
+import { ClientPaymentHistory } from "@/components/client-payment-history";
 import type { CommissionRow } from "@/lib/comissao-module";
 import { formatMoney } from "@/lib/recebimentos-filtros";
 
@@ -44,6 +45,7 @@ function CommissionDetails({ row, options, onClose, onSaved, initialEditing }: {
       {editing ? <CommissionForm options={options} row={row} /> : <>
         <RecordDetails items={details} />
         {Number(row.margem) <= 0 && <p role="status" className="mt-5 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">Atenção: margem zero ou negativa.</p>}
+        <ClientPaymentHistory clientId={row.cliente_id} />
         <button type="button" onClick={() => setEditing(true)} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Editar comissão</button>
       </>}
     </div>

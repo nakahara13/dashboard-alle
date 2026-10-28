@@ -1,5 +1,7 @@
 "use server";
 
+import { requireUser } from "@/lib/auth";
+
 import { getPrisma } from "@/lib/prisma";
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
@@ -8,6 +10,7 @@ import { createPayment, validatePayment, type PaymentInput } from "@/lib/pagamen
 export type PaymentState = { success: boolean; message: string };
 
 export async function savePayment(_previous: PaymentState, form: FormData): Promise<PaymentState> {
+  await requireUser();
   let id: bigint | undefined;
   try {
     if (form.has("id")) id = parseRecordId(String(form.get("id")));
@@ -42,6 +45,7 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
 }
 
 export async function deletePayment(id: string) {
+  await requireUser();
   try {
     await getPrisma().criar_pagamento.delete({ where: { id_do_registro: parseRecordId(id) } });
     revalidatePath("/contas-a-receber");

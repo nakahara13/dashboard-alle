@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import { CreateRecord, ManagementHeader } from "@/components/management-drawer";
 import { ManagementRowActions } from "@/components/management-row-actions";
 import type { Metadata } from "next";
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: "Contas bancárias | Financeiro Alle"
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  await requireUser();
   let accounts;
   try { accounts = await getPrisma().contaBancaria.findMany({ orderBy: [{ nome: "asc" }, { id: "asc" }] }); } catch {
     return <p role="alert">Não foi possível carregar as contas bancárias. Verifique a conexão e tente novamente.</p>;

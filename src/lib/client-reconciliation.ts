@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { createHash } from "node:crypto";
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizeUC, positiveId } from "./comissao-module";
+import { readClientWorksheet } from "./client-spreadsheet";
 
 const MAX_ROWS = 5000;
 type Db = Pick<Prisma.TransactionClient, "cliente" | "distribuidora">;
@@ -14,10 +15,7 @@ const header = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f
 
 // Só a UC é necessária: fórmulas e linhas incompletas bloqueiam o cruzamento inteiro.
 export async function parseReconciliationFile(buffer: Buffer, filename: string) {
-  if (!/\.xlsx$/i.test(filename)) throw new Error("Envie uma planilha .xlsx.");
-  const book = new ExcelJS.Workbook();
-  await book.xlsx.load(buffer as unknown as Parameters<typeof book.xlsx.load>[0]);
-  const sheet = book.worksheets[0];
+  const sheet = await readClientWorksheet(buffer, filename);
   if (!sheet || sheet.rowCount < 2) throw new Error("A planilha não contém clientes.");
   if (sheet.rowCount > MAX_ROWS + 1 || sheet.columnCount > 100) throw new Error("Use até 5.000 linhas de dados e 100 colunas por arquivo.");
   const columns: number[] = [];

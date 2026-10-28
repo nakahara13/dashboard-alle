@@ -4,7 +4,7 @@ import { useId, useState, useTransition, type FormEvent } from "react";
 import { ManagementDrawer, RecordDetails, useDrawerFeedback } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
 import { saveManagement, removeManagement } from "@/app/gestao/actions";
-import { USER_ROLES } from "@/lib/usuarios";
+import { USER_ROLES } from "@/lib/user-fields";
 import type { ManagementKind } from "@/lib/gestao";
 
 const titles = { unidade: "unidade", distribuidora: "distribuidora", parceiro: "parceiro", conta: "conta bancária", metodo: "método de pagamento", tipo: "tipo", usuario: "usuário" };
@@ -34,7 +34,10 @@ function ManagementEditForm({ kind, record, onSaved }: { kind: ManagementKind; r
   }
   return <>
     <form onSubmit={submit}>
-      <fieldset disabled={pending} className="mt-5 grid gap-5 sm:grid-cols-2">{fields(kind).map((field) => <div key={field.name}><label htmlFor={`${prefix}-${field.name}`} className="mb-2 block text-sm font-medium">{field.label}{field.required ? " *" : ""}</label><input id={`${prefix}-${field.name}`} name={field.name} defaultValue={record[field.name] ?? ""} required={field.required} maxLength={field.max} type={field.type ?? "text"} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></div>)}{kind === "usuario" && <div><label htmlFor={`${prefix}-role`} className="mb-2 block text-sm font-medium">Perfil *</label><select id={`${prefix}-role`} name="role" required defaultValue={record.role ?? "gestor"} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">{USER_ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>}</fieldset>
+      <fieldset disabled={pending} className="mt-5 grid gap-5 sm:grid-cols-2">{fields(kind).map((field) => <div key={field.name}><label htmlFor={`${prefix}-${field.name}`} className="mb-2 block text-sm font-medium">{field.label}{field.required ? " *" : ""}</label><input id={`${prefix}-${field.name}`} name={field.name} defaultValue={record[field.name] ?? ""} required={field.required} maxLength={field.max} type={field.type ?? "text"} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></div>)}{kind === "usuario" && <>
+        <div><label htmlFor={`${prefix}-role`} className="mb-2 block text-sm font-medium">Perfil *</label><select id={`${prefix}-role`} name="role" required defaultValue={record.role ?? "gestor"} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">{USER_ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>
+        <div><label htmlFor={`${prefix}-senha`} className="mb-2 block text-sm font-medium">Nova senha</label><input id={`${prefix}-senha`} name="senha" type="password" autoComplete="new-password" minLength={8} maxLength={128} aria-describedby={`${prefix}-senha-help`} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /><p id={`${prefix}-senha-help`} className="mt-2 text-xs text-muted-ink">Deixe em branco para manter a senha. Uma alteração encerra as sessões deste usuário.</p></div>
+      </>}</fieldset>
       {error && <p role="alert" className="mt-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">{error}</p>}
       <div className="mt-6 flex gap-4"><button disabled={pending} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{pending ? "Salvando…" : "Salvar alterações"}</button></div>
     </form>

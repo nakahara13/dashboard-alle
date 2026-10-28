@@ -87,7 +87,7 @@ async function main() {
       await assert.rejects(() => createPayment(tx, {} as Parameters<typeof createPayment>[1], paid.entrada_id!), /módulo Comissões/);
       await assert.rejects(() => createPayable(tx, {} as Parameters<typeof createPayable>[1], paid.saida_id!), /módulo Comissões/);
       const matched = await matchImport(tx, csv.map((row, i) => ({ ...row, uc: i === 0 || i === 3 ? marker : row.uc })), generator.id, "2026-09");
-      assert.ok(matched[0].duplicada); assert.ok(matched[3].duplicada); assert.equal(matched[1].cliente_id, "");
+      assert.equal(matched[0].duplicada, false); assert.equal(matched[0].existente?.id, String(changed.id)); assert.ok(matched[3].duplicada); assert.equal(matched[1].cliente_id, "");
       const manual = { ...matched[1], cliente_id: String(other.id), distribuidora_id: String(distributor.id) };
       assert.equal(await importCommissions(tx, [manual], String(generator.id), "2026-09"), 1);
       const imported = await tx.comissao.findUniqueOrThrow({ where: { cliente_id_geradora_id_competencia: { cliente_id: other.id, geradora_id: generator.id, competencia: "2026-09" } } });
@@ -97,6 +97,32 @@ async function main() {
       const unlinkedCommission = await tx.comissao.findUniqueOrThrow({ where: { cliente_id_geradora_id_competencia: { cliente_id: unlinked.id, geradora_id: generator.id, competencia: "2026-09" } } });
       assert.equal(unlinkedCommission.parceiro_id, null); assert.equal(unlinkedCommission.valor_comissao_parceiro.toFixed(2), "2.00");
       assert.equal(unlinkedCommission.status_pagamento, "Pendente"); assert.equal(unlinkedCommission.margem.toFixed(2), "8.00");
+      // Só as linhas marcadas são gravadas; as demais não validam nem alteram vínculos.
+      const markedClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-marked` } });
+      const uncheckedClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-unchecked` } });
+      const markedRow = { ...manual, linha: 10, cliente_id: String(markedClient.id), excluir: false };
+      const uncheckedRow = { ...manual, linha: 11, cliente_id: String(uncheckedClient.id), excluir: true };
+      const beforeSelection = await tx.comissao.count();
+      assert.equal(await importCommissions(tx, [
+        uncheckedRow,
+        { ...matched[0], excluir: true }, // Duplicata já registrada.
+        { ...matched[2], excluir: true }, // Linha inválida.
+        { ...manual, linha: 12, cliente_id: "", distribuidora_id: "", excluir: true },
+        markedRow,
+        { ...markedRow, linha: 13, excluir: true },
+      ], String(generator.id), "2026-09"), 1);
+      assert.equal(await tx.comissao.count(), beforeSelection + 1);
+      assert.equal(await tx.comissao.count({ where: { cliente_id: markedClient.id } }), 1);
+      assert.equal(await tx.comissao.count({ where: { cliente_id: uncheckedClient.id } }), 0);
+      assert.deepEqual(await tx.cliente.findUniqueOrThrow({ where: { id: uncheckedClient.id } }), uncheckedClient);
+      assert.deepEqual(await tx.comissao.findUniqueOrThrow({ where: { id: changed.id } }), changed);
+      await assert.rejects(() => importCommissions(tx, [uncheckedRow, { ...markedRow, excluir: true }], String(generator.id), "2026-09"), /Selecione pelo menos um registro/);
+      await assert.rejects(() => importCommissions(tx, [], String(generator.id), "2026-09"), /Selecione pelo menos um registro/);
+      assert.equal(await tx.comissao.count(), beforeSelection + 1);
+      // Remarcar uma linha antes da confirmação inclui essa comissão no lote.
+      assert.equal(await importCommissions(tx, [{ ...uncheckedRow, excluir: false }, { ...markedRow, excluir: true }], String(generator.id), "2026-09"), 1);
+      assert.equal(await tx.comissao.count({ where: { cliente_id: uncheckedClient.id } }), 1);
+      assert.equal(await tx.comissao.count(), beforeSelection + 2);
       await assert.rejects(() => importCommissions(tx, [{ ...matched[1], excluir: false }], String(generator.id), "2026-10"), /Vincule/);
       const forSecondGenerator = await saveCommission(tx, { ...input, geradora_id: String(secondGenerator.id) });
       assert.equal(forSecondGenerator.geradora_id, secondGenerator.id);
@@ -105,7 +131,7 @@ async function main() {
       const newGeneratorPreview = await matchImport(tx, [{ ...csv[0], uc: marker, distribuidora: distributor.nome }], secondGenerator.id, "2026-10");
       assert.equal(newGeneratorPreview[0].duplicada, false);
       const duplicatePreview = await matchImport(tx, [{ ...csv[0], uc: marker, distribuidora: distributor.nome }, { ...csv[0], linha: 3, uc: marker, distribuidora: secondDistributor.nome }], generator.id, "2026-09");
-      assert.ok(duplicatePreview.every((row) => row.duplicada));
+      assert.equal(duplicatePreview[0].duplicada, false); assert.equal(duplicatePreview[0].existente?.id, String(changed.id)); assert.ok(duplicatePreview[1].duplicada);
       const legacyClient = await tx.cliente.create({ data: { nome: marker, uc: `${marker}-legacy` } });
       const legacy = await tx.comissao.create({ data: { cliente_id: legacyClient.id, distribuidora_id: distributor.id, competencia: "2026-09", valor_economia: "350", valor_comissao_empresa: "120", valor_comissao_parceiro: "0", margem: "120" } });
       assert.equal(legacy.geradora_id, null);
@@ -197,7 +223,7 @@ async function main() {
     const generator = await tx.geradora.create({ data: { nome: marker } });
     const row = { ...csv[1], cliente_id: String(client.id), distribuidora_id: String(distributor.id), parceiro: "0", excluir: false };
     await importCommissions(tx, [row, row], String(generator.id), "2026-09");
-  }), (error: unknown) => error instanceof Error && error.message.includes("Já existe uma comissão"));
+  }), (error: unknown) => error instanceof Error && /repet|duplic|mesmo cliente|mais de uma/i.test(error.message));
   // The database also enforces the generator key, independent of application checks.
   await assert.rejects(() => db.$transaction(async (tx) => {
     const client = await tx.cliente.create({ data: { nome: marker, uc: marker } });
@@ -213,6 +239,6 @@ async function main() {
   assert.equal(await db.geradora.count({ where: { nome: { startsWith: marker } } }), 0);
   assert.equal(await db.unidadeAllpFit.count({ where: { nome: { startsWith: marker } } }), 0);
   assert.equal(await db.parceiro.count({ where: { nome: marker } }), 0);
-  console.log("PASSOU: margem decimal, CSV/XLSX, duplicatas, rollback, geradora, origem Allp Fit, legado, pagamento/recebimento independentes, lotes independentes de pagamento e recebimento, entradas sincronizadas, saídas preservadas e gestor opcional.");
+  console.log("PASSOU: margem decimal, CSV/XLSX, importação somente das linhas marcadas, linhas desmarcadas sem alterações, seleção vazia, duplicatas, rollback, geradora, origem Allp Fit, legado, pagamento/recebimento independentes, lotes independentes de pagamento e recebimento, entradas sincronizadas, saídas preservadas e gestor opcional.");
 }
 void main().catch((error) => { console.error(error instanceof Error ? error.message : "Teste falhou."); process.exitCode = 1; }).finally(() => db.$disconnect());

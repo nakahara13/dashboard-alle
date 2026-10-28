@@ -1,3 +1,4 @@
+import { requireUser } from "@/lib/auth";
 import { CreateRecord, ManagementHeader } from "@/components/management-drawer";
 import { ManagementRowActions } from "@/components/management-row-actions";
 import type { Metadata } from "next";
@@ -8,6 +9,7 @@ export const metadata: Metadata = { title: "Métodos de pagamento | Financeiro A
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  await requireUser();
   let methods;
   try { methods = await getPrisma().metodoPagamento.findMany({ orderBy: { nome: "asc" } }); } catch (error) {
     console.error("Falha ao carregar métodos de pagamento", {

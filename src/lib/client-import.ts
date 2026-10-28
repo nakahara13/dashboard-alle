@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { normalizeClientCpf } from "./clientes";
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizeUC, positiveId } from "./comissao-module";
+import { readClientWorksheet } from "./client-spreadsheet";
 
 export type ClientImportRow = { linha: number; uc: string; nome: string; cpf?: string; distribuidora: string; distribuidora_id: string; erro: string; duplicada: boolean; excluir: boolean };
 type ImportDb = Pick<Prisma.TransactionClient, "cliente" | "distribuidora">;
@@ -9,10 +10,7 @@ const normalizeHeader = (value: string) => value.trim().normalize("NFD").replace
 
 // Lê UC, nome, distribuidora e CPF opcional; dados financeiros continuam ignorados.
 export async function parseClientFile(buffer: Buffer, filename: string): Promise<ClientImportRow[]> {
-  if (!/\.xlsx$/i.test(filename)) throw new Error("Envie uma planilha .xlsx.");
-  const book = new ExcelJS.Workbook();
-  await book.xlsx.load(buffer as unknown as Parameters<typeof book.xlsx.load>[0]);
-  const sheet = book.worksheets[0];
+  const sheet = await readClientWorksheet(buffer, filename);
   if (!sheet || sheet.rowCount < 2) throw new Error("A planilha não contém clientes.");
   if (sheet.rowCount > 501 || sheet.columnCount > 100) throw new Error("Use até 500 linhas de dados e 100 colunas por arquivo.");
   const columns = (aliases: string[], optional = false) => {
@@ -80,7 +78,7 @@ export async function matchClientImport(db: ImportDb, rows: ClientImportRow[]) {
   });
 }
 
-// Revalida também o CPF na confirmação, evitando salvar valores inválidos do payload.
+// Cadastra somente os novos selecionados; cadastros existentes permanecem intactos.
 // A transação da ação garante que um erro não deixe um lote parcialmente cadastrado.
 export async function importClients(db: ImportDb, payload: unknown) {
   if (!Array.isArray(payload) || !payload.length || payload.length > 500) throw new Error("Prévia inválida. Envie a planilha novamente.");
@@ -88,20 +86,30 @@ export async function importClients(db: ImportDb, payload: unknown) {
     if (!raw || typeof raw !== "object") throw new Error("Linha inválida.");
     const item = raw as Record<string, unknown>;
     if (typeof item.excluir !== "boolean") throw new Error("Seleção inválida.");
-    if (item.excluir) return null;
-    if (["uc", "nome", "distribuidora", "distribuidora_id"].some((key) => typeof item[key] !== "string") || item.erro || item.duplicada) throw new Error("Desmarque as linhas inválidas ou duplicadas.");
+    if (item.excluir || item.duplicada === true) return null;
+    if (["uc", "nome", "distribuidora", "distribuidora_id"].some((key) => typeof item[key] !== "string") || item.erro) throw new Error("Desmarque as linhas inválidas.");
     if (item.cpf !== undefined && typeof item.cpf !== "string") throw new Error("CPF inválido na prévia.");
     const row = { cpf: normalizeClientCpf((item.cpf as string | undefined) ?? ""), uc: normalizeUC(item.uc as string), nome: (item.nome as string).trim(), distribuidora: (item.distribuidora as string).trim(), distribuidora_id: positiveId(item.distribuidora_id as string) };
     validateClientValues(row);
     return row;
   }).filter((row) => row !== null);
   if (!rows.length) throw new Error("Selecione pelo menos um cliente.");
-  if (new Set(rows.map((row) => row.uc)).size !== rows.length) throw new Error("Há UCs repetidas no lote. Desmarque as duplicatas.");
-  const ids = [...new Set(rows.map((row) => row.distribuidora_id))];
+  const seen = new Set<string>();
+  const candidates = rows.filter((row) => {
+    if (seen.has(row.uc)) return false;
+    seen.add(row.uc);
+    return true;
+  });
+  const existing = await db.cliente.findMany({ where: { uc: { in: candidates.map((row) => row.uc) } }, select: { uc: true } });
+  const existingUCs = new Set(existing.map((row) => normalizeUC(row.uc)));
+  const newClients = candidates.filter((row) => !existingUCs.has(row.uc));
+  if (!newClients.length) return 0;
+  const ids = [...new Set(newClients.map((row) => row.distribuidora_id))];
   const distributors = await db.distribuidora.findMany({ where: { id: { in: ids } }, select: { id: true } });
   if (distributors.length !== ids.length) throw new Error("Selecione distribuidoras cadastradas válidas.");
-  const existing = await db.cliente.count({ where: { uc: { in: rows.map((row) => row.uc) } } });
-  if (existing) throw new Error("Uma UC já está cadastrada. Atualize a prévia antes de confirmar.");
-  for (const row of rows) await db.cliente.create({ data: { uc: row.uc, nome: row.nome, cpf: row.cpf, distribuidora_id: row.distribuidora_id } });
-  return rows.length;
+  const created = await db.cliente.createMany({
+    data: newClients.map((row) => ({ uc: row.uc, nome: row.nome, cpf: row.cpf, distribuidora_id: row.distribuidora_id })),
+    skipDuplicates: true,
+  });
+  return created.count;
 }

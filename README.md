@@ -2,11 +2,21 @@
 
 Base do sistema financeiro com Next.js (App Router), TypeScript, Tailwind CSS, PostgreSQL e Prisma.
 
-A interface usa branco e laranja, com detalhes em roxo. Inclui sidebar responsiva e formulário de recebimentos em Contas a receber e páginas vazias de contas a pagar, comissões, usuários, alertas, anexos de NF e auditoria. A rota inicial abre o dashboard, sem redirecionamento.
+A interface usa branco e laranja, com detalhes em roxo. A sidebar responsiva organiza os módulos em Financeiro (Contas a receber, Contas a pagar, Comissões e Clientes), Gestão (Cadastros, Tipos de Pagamento, Contas bancárias e Métodos de pagamento) e Controle (Usuários e Auditoria). Configurações e Auditoria possuem páginas iniciais vazias. A rota inicial abre o dashboard após a autenticação.
 
 O dashboard consulta a soma real de `valor_total` em `criar_pagamento`, filtrando por `data_do_pagamento`. Entradas representam os recebimentos registrados, sem inferir liquidação pelo campo livre de status. Registros sem data não entram no resumo diário. Balanço, saídas e alertas ficam indisponíveis até suas fontes serem implementadas. Não há dados ou gráficos simulados; Recharts permanece instalado para gráficos futuros.
 
-O cabeçalho informa que não há usuário conectado. A interface ainda não possui login. A API HTTP usa uma credencial interna Bearer, conforme a documentação abaixo.
+A interface exige login em `/login`, com a identidade visual e a logo do sistema. A sidebar identifica o usuário conectado e permite sair da conta. A API HTTP usa uma credencial interna Bearer independente das sessões da interface, conforme a documentação abaixo.
+
+## Autenticação
+
+Execute `npm run db:deploy` para aplicar a migração de autenticação. As senhas usam scrypt com salt aleatório; nenhum valor em texto puro é gravado no banco. Sessões duram 12 horas e ficam no PostgreSQL, com apenas o hash do token armazenado. O navegador recebe um cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção; sirva a aplicação de produção por HTTPS. Páginas e ações verificam a sessão no servidor. Após cinco tentativas por e-mail em 15 minutos, novas tentativas são bloqueadas até o fim desse período; login válido limpa o contador.
+
+Para preparar um administrador, configure temporariamente `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` e `BOOTSTRAP_ADMIN_NAME` no ambiente e execute `npm run auth:admin`. O comando cria ou atualiza esse usuário como Admin e revoga suas sessões anteriores. Não mantenha a senha em arquivos versionados. Não há cadastro público nem usuário padrão criado automaticamente no início da aplicação.
+
+Administradores criam, editam e excluem usuários em **Controle → Usuários**, incluindo a definição de senha (8 a 128 caracteres). Gestores acessam os demais módulos. Usuários existentes sem senha recebem acesso depois que um administrador define sua senha na edição. Alterações de senha, e-mail ou perfil revogam as sessões do usuário; o último administrador com senha não pode ser excluído ou rebaixado.
+
+Validação: `npm run auth:test` testa senhas e regras de gestão de usuários; `node --import tsx scripts/test-auth.ts --db` inclui sessões, expiração e bloqueio no banco. Com o servidor local em execução, `npm run auth:test:http` valida o fluxo HTTP e remove os usuários temporários ao final. Use `ALLE_AUTH_BASE` para indicar uma porta diferente de `http://127.0.0.1:3000`.
 
 ## Desenvolvimento
 
@@ -107,7 +117,7 @@ Referências: [Next.js](https://nextjs.org/docs/app/getting-started/installation
 
 Em **Contas a receber**, o formulário grava na tabela existente `criar_pagamento` por uma Server Action e Prisma. Valores monetários são enviados como decimais, IDs como BigInt e datas como datas sem horário. O ID do registro é gerado pelo banco e exibido após salvar.
 
-`npm run db:test-payment` testa criação, leitura e rollback usando o mesmo serviço do formulário. Não mantém registros de teste, mas a sequência de IDs pode avançar. O teste não aplica migrações. A interface ainda não possui login; o Bearer da API protege apenas as rotas `/api/v1`.
+`npm run db:test-payment` testa criação, leitura e rollback usando o mesmo serviço do formulário. Não mantém registros de teste, mas a sequência de IDs pode avançar. O teste não aplica migrações. A interface exige sessão autenticada; o Bearer da API protege as rotas `/api/v1` de forma independente.
 
 ## Parceiros
 
@@ -151,11 +161,19 @@ Os cadastros dentro do módulo permitem criar ou editar geradoras, distribuidora
 
 Na importação CSV/XLSX, selecione a geradora e a competência para todo o arquivo. A coluna Distribuidoras representa a distribuidora de cada UC, sem alterar a geradora pagadora. Na ausência dessa coluna, a distribuidora pode vir do cliente cadastrado ou do vínculo manual no preview. Os cabeçalhos do modelo de recorrência são aceitos: Nome Cooperado, CNPJ/CPF, Unidades Consumidoras, Distribuidoras, Economia Mês (R$) e Valor a pagar. O preview permite conferir cliente, distribuidora, unidade de origem e gestor antes de confirmar. Não há criação automática de clientes ou distribuidoras.
 
+Ao importar novamente a mesma competência e geradora, as comissões já existentes para as UCs selecionadas entram em uma conferência de substituição. A tela mostra economia e comissão atuais e os novos valores da planilha; só grava após **Sim, substituir e importar**. **Voltar à seleção** permite desmarcar registros, e **Cancelar importação** não grava o lote. Clientes ausentes da planilha e linhas desmarcadas permanecem sem alterações. Repetições de UC dentro do mesmo arquivo continuam bloqueadas.
+
+A substituição atualiza o mesmo registro, recalcula a margem e sincroniza o valor da entrada financeira vinculada. Mantém competência, geradora, distribuidora, beneficiário, status, datas e vínculos financeiros. Valores já pagos ao parceiro são preservados; comissões pendentes seguem a regra de R$ 2,00. Antes de gravar, o servidor confere novamente os valores e exige nova confirmação se a comissão ou a seleção tiver mudado. O lote inteiro é salvo na mesma transação.
+
 A entrada financeira identifica a geradora como pagadora; a saída identifica o gestor/parceiro como favorecido. Geração e vínculo de movimentos ocorrem junto com a comissão, na mesma transação, com proteção contra duplicidade. Valores numéricos da planilha são arredondados por linha para centavos; a soma pode diferir do total calculado sobre valores sem arredondamento.
 
 A migration `20261005000200_geradoras_unidades` preserva comissões e movimentos existentes, deixando a geradora antiga como não informada. A página destaca esses registros para atribuição manual da geradora correta. Uma comissão antiga sem geradora bloqueia um novo cadastro/importação do mesmo cliente e competência até ser completada. A distribuidora antiga só é copiada ao cadastro do cliente quando inequívoca.
 
 `npm run db:test-commissions` verifica os fluxos e as regras financeiras com rollback. `npm run db:test-commission-upgrade` reproduz a migration em um schema isolado com dados antigos, verifica a preservação dos registros e desfaz todo o schema por rollback.
+
+`npm run db:test-commission-overwrite` verifica confirmação obrigatória, substituição sem duplicar registros, preservação de pagamentos, sincronização da entrada, conflitos após alterações e rollback do lote.
+
+Com o servidor local em execução, `npm run db:test-commission-overwrite:http` valida as ações reais de prévia e confirmação, incluindo alterações após a conferência. Cria registros temporários identificados por UUID e os remove ao final. O endereço padrão é `http://127.0.0.1:3000`; use `ALLE_COMMISSION_BASE` para outra porta local.
 
 ## Cruzamento mensal de clientes
 
