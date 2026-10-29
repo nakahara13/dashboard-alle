@@ -2,6 +2,8 @@
 
 Base do sistema financeiro com Next.js (App Router), TypeScript, Tailwind CSS, PostgreSQL e Prisma.
 
+Para hospedar a aplicação em containers no Easypanel e transferir o banco local preservando os dados, siga o [guia de primeiro deploy](docs/deploy-easypanel.md). O projeto inclui um Dockerfile de produção, um modelo de variáveis em `.env.easypanel.example` e `npm run db:export` para gerar a cópia do PostgreSQL.
+
 A interface usa branco e laranja, com detalhes em roxo. A sidebar responsiva organiza os módulos em Financeiro (Contas a receber, Contas a pagar, Comissões e Clientes), Gestão (Cadastros, Tipos de Pagamento, Contas bancárias e Métodos de pagamento) e Controle (Usuários e Auditoria). Configurações e Auditoria possuem páginas iniciais vazias. A rota inicial abre o dashboard após a autenticação.
 
 O dashboard consulta a soma real de `valor_total` em `criar_pagamento`, filtrando por `data_do_pagamento`. Entradas representam os recebimentos registrados, sem inferir liquidação pelo campo livre de status. Registros sem data não entram no resumo diário. Balanço, saídas e alertas ficam indisponíveis até suas fontes serem implementadas. Não há dados ou gráficos simulados; Recharts permanece instalado para gráficos futuros.

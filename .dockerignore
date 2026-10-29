@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+coverage
+.git
+.agents
+.codex
+.aws
+.env*
+backups
+docs
+*.log
+*.tsbuildinfo
+*.dump
+*.sql.gz
