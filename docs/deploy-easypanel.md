@@ -113,7 +113,7 @@ Dentro do projeto `dashboard-alle`, crie **New Service → App**, com o nome `ap
 | Builder | Dockerfile |
 | Dockerfile | `Dockerfile` |
 | Porta interna | `3000` |
-| Comando de execução | Manter o padrão da imagem: `node server.js` |
+| Comando de execução | Deixar vazio para usar o padrão da imagem, com validação de configuração e inicialização do servidor |
 
 Para repositório privado, configure a integração GitHub ou uma deploy key de leitura conforme a opção Source escolhida. Mantenha Auto Deploy desabilitado durante a primeira transferência, para controlar a ordem de restauração e publicação.
 
@@ -128,6 +128,10 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 O token autentica integrações da API. Os usuários da interface entram com e-mail e senha do banco restaurado. As credenciais são fornecidas ao container pelo painel e não devem ser adicionadas ao Dockerfile ou ao Git.
 
 Selecione **Deploy** e acompanhe a saída do build e os logs da aplicação. O build gera o cliente Prisma e compila o Next.js; ele não aplica migrations nem restaura o banco. A imagem executa como usuário sem privilégios de root e inclui as ferramentas necessárias para a manutenção pela Shell.
+
+A inicialização verifica o formato de `DATABASE_URL` e `PORT` e escuta em `0.0.0.0`. Uma variável ausente ou inválida produz uma mensagem de configuração nos logs, sem expor credenciais. O processo usa `tini` para encaminhar sinais e permitir o encerramento correto em atualizações. O build limita a dois os workers configuráveis do Next.js; a compilação ainda precisa de memória livre no servidor.
+
+Deixe o comando de execução do Easypanel vazio para usar a inicialização da imagem. Um comando antigo como `npm start` ou `node server.js` substitui essa inicialização. A configuração da porta interna continua sendo `3000`.
 
 ## 6. Conferir a conexão e as migrations
 
@@ -166,7 +170,7 @@ O login usa cookies `Secure` em produção e precisa ser acessado por HTTPS. A a
 - Reinicie os serviços novos e confirme que os dados continuam disponíveis.
 - Execute um backup do destino e teste a recuperação em outro banco de ensaio.
 
-O healthcheck da imagem verifica a página `/login` e a disponibilidade HTTP. A conexão do banco é validada separadamente por `db:check` ou por `/api/v1/health` com autenticação Bearer.
+O healthcheck da imagem verifica `/api/health`, uma rota HTTP leve que não acessa o banco nem renderiza a interface. Se o Easypanel tiver um healthcheck HTTP configurado no serviço, use também esse caminho. A conexão do banco é validada separadamente por `db:check` ou por `/api/v1/health` com autenticação Bearer. Assim uma interrupção temporária do PostgreSQL não provoca reinícios contínuos da aplicação.
 
 Depois da validação, use o endereço de produção para novos lançamentos. Mantenha o banco local como cópia de referência, sem continuar gravando nos dois ambientes.
 
@@ -177,6 +181,26 @@ Configure backups do serviço `database` para armazenamento externo ao servidor,
 Para atualizar o sistema: faça backup, publique o código, acompanhe o deploy, execute `npm run db:deploy` na Shell da nova versão antes de retomar o uso e valide as telas afetadas. Em alterações que exigem suspender gravações, mantenha a aplicação em manutenção durante a atualização. Os scripts cadastrados na aba Scripts são atalhos manuais da Shell; não devem ser tratados como hooks automáticos de pré-deploy.
 
 Uma versão anterior da imagem pode ajudar a reverter o código. Para reverter mudanças do banco, é preciso um plano próprio, considerando o backup e os dados gravados desde então.
+
+## Testar a imagem antes de publicar
+
+Em uma máquina com Docker, construa a imagem e rode a verificação:
+
+```sh
+docker build -t localhost/dashboard-alle:production-check .
+npm run container:test
+```
+
+Se usar Podman:
+
+```sh
+podman build --format docker -t localhost/dashboard-alle:production-check .
+CONTAINER_ENGINE=podman npm run container:test
+```
+
+O teste cria um PostgreSQL 18 com volume próprio, em uma rede isolada, sem ler o `.env` local. Ele aplica as migrations, prepara um administrador de teste, valida login, páginas financeiras, assets e gravação pela API. Depois faz 100 requisições em lotes de 10, com a aplicação limitada a 512 MiB e 1 CPU, interrompe e recupera o banco e verifica reinício, persistência e encerramento por SIGTERM. Os containers, a rede e o volume criados pelo teste são removidos ao terminar.
+
+Essa carga confirma o funcionamento nesses cenários. Dimensione a RAM de produção considerando a quantidade de usuários, as importações de planilhas e os demais projetos no servidor. O build tem consumo diferente da execução e precisa de capacidade própria.
 
 ## Referências
 

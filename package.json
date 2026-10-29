@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "container:test": "node scripts/test-container.mjs",
     "api:token": "node scripts/create-api-token.mjs",
     "auth:admin": "node --import tsx scripts/bootstrap-admin.ts",
     "auth:test": "node --import tsx scripts/test-auth.ts && node --import tsx scripts/test-user-access.ts",

@@ -2,7 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  experimental: { serverActions: { bodySizeLimit: "6mb" } },
+  experimental: {
+    cpus: 2,
+    serverActions: { bodySizeLimit: "6mb" },
+  },
 };
 
 export default nextConfig;
