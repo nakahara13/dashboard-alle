@@ -177,6 +177,20 @@ A migration `20261005000200_geradoras_unidades` preserva comissões e movimentos
 
 Com o servidor local em execução, `npm run db:test-commission-overwrite:http` valida as ações reais de prévia e confirmação, incluindo alterações após a conferência. Cria registros temporários identificados por UUID e os remove ao final. O endereço padrão é `http://127.0.0.1:3000`; use `ALLE_COMMISSION_BASE` para outra porta local.
 
+## Sincronização de unidades pelo Bitrix
+
+Em **Clientes → Visão geral**, o botão **Sincronizar unidades com Bitrix** verifica todos os clientes cadastrados, incluindo inativos e independentemente dos filtros e da paginação. A consulta usa o CPF do cadastro nos negócios do funil **Negócios | Alle Energia** (categoria 42), considerando CPF com e sem máscara. Os negócios são somente consultados; a integração não escreve no CRM.
+
+Configure `BITRIX_WEBHOOK_URL` no ambiente do servidor com a URL privada de um webhook de entrada que tenha acesso de leitura aos negócios. A credencial não deve ter prefixo `NEXT_PUBLIC_`, nem ser incluída no código. Os campos verificados para este portal são `BITRIX_CPF_FIELD=UF_CRM_1753823473272` e `BITRIX_UNIT_FIELD=UF_CRM_1761834580685` (Academia Allp Fit); o funil pode ser definido por `BITRIX_DEAL_CATEGORY_ID=42`. As variáveis estão nos exemplos de ambiente, inclusive para o serviço App do Easypanel.
+
+A sincronização preenche clientes sem unidade e substitui unidades diferentes da encontrada. Compara os nomes ignorando acentos, caixa e pontuação, com quatro equivalências confirmadas: Glória - Vila Velha - ES → Gloria - ES; Vila Velha - ES → Vila Velha Itaparica - ES; Tirol - MG → Tirol - BH; Vila Zeferina - SP → Itaquaquecetuba Vila Zeferina - SP. Não cria unidades automaticamente. Negócios do mesmo CPF com unidades diferentes são relatados como conflito, sem escolher o mais recente. Uma unidade vazia no Bitrix não apaga o vínculo atual.
+
+O modal mostra progresso, unidades preenchidas, substituídas, já corretas e todas as pendências com cliente, UC, CPF e motivo, incluindo clientes não encontrados. CPFs ausentes/inválidos, unidades desconhecidas e alterações concorrentes são pulados. A gravação altera exclusivamente `unidade_id`, preservando o parceiro específico, as comissões e os movimentos existentes. Cadastros, importações e regras financeiras mantêm o comportamento atual.
+
+Cada lote de até 25 clientes conclui as consultas paginadas do CRM antes de gravar em uma transação. Uma falha no CRM ou na gravação interrompe o processamento sem salvar o lote incompleto; os lotes anteriores permanecem salvos. Se a conexão com o navegador cair após o envio, o último lote pode ter sido salvo sem confirmação. Reiniciar a sincronização é seguro: vínculos já corretos são reconhecidos sem nova gravação.
+
+Validação sem acesso à base real: `npm run test:client-unit-sync`. O teste cobre regras de resolução, concorrência, paginação, filtros e falhas da API com respostas simuladas.
+
 ## Cruzamento mensal de clientes
 
 Em **Clientes → Cruzamento de dados** (`/cadastros/clientes/cruzamento`), envie a lista completa de clientes atuais e escolha a distribuidora, os clientes sem distribuidora ou toda a base. A primeira aba do XLSX deve ter cabeçalho UC, Instalação ou Unidade consumidora; aceita até 5 MB, 5.000 linhas e 100 colunas. Outras colunas são ignoradas. Preserve zeros iniciais como texto e remova totais/linhas incompletas. Fórmulas e UCs inválidas bloqueiam a comparação; repetições são consolidadas.

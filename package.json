@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:client-unit-sync": "node --conditions=react-server --import tsx scripts/test-client-unit-sync.ts",
     "container:test": "node scripts/test-container.mjs",
     "api:token": "node scripts/create-api-token.mjs",
     "auth:admin": "node --import tsx scripts/bootstrap-admin.ts",

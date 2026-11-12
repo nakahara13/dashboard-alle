@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
 import { clientFilters, clientPresenceOptions } from "@/lib/clientes";
 import { ClientRowActions, CreateClient } from "@/components/client-row-actions";
+import { ClientUnitSync } from "@/components/client-unit-sync";
 import styles from "../../catalog-list.module.css";
 
 export const metadata: Metadata = { title: "Visão geral de clientes | Financeiro Alle" };
@@ -46,7 +47,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   return <div className={styles.page}>
     <header className={styles.header}>
       <div><h1 className="border-l-4 border-accent pl-3">Visão geral de clientes</h1><p>Consulte quem consta em cada competência e abra Visualizar para ver o histórico mensal do cliente.</p></div>
-      <div className={styles.headerActions}><Link href="/cadastros/clientes/cruzamento" className="rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Cruzar planilha mensal</Link><Link href="/cadastros/clientes" className="rounded-lg border border-line px-4 py-3 text-sm text-secondary hover:bg-muted">Importar / cadastro completo</Link><CreateClient options={options} /></div>
+      <div className={styles.headerActions}><ClientUnitSync /><Link href="/cadastros/clientes/cruzamento" className="rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Cruzar planilha mensal</Link><Link href="/cadastros/clientes" className="rounded-lg border border-line px-4 py-3 text-sm text-secondary hover:bg-muted">Importar / cadastro completo</Link><CreateClient options={options} /></div>
     </header>
     <section className={styles.panel}>
       <h2>Clientes ({data.count})</h2>
