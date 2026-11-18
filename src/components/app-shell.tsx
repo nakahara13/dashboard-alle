@@ -11,25 +11,23 @@ import { logoutAction } from "@/app/logout/actions";
 
 // Os grupos com filhos aparecem como dropdowns e mantêm rotas próprias para cada tarefa.
 type NavigationItem = { title: string; href: string; icon: string; children?: { title: string; href: string }[] };
-const navigation: { label: string; icon?: string; items: NavigationItem[] }[] = [
-  { label: "Visão geral", items: [
+const navigation: { label: string; icon?: string; primary?: boolean; items: NavigationItem[] }[] = [
+  { label: "Principal", primary: true, items: [
     { title: "Dashboard", href: "/", icon: "dashboard" },
-  ] },
-  { label: "Financeiro", icon: "finance", items: [
-    { title: "Contas a receber", href: "/contas-a-receber", icon: "receive" },
-    { title: "Contas a pagar", href: "/contas-a-pagar", icon: "pay" },
     { title: "Comissões", href: "/comissoes", icon: "commission", children: [
       { title: "Visão geral", href: "/comissoes" },
-      { title: "Importar comissões", href: "/comissoes/importar" },
+      { title: "Cadastrar comissão", href: "/comissoes/importar" },
     ] },
+    { title: "Contas a pagar", href: "/contas-a-pagar", icon: "pay" },
+    { title: "Contas a receber", href: "/contas-a-receber", icon: "receive" },
     { title: "Clientes", href: "/cadastros/clientes/visao-geral", icon: "users", children: [
       { title: "Visão geral", href: "/cadastros/clientes/visao-geral" },
-      { title: "Cruzamento de dados", href: "/cadastros/clientes/cruzamento" },
+      { title: "Verificação cadastral", href: "/cadastros/clientes/cruzamento" },
+      { title: "Cadastro de clientes", href: "/cadastros/clientes" },
     ] },
   ] },
   { label: "Gestão", icon: "management", items: [
     { title: "Cadastros", href: "/cadastros", icon: "partners", children: [
-      { title: "Cadastro de cliente", href: "/cadastros/clientes" },
       { title: "Cadastro de gerador", href: "/cadastros/geradores" },
       { title: "Cadastro de distribuidora", href: "/cadastros/distribuidoras" },
       { title: "Cadastro de unidades", href: "/cadastros/unidades" },
@@ -60,7 +58,7 @@ const iconPaths: Record<string, ReactNode> = {
 };
 
 function Icon({ name }: { name: string }) {
-  return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">{iconPaths[name]}</svg>;
+  return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">{iconPaths[name]}</svg>;
 }
 
 export function AppShell({ children, user }: { children: ReactNode; user: SessionUser | null }) {
@@ -70,42 +68,42 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
   // Mantém a compatibilidade com a rota de parceiros.
   const currentPath = pathname === "/parceiros" ? "/cadastros/parceiros" : pathname;
   const matchesPath = (href: string) => currentPath === href || (href !== "/" && currentPath.startsWith(`${href}/`));
-  // Prioriza a rota exata para reconhecer Clientes em Financeiro, mesmo sob /cadastros.
-  const currentGroup = navigation.find((group) => group.items.some((item) => item.href === currentPath || item.children?.some((child) => child.href === currentPath)))
-    ?? navigation.find((group) => group.items.some((item) => matchesPath(item.href)));
+  // A rota mais específica mantém Clientes ativo mesmo dentro de /cadastros.
+  const currentItem = navigation.flatMap((group) => group.items)
+    .map((item) => ({ item, match: [item.href, ...(item.children?.map((child) => child.href) ?? [])].filter(matchesPath).sort((a, b) => b.length - a.length)[0] }))
+    .filter(({ match }) => match !== undefined)
+    .sort((a, b) => b.match.length - a.match.length)[0]?.item;
+  const currentGroup = navigation.find((group) => group.items.some((item) => item === currentItem));
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
       <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-surface p-3 text-accent-ink shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
-      <aside className="saas-sidebar m-4 overflow-hidden rounded-3xl border border-line bg-surface lg:sticky lg:top-4 lg:mr-0 lg:flex lg:h-[calc(100dvh-2rem)] lg:flex-col lg:self-start">
+      <aside className="saas-sidebar m-4 overflow-hidden rounded-xl border border-line lg:sticky lg:top-4 lg:mr-0 lg:flex lg:h-[calc(100dvh-2rem)] lg:flex-col lg:self-start">
         <div className="flex shrink-0 items-center justify-end px-6 py-3 lg:hidden">
           <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="sidebar-navigation" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} className="rounded-lg border border-line p-2 text-secondary lg:hidden">
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={menuOpen ? "m6 6 12 12M6 18 18 6" : "M4 6h16M4 12h16M4 18h16"} /></svg>
           </button>
         </div>
         <div id="sidebar-navigation" className={`${menuOpen ? "flex" : "hidden"} min-h-0 flex-1 flex-col lg:flex`}>
-          <nav aria-label="Menu principal" className="flex-1 space-y-4 overflow-y-auto px-[18px] pb-6 pt-5">
+          <nav aria-label="Menu principal" className="sidebar-nav flex-1 space-y-4 overflow-y-auto px-3 pb-5 pt-5">
             {navigation.map((group) => {
-              const items = <ul className="space-y-1">
+              const items = <ul className="space-y-1.5">
                   {group.items.filter((item) => item.href !== "/usuarios" || user.role === "admin").map((item) => {
-                    const active = currentGroup === group && (matchesPath(item.href) || !!item.children?.some((child) => child.href === currentPath));
+                    const active = currentItem === item;
                     // Details oferece abertura por teclado; o grupo da página atual inicia expandido.
                     if (item.children) return <li key={item.href}><details key={`${item.href}-${currentPath}`} open={active} className="group/item">
-                      <summary className={`flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden ${active ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="ml-auto size-4 transition-transform group-open/item:rotate-180"><path d="m5 7 5 5 5-5" /></svg></summary>
-                      <ul className="ml-5 mt-1 space-y-1 border-l border-line pl-2">{item.children.map((child) => {
+                      <summary className={`sidebar-link ${active ? "is-active" : ""}`}><span className="sidebar-icon"><Icon name={item.icon} /></span><span>{item.title}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="ml-auto size-3.5 shrink-0 transition-transform group-open/item:rotate-180"><path d="m5 7 5 5 5-5" /></svg></summary>
+                      <ul className="sidebar-children">{item.children.map((child) => {
                         const childActive = currentPath === child.href;
-                        return <li key={child.href}><Link href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`block rounded-lg px-3 py-2.5 text-sm ${childActive ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}>{child.title}</Link></li>;
+                        return <li key={child.href}><Link href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className="sidebar-child-link">{child.title}</Link></li>;
                       })}</ul>
                     </details></li>;
-                    return <li key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${active ? "bg-white font-bold text-black" : "text-muted-ink hover:bg-muted hover:text-primary"}`}><Icon name={item.icon} /><span>{item.title}</span>{active && <span aria-hidden="true" className="ml-auto size-1.5 rounded-full bg-current" />}</Link></li>;
+                    return <li key={item.href}><Link href={item.href} aria-current={active ? "page" : undefined} onClick={() => setMenuOpen(false)} className={`sidebar-link ${active ? "is-active" : ""}`}><span className="sidebar-icon"><Icon name={item.icon} /></span><span>{item.title}</span></Link></li>;
                   })}
                 </ul>;
               return <div key={group.label}>
-                {group.label === "Visão geral" ? <>
-                  <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink">{group.label}</p>
-                  {items}
-                </> : <details key={`${group.label}-${currentGroup?.label}`} open={currentGroup === group} className="group/section">
-                  <summary className="mb-2 flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink hover:bg-muted [&::-webkit-details-marker]:hidden">
+                {group.primary ? items : <details key={`${group.label}-${currentGroup?.label}`} open={currentGroup === group} className="group/section">
+                  <summary className="sidebar-section mb-2 flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-ink hover:bg-muted [&::-webkit-details-marker]:hidden">
                     {group.icon && <Icon name={group.icon} />}
                     <span className="flex-1">{group.label}</span>
                     <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="size-4 transition-transform group-open/section:rotate-180"><path d="m5 7 5 5 5-5" /></svg>
@@ -115,14 +113,15 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
               </div>;
             })}
           </nav>
+          <div className="sidebar-account shrink-0">
           <div className="flex shrink-0 justify-center px-6 py-5">
           <Link href="/" onClick={() => setMenuOpen(false)} aria-label="Financeiro Alle Energia — início" className="flex min-w-0 items-center gap-3 p-1">
-            <Image src={financeiroLogo} alt="" priority sizes="184px" className="h-auto w-[184px] max-w-full object-contain" />
+            <Image src={financeiroLogo} alt="" priority sizes="184px" className="sidebar-logo h-auto w-[184px] max-w-full object-contain" />
           </Link>
           </div>
           <div className="mx-[18px] mb-5 flex shrink-0 items-center gap-2 border-t border-line pt-4">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-ink"><Icon name="users" /></span>
+              <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-muted text-xs font-semibold text-primary">{user.nome.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
               <div className="min-w-0"><p className="truncate text-xs font-semibold text-secondary" title={user.email}>{user.nome}</p><p className="text-xs text-muted-ink">{user.role === "admin" ? "Administrador" : "Gestor"}</p></div>
             </div>
             <ThemeToggle />
@@ -130,6 +129,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
           <form action={logoutAction} className="mx-[18px] mb-5">
             <button className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-ink hover:bg-muted hover:text-primary"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m-7 5h12" /></svg>Sair da conta</button>
           </form>
+          </div>
         </div>
       </aside>
       <div className="flex min-w-0 flex-col">

@@ -19,6 +19,6 @@ export function UserForm() {
       <div><label htmlFor="user-role" className="mb-2 block text-sm font-medium">Perfil *</label><select id="user-role" name="role" required defaultValue="gestor" className={inputClass}>{USER_ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>
     </fieldset>
     {state.message && <p role="status" className={`mt-4 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
-    <button disabled={pending} className="mt-5 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60">{pending ? "Salvando…" : "Cadastrar usuário"}</button>
+    <button disabled={pending} className="mt-5 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60">{pending ? "Salvando…" : "Cadastrar usuário"}</button>
   </form>;
 }

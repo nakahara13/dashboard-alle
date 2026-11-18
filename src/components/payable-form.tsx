@@ -35,7 +35,7 @@ export function PayableForm({ types, partners, initial, onSaved, onCancel }: { t
       <div><label htmlFor={`${prefix}-status`} className="mb-2 block text-sm font-medium">Status *</label><select id={`${prefix}-status`} name="status" required defaultValue={initial?.status ?? "Pendente"} className={inputClass}>{PAYABLE_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></div>
     </fieldset>
     {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
-    <button disabled={pending || types.length === 0 || partners.length === 0} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar conta a pagar"}</button>
+    <button disabled={pending || types.length === 0 || partners.length === 0} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar conta a pagar"}</button>
     {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
       {initial && !onCancel && <Link href="/contas-a-pagar#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
   </form>;

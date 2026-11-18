@@ -1,3 +1,4 @@
+import { InterfaceIcon } from "@/components/interface-icon";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { money } from "@/lib/dashboard";
@@ -29,11 +30,11 @@ export function DashboardCommissionSection({ filters, dashboardRange, units = []
       <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Mês inicial<input type="month" name="comissao_inicio" required defaultValue={filters.inicio} className={fieldClass} /></label>
       <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Mês final<input type="month" name="comissao_fim" required defaultValue={filters.fim} className={fieldClass} /></label>
       <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Unidade<select name="comissao_unidade" defaultValue={filters.unidade} disabled={loading} className={fieldClass}><option value="">Todas as unidades</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</select></label>
-      <div className="flex min-h-11 items-center gap-4"><button disabled={loading} className="min-h-11 rounded-lg bg-accent px-4 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50">Aplicar filtros</button><Link href={resetHref} className="text-xs text-secondary underline underline-offset-4">Limpar</Link></div>
+      <div className="flex min-h-11 items-center gap-4"><button disabled={loading} className="min-h-11 rounded-lg bg-accent px-4 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">Aplicar filtros</button><Link href={resetHref} className="text-xs text-secondary underline underline-offset-4">Limpar</Link></div>
     </form>
     <div className="grid gap-4 md:grid-cols-2">
       <article className="flex min-h-64 min-w-0 flex-col rounded-2xl border border-accent-line bg-surface p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-accent-ink">Comissão recorrente do parceiro</h3><span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-lg font-semibold text-accent-ink">%</span></div>
+        <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-primary">Comissão recorrente do parceiro</h3><span className="dashboard-kpi-icon flex size-9 shrink-0 items-center justify-center rounded-lg"><InterfaceIcon name="commission" /></span></div>
         <p className="mt-5 text-3xl font-semibold tracking-tight tabular-nums [overflow-wrap:anywhere] sm:text-4xl">{loading ? "Carregando…" : summary ? money(Number(summary.total)) : "—"}</p>
         <p role={error ? "alert" : loading ? "status" : undefined} className={`mt-2 text-xs leading-5 ${error ? "text-danger-ink" : "text-muted-ink"}`}>{error ?? (loading ? "Carregando comissões…" : `${summary?.count ?? 0} comissão(ões) cadastrada(s) · Total dos parceiros por competência.`)}</p>
         {summary && !error && <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4"><div><dt className="text-xs text-muted-ink">Pago ao parceiro</dt><dd className="mt-1 text-base font-semibold tabular-nums [overflow-wrap:anywhere]">{money(Number(summary.paid))}</dd></div><div><dt className="text-xs text-muted-ink">A pagar ao parceiro</dt><dd className="mt-1 text-base font-semibold tabular-nums [overflow-wrap:anywhere]">{money(Number(summary.pending))}</dd></div></dl>}

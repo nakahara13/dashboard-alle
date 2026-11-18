@@ -18,6 +18,6 @@ export function PartnerForm() {
       } : undefined} required={field.required} maxLength={field.max} type={field.name === "email" ? "email" : field.name === "telefone" ? "tel" : "text"} className="min-h-11 w-full rounded-lg border border-line px-3" /></div>)}
     </fieldset>
     {state.message && <p role="status" className={`mt-4 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
-    <button disabled={pending} className="mt-5 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60">{pending ? "Salvando…" : "Cadastrar parceiro"}</button>
+    <button disabled={pending} className="mt-5 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60">{pending ? "Salvando…" : "Cadastrar parceiro"}</button>
   </form>;
 }

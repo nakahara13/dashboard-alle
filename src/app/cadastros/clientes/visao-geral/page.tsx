@@ -46,8 +46,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const presenceHref = (presence: string) => `${basePath}?${new URLSearchParams({ ...filterValues, presenca: presence })}`;
   return <div className={styles.page}>
     <header className={styles.header}>
-      <div><h1 className="border-l-4 border-accent pl-3">Visão geral de clientes</h1><p>Consulte quem consta em cada competência e abra Visualizar para ver o histórico mensal do cliente.</p></div>
-      <div className={styles.headerActions}><ClientUnitSync /><Link href="/cadastros/clientes/cruzamento" className="rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Cruzar planilha mensal</Link><Link href="/cadastros/clientes" className="rounded-lg border border-line px-4 py-3 text-sm text-secondary hover:bg-muted">Importar / cadastro completo</Link><CreateClient options={options} /></div>
+      <div><h1>Visão geral de clientes</h1><p>Consulte quem consta em cada competência e abra Visualizar para ver o histórico mensal do cliente.</p></div>
+      <div className={styles.headerActions}><ClientUnitSync /><Link href="/cadastros/clientes/cruzamento" className="rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">Cruzar planilha mensal</Link><Link href="/cadastros/clientes" className="rounded-lg border border-line px-4 py-3 text-sm text-secondary hover:bg-muted">Importar / cadastro completo</Link><CreateClient options={options} /></div>
     </header>
     <section className={styles.panel}>
       <h2>Clientes ({data.count})</h2>
@@ -60,7 +60,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
             <input type="hidden" name="status" value={filters.status} /><label className="grid gap-2 text-sm">Distribuidora<select name="distribuidora" defaultValue={filters.distributor} className={fieldClass}><option value="">Todas</option><option value="sem-vinculo">Sem distribuidora</option>{options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
             <label className="grid gap-2 text-sm">Unidade<select name="unidade" defaultValue={filters.unit} className={fieldClass}><option value="">Todas</option><option value="sem-vinculo">Sem unidade</option>{options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
             <label className="grid gap-2 text-sm">Pesquisar por nome ou CPF<input name="busca" defaultValue={filters.query} placeholder="Nome ou CPF" maxLength={255} className={fieldClass} /></label>
-            <div className="flex items-center gap-4 sm:col-span-3"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Aplicar filtros</button><Link href={basePath} className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
+            <div className="flex items-center gap-4 sm:col-span-3"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">Aplicar filtros</button><Link href={basePath} className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
           </form>
         </ManagementFilters>
       </div>

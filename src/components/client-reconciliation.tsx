@@ -7,7 +7,7 @@ import type { ReconciliationKind, ReconciliationPreview } from "@/lib/client-rec
 
 const initial: ReconciliationState = { success: false, message: "" };
 const field = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm";
-const button = "min-h-11 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60";
+const button = "min-h-11 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60";
 const groups: { kind: ReconciliationKind; label: string; description: string }[] = [
   { kind: "ausente", label: "Ausentes na planilha", description: "Ativos na base que podem ser inativados." },
   { kind: "reativar", label: "Para reativar", description: "Inativos na base que voltaram à planilha." },

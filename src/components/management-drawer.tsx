@@ -58,7 +58,7 @@ export function CreateRecord({ label, title, children }: { label: string; title:
   const [message, setMessage] = useState("");
   return <div className="flex flex-wrap items-center gap-3">
     {message && <p role="status" className="text-sm text-accent-ink">{message}</p>}
-    <button type="button" aria-haspopup="dialog" onClick={() => { setMessage(""); setOpen(true); }} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">+ {label}</button>
+    <button type="button" aria-haspopup="dialog" onClick={() => { setMessage(""); setOpen(true); }} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">+ {label}</button>
     {open && <ManagementDrawer title={title} onClose={() => setOpen(false)} onSaved={setMessage}>{children}</ManagementDrawer>}
   </div>;
 }

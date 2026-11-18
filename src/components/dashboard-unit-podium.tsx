@@ -2,9 +2,9 @@ import type { UnitCommissionPodiumEntry, UnitCommissionPodiumRange } from "@/lib
 import { money } from "@/lib/dashboard";
 
 const places = [
-  { position: "sm:col-start-2 sm:row-start-1", step: "bg-[var(--brand-orange)] text-white sm:h-32", badge: "bg-[var(--warning-soft)] text-[var(--warning-ink)]" },
+  { position: "sm:col-start-2 sm:row-start-1", step: "bg-accent text-on-accent sm:h-32", badge: "bg-accent-soft text-accent-ink" },
   { position: "sm:col-start-1 sm:row-start-1", step: "bg-subtle text-secondary sm:h-24", badge: "bg-subtle text-secondary" },
-  { position: "sm:col-start-3 sm:row-start-1", step: "bg-[var(--warning-soft)] text-[var(--warning-ink)] sm:h-16", badge: "bg-[var(--warning-soft)] text-[var(--warning-ink)]" },
+  { position: "sm:col-start-3 sm:row-start-1", step: "bg-accent-soft text-accent-ink sm:h-16", badge: "bg-accent-soft text-accent-ink" },
 ];
 
 export function DashboardUnitPodium({ range, entries = null, loading = false, error = null }: { range: UnitCommissionPodiumRange; entries?: UnitCommissionPodiumEntry[] | null; loading?: boolean; error?: string | null }) {
@@ -15,7 +15,7 @@ export function DashboardUnitPodium({ range, entries = null, loading = false, er
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <div className="flex items-center gap-2.5">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="size-6 shrink-0 text-[var(--brand-orange)]"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Z" /><path d="M8 5H5v2a4 4 0 0 0 4 4m7-6h3v2a4 4 0 0 1-4 4m-3 1v5m-4 4h8m-7 0v-3h6v3" /></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="size-6 shrink-0 text-accent-ink"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Z" /><path d="M8 5H5v2a4 4 0 0 0 4 4m7-6h3v2a4 4 0 0 1-4 4m-3 1v5m-4 4h8m-7 0v-3h6v3" /></svg>
           <h2 id="dashboard-unit-podium-title" className="text-lg font-semibold">Unidades que mais recebem comissão</h2>
         </div>
         <p className="mt-2 text-sm text-muted-ink">Comissões dos parceiros, pagas e pendentes, por competência mensal no período selecionado.</p>

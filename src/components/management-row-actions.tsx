@@ -39,7 +39,7 @@ function ManagementEditForm({ kind, record, onSaved }: { kind: ManagementKind; r
         <div><label htmlFor={`${prefix}-senha`} className="mb-2 block text-sm font-medium">Nova senha</label><input id={`${prefix}-senha`} name="senha" type="password" autoComplete="new-password" minLength={8} maxLength={128} aria-describedby={`${prefix}-senha-help`} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /><p id={`${prefix}-senha-help`} className="mt-2 text-xs text-muted-ink">Deixe em branco para manter a senha. Uma alteração encerra as sessões deste usuário.</p></div>
       </>}</fieldset>
       {error && <p role="alert" className="mt-4 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">{error}</p>}
-      <div className="mt-6 flex gap-4"><button disabled={pending} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white disabled:opacity-50">{pending ? "Salvando…" : "Salvar alterações"}</button></div>
+      <div className="mt-6 flex gap-4"><button disabled={pending} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent disabled:opacity-50">{pending ? "Salvando…" : "Salvar alterações"}</button></div>
     </form>
   </>;
 }
@@ -64,7 +64,7 @@ export function ManagementRowActions({ kind, record }: { kind: ManagementKind; r
   {mode && <ManagementDrawer title={`${mode === "edit" ? "Editar" : "Detalhes de"} ${titles[kind]}`} onClose={() => setMode(null)} onSaved={setMessage}>
     {mode === "edit" ? <ManagementEditForm kind={kind} record={record} onSaved={() => { setMessage("Alterações salvas."); }} /> : <>
       <RecordDetails items={[...fields(kind).map(field => ({ label: field.label, value: String(record[field.name] ?? "") })), ...(kind === "usuario" ? [{ label: "Perfil", value: String(record.role ?? "") }] : [])]} />
-      <button type="button" onClick={() => setMode("edit")} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-white">Editar</button>
+      <button type="button" onClick={() => setMode("edit")} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-on-accent">Editar</button>
     </>}
   </ManagementDrawer>}
   {error && <p role="alert" className="mt-2 max-w-xs whitespace-normal text-xs text-danger-ink">{error}</p>}{message && <p role="status" className="mt-2 text-xs text-accent-ink">{message}</p>}</div>;

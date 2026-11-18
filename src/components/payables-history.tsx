@@ -59,7 +59,7 @@ export async function PayablesHistory({ params, types, partners }: {
       <div><label htmlFor="history-tipo" className="mb-2 block text-sm font-medium">Tipo</label><select id="history-tipo" name="tipo" defaultValue={values.tipo} className={inputClass}><option value="">Todos os tipos</option>{types.map((type) => <option key={type.id} value={type.id}>{type.nome}</option>)}</select></div>
       <div><label htmlFor="history-competencia" className="mb-2 block text-sm font-medium">Competência</label><input id="history-competencia" type="month" name="competencia" defaultValue={values.competencia} className={inputClass} /></div>
       <div><label htmlFor="history-status" className="mb-2 block text-sm font-medium">Status</label><select id="history-status" name="status" defaultValue={values.status} className={inputClass}><option value="">Todos os status</option>{PAYABLE_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
-      <div className="flex items-center gap-4 sm:col-span-2"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover">Filtrar</button><Link href="/contas-a-pagar#historico" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
+      <div className="flex items-center gap-4 sm:col-span-2"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">Filtrar</button><Link href="/contas-a-pagar#historico" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
     </form>
     </ManagementFilters>
     </div>

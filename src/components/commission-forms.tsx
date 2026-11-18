@@ -14,7 +14,7 @@ export type CommissionOptions = {
   accounts: { id: number; nome: string }[]; methods: { id: number; nome: string }[];
 };
 const fieldClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm";
-const buttonClass = "rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60";
+const buttonClass = "rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60";
 const initial: State = { success: false, message: "" };
 function Notice({ state }: { state: State }) { return state.message ? <p role={state.success ? "status" : "alert"} className={`my-4 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p> : null; }
 function Select({ name, label, options, value, onChange, required = false, empty = "Selecione", defaultValue }: { name: string; label: string; options: { id: number; nome: string }[]; value?: string; onChange?: (value: string) => void; required?: boolean; empty?: string; defaultValue?: string }) {

@@ -6,7 +6,7 @@ import { confirmClientImport, previewClientImport, type ClientImportState } from
 import type { ClientImportRow } from "@/lib/client-import";
 
 const initial: ClientImportState = { success: false, message: "" };
-const buttonClass = "rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60";
+const buttonClass = "rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-60";
 type Distributor = { id: number; nome: string };
 function Notice({ state }: { state: ClientImportState }) {
   return state.message && <p role={state.success ? "status" : "alert"} className={`mt-4 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>;

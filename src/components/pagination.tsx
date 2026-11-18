@@ -15,7 +15,7 @@ export function Pagination({ page, pages, href, label = "Paginação" }: {
       {page > 1 ? <Link href={href(page - 1)} prefetch={false} rel="prev" className={controlClass}>Anterior</Link> : <span aria-disabled="true" className={disabledClass}>Anterior</span>}
       <ol className="flex min-w-0 gap-1 overflow-x-auto py-1" aria-label="Páginas disponíveis">
         {Array.from({ length: pages }, (_, index) => index + 1).map(number => <li key={number} className="shrink-0">
-          <Link href={href(number)} prefetch={false} aria-label={`Ir para a página ${number}`} aria-current={number === page ? "page" : undefined} className={`inline-flex size-10 items-center justify-center rounded-lg border text-sm font-medium tabular-nums ${number === page ? "border-accent bg-accent text-white" : "border-line bg-surface text-secondary hover:bg-muted"}`}>{number}</Link>
+          <Link href={href(number)} prefetch={false} aria-label={`Ir para a página ${number}`} aria-current={number === page ? "page" : undefined} className={`inline-flex size-10 items-center justify-center rounded-lg border text-sm font-medium tabular-nums ${number === page ? "border-accent bg-accent text-on-accent" : "border-line bg-surface text-secondary hover:bg-muted"}`}>{number}</Link>
         </li>)}
       </ol>
       {page < pages ? <Link href={href(page + 1)} prefetch={false} rel="next" className={controlClass}>Próxima</Link> : <span aria-disabled="true" className={disabledClass}>Próxima</span>}

@@ -53,7 +53,7 @@ export function FinancialRowActions({ id, label, kind, editData, description }: 
       <RowActionButton action="edit" label={label} type="button" disabled={pending} onClick={() => { setNotice(""); setEditing(true); }}>Editar</RowActionButton>
       <RowActionButton action="delete" label={label} type="button" disabled={pending} onClick={remove}>{pending ? "Excluindo…" : "Excluir"}</RowActionButton>
     </RowActions>
-    {viewing && <ManagementDrawer title={`Detalhes de ${label}`} onClose={() => setViewing(false)}><RecordDetails items={[{ label: "Registro", value: `#${initial.id}` }, ...details]} /><button type="button" onClick={() => { setViewing(false); setEditing(true); }} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-white">Editar</button></ManagementDrawer>}
+    {viewing && <ManagementDrawer title={`Detalhes de ${label}`} onClose={() => setViewing(false)}><RecordDetails items={[{ label: "Registro", value: `#${initial.id}` }, ...details]} /><button type="button" onClick={() => { setViewing(false); setEditing(true); }} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-on-accent">Editar</button></ManagementDrawer>}
     {editing && <FinancialEditModal data={editData} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice("Alterações salvas."); }} />}
     {notice && <p role="status" className="mt-2 text-xs text-accent-ink">{notice}</p>}
     {error && <p role="alert" className="mt-2 max-w-xs whitespace-normal text-danger-ink">{error}</p>}
