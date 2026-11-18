@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test:client-unit-sync": "node --conditions=react-server --import tsx scripts/test-client-unit-sync.ts",
+    "test:dashboard-revenue": "node --conditions=react-server --import tsx scripts/test-dashboard-revenue.ts",
+    "db:test-unit-commission-podium": "node --import tsx scripts/test-dashboard-unit-podium.ts",
     "container:test": "node scripts/test-container.mjs",
     "api:token": "node scripts/create-api-token.mjs",
     "auth:admin": "node --import tsx scripts/bootstrap-admin.ts",

@@ -164,7 +164,7 @@ button, select { cursor: pointer; }
   }
   .dashboard-kpi-incoming { --kpi-strong: var(--brand-orange); --kpi-icon: var(--brand-orange); }
   .dashboard-kpi-outgoing { background: #ffffff; border-color: var(--line); --kpi-icon: var(--brand-orange); }
-  .dashboard-kpi-commissions { --kpi-strong: var(--brand-purple); --kpi-icon: var(--brand-purple); }
+  .dashboard-kpi-revenue { --kpi-strong: var(--brand-purple); --kpi-icon: var(--brand-purple); }
   .dashboard-kpi-icon {
     background: #ffffff;
     color: var(--kpi-icon);

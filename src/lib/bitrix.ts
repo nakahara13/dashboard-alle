@@ -1,7 +1,8 @@
 import "server-only";
 import { normalizeClientCpf } from "./clientes";
+import { isoDate, parseDate } from "./dashboard";
 
-// A URL secreta é lida apenas pelas ações do servidor e nunca integra o relatório.
+// A URL secreta é lida apenas no servidor e nunca integra os dados enviados à tela.
 export type BitrixConfig = { webhookUrl: string; categoryId: number; cpfField: string; unitField: string };
 export type BitrixField = { type: string; isMultiple?: boolean; items?: { ID: string; VALUE: string }[] };
 export type BitrixDeal = Record<string, unknown>;
@@ -9,7 +10,7 @@ type BitrixResponse = { result: unknown; next?: number; error?: string };
 
 export function bitrixConfig(env: Record<string, string | undefined> = process.env): BitrixConfig {
   const webhookUrl = env.BITRIX_WEBHOOK_URL?.trim();
-  if (!webhookUrl) throw new Error("Configure BITRIX_WEBHOOK_URL no servidor para sincronizar as unidades.");
+  if (!webhookUrl) throw new Error("Configure BITRIX_WEBHOOK_URL no servidor para consultar o Bitrix.");
   try {
     const url = new URL(webhookUrl);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || !/^\/rest\/\d+\/[^/]+\/$/.test(url.pathname)) throw new Error();
@@ -34,7 +35,7 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
         });
       } catch {
         if (attempt < 2) { await wait(1000 * (attempt + 1)); continue; }
-        throw new Error("O Bitrix não respondeu. Tente sincronizar novamente.");
+        throw new Error("O Bitrix não respondeu. Tente novamente.");
       }
       let data: BitrixResponse;
       try { data = await response.json() as BitrixResponse; }
@@ -48,7 +49,7 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
       }
       return data;
     }
-    throw new Error("O Bitrix está ocupado. Tente sincronizar novamente em alguns instantes.");
+    throw new Error("O Bitrix está ocupado. Tente novamente em alguns instantes.");
   }
 
   async function unitOptions(): Promise<{ id: string; nome: string }[]> {
@@ -85,5 +86,65 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
       await wait(550);
     }
   }
-  return { unitOptions, dealsByCpf };
+
+  // Resolve as duas fases pelo nome no funil, sem inferir a fase pela semântica de ganho/perda.
+  async function revenueStageIds(): Promise<string[]> {
+    const { result } = await call("crm.dealcategory.stage.list", { id: config.categoryId });
+    if (!Array.isArray(result)) throw new Error("Não foi possível consultar as fases do faturamento no Bitrix.");
+    const names = ["Negócios Fechados Allp Fit", "Negócios Fechados Geral"];
+    return names.map((name) => {
+      const matches = result.filter((stage) => stage && typeof stage === "object" && stage.NAME === name);
+      if (matches.length !== 1 || typeof matches[0].STATUS_ID !== "string" || !matches[0].STATUS_ID) throw new Error(`Não foi possível identificar a fase ${name} no funil do Bitrix.`);
+      return matches[0].STATUS_ID;
+    });
+  }
+
+  // Montante/Moeda somente das duas fases de negócios fechados, sem cruzar CPF ou cliente local.
+  async function revenueTotal(inicio: string, fim: string): Promise<number> {
+    const first = parseDate(inicio), last = parseDate(fim);
+    if (first > last) throw new Error("A data inicial não pode ser posterior à data final.");
+    const stageIds = await revenueStageIds();
+    const following = new Date(last);
+    following.setUTCDate(following.getUTCDate() + 1);
+    // Os dias do dashboard usam São Paulo; o Bitrix pode responder em outro fuso.
+    const from = `${inicio}T00:00:00-03:00`;
+    const until = `${isoDate(following)}T00:00:00-03:00`;
+    const fromTime = Date.parse(from), untilTime = Date.parse(until);
+    const seen = new Set<string>();
+    let totalCents = BigInt(0);
+    let start = 0;
+    for (;;) {
+      const data = await call("crm.deal.list", {
+        filter: { "=CATEGORY_ID": config.categoryId, "@STAGE_ID": stageIds, ">=DATE_CREATE": from, "<DATE_CREATE": until },
+        select: ["ID", "CATEGORY_ID", "STAGE_ID", "OPPORTUNITY", "CURRENCY_ID", "DATE_CREATE"], order: { ID: "ASC" }, start,
+      });
+      if (!Array.isArray(data.result)) throw new Error("O Bitrix retornou um faturamento inválido. Tente novamente.");
+      for (const row of data.result as BitrixDeal[]) {
+        if (!row || typeof row !== "object" || String(row.CATEGORY_ID) !== String(config.categoryId)) throw new Error("O Bitrix retornou negócios fora do funil configurado.");
+        if (typeof row.STAGE_ID !== "string" || !stageIds.includes(row.STAGE_ID)) throw new Error("O Bitrix retornou negócios fora das fases permitidas para o faturamento.");
+        const created = typeof row.DATE_CREATE === "string" ? Date.parse(row.DATE_CREATE) : NaN;
+        if (!Number.isFinite(created) || created < fromTime || created >= untilTime) throw new Error("O Bitrix retornou negócios fora do período selecionado.");
+        const id = String(row.ID ?? "");
+        if (!/^\d+$/.test(id) || seen.has(id)) throw new Error("Não foi possível percorrer o faturamento do Bitrix. Tente novamente.");
+        seen.add(id);
+        if (row.CURRENCY_ID !== "BRL") throw new Error("Há valores em outra moeda no período. Não foi possível totalizar o faturamento em reais.");
+        // A API envia decimais com até oito casas. Arredonda em centavos sem ponto flutuante.
+        const value = typeof row.OPPORTUNITY === "string" || typeof row.OPPORTUNITY === "number" ? String(row.OPPORTUNITY) : "";
+        const amount = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+        if (!amount) throw new Error("Há valores inválidos no faturamento do Bitrix. Tente novamente.");
+        const fraction = (amount[3] ?? "").padEnd(3, "0");
+        const cents = BigInt(amount[2]) * BigInt(100) + BigInt(fraction.slice(0, 2)) + (fraction[2] >= "5" ? BigInt(1) : BigInt(0));
+        totalCents += amount[1] ? -cents : cents;
+      }
+      if (data.next === undefined) break;
+      if (!Number.isSafeInteger(data.next) || data.next <= start) throw new Error("Não foi possível percorrer o faturamento do Bitrix. Tente novamente.");
+      start = data.next;
+      await wait(550);
+    }
+    const cents = Number(totalCents);
+    if (!Number.isSafeInteger(cents)) throw new Error("O faturamento excede o limite de valor suportado.");
+    return cents / 100;
+  }
+
+  return { unitOptions, dealsByCpf, revenueTotal };
 }
