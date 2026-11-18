@@ -5,7 +5,12 @@
   --brand-orange: #FE6E00;
   --brand-green: #24B47E;
   --brand-purple: #7b00ae;
-  --page: #f3f3f6;
+  --page: #f8f7fa;
+  --ambient-purple: rgb(123 0 174 / 0.10);
+  --ambient-violet: rgb(117 87 191 / 0.09);
+  --ambient-lilac: rgb(161 104 202 / 0.07);
+  --detail-orange: #b94b00;
+  --detail-orange-soft: #fff1e6;
   --surface: #ffffff;
   --muted: #f5f5f7;
   --line: #e4e4e9;
@@ -40,6 +45,11 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --page: #1f2024;
+  --ambient-purple: rgb(151 60 195 / 0.12);
+  --ambient-violet: rgb(125 100 201 / 0.10);
+  --ambient-lilac: rgb(163 98 198 / 0.08);
+  --detail-orange: #ffad70;
+  --detail-orange-soft: #3d3029;
   --surface: #28292e;
   --muted: #303137;
   --line: #3c3d45;
@@ -88,10 +98,26 @@
 }
 
 body {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
   margin: 0;
   background: var(--page);
   color: var(--primary);
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+/* Soft edge blooms stay behind every page, including long views and login. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 58% at -8% 42%, var(--ambient-purple), transparent 78%),
+    radial-gradient(ellipse 44% 52% at 104% 10%, var(--ambient-violet), transparent 78%),
+    radial-gradient(ellipse 38% 45% at 88% 105%, var(--ambient-lilac), transparent 80%);
 }
 
 ::selection {
@@ -156,8 +182,8 @@ button, select { cursor: pointer; }
     --sidebar-hover: var(--muted);
     --sidebar-selected: var(--accent-soft);
     --sidebar-icon: var(--muted);
-    --sidebar-icon-active: var(--accent);
-    --sidebar-icon-active-ink: var(--on-accent);
+    --sidebar-icon-active: var(--detail-orange-soft);
+    --sidebar-icon-active-ink: var(--detail-orange);
     background: var(--sidebar-background);
   }
   .sidebar-nav { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
@@ -176,7 +202,7 @@ button, select { cursor: pointer; }
   }
   .sidebar-link::-webkit-details-marker { display: none; }
   .sidebar-link:hover, .sidebar-child-link:hover { background: var(--sidebar-hover); color: var(--primary); }
-  .sidebar-link.is-active { background: var(--sidebar-selected); color: var(--primary); font-weight: 650; }
+  .sidebar-link.is-active { background: var(--sidebar-selected); color: var(--primary); font-weight: 650; box-shadow: inset 3px 0 var(--brand-orange); }
   .sidebar-icon {
     display: flex;
     width: 32px;
@@ -218,6 +244,10 @@ button, select { cursor: pointer; }
     background: var(--accent-soft);
     color: var(--accent-ink);
     box-shadow: none;
+  }
+  .dashboard-kpi-icon-highlight {
+    background: var(--detail-orange-soft);
+    color: var(--detail-orange);
   }
   .saas-sidebar nav > div + div { border-top: 1px solid var(--line); padding-top: 18px; }
   #conteudo :is(section, article, form).bg-surface { box-shadow: var(--shadow-card); border-radius: var(--radius-card); }
