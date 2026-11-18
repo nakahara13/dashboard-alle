@@ -33,13 +33,13 @@ export function DashboardCommissionSection({ filters, dashboardRange, units = []
     </form>
     <div className="grid gap-4 md:grid-cols-2">
       <article className="flex min-h-64 min-w-0 flex-col rounded-2xl border border-accent-line bg-surface p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-accent-ink">Comissão geral</h3><span aria-hidden="true" className="flex size-9 items-center justify-center rounded-xl bg-accent-soft text-lg font-semibold text-accent-ink">%</span></div>
+        <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-accent-ink">Comissão recorrente do parceiro</h3><span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-lg font-semibold text-accent-ink">%</span></div>
         <p className="mt-5 text-3xl font-semibold tracking-tight tabular-nums [overflow-wrap:anywhere] sm:text-4xl">{loading ? "Carregando…" : summary ? money(Number(summary.total)) : "—"}</p>
-        <p role={error ? "alert" : loading ? "status" : undefined} className={`mt-2 text-xs leading-5 ${error ? "text-danger-ink" : "text-muted-ink"}`}>{error ?? (loading ? "Carregando comissões…" : `${summary?.count ?? 0} comissão(ões) cadastrada(s) · Total da empresa por competência.`)}</p>
-        {summary && !error && <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4"><div><dt className="text-xs text-muted-ink">Recebido</dt><dd className="mt-1 text-base font-semibold tabular-nums [overflow-wrap:anywhere]">{money(Number(summary.received))}</dd></div><div><dt className="text-xs text-muted-ink">A receber</dt><dd className="mt-1 text-base font-semibold tabular-nums [overflow-wrap:anywhere]">{money(Number(summary.pending))}</dd></div></dl>}
+        <p role={error ? "alert" : loading ? "status" : undefined} className={`mt-2 text-xs leading-5 ${error ? "text-danger-ink" : "text-muted-ink"}`}>{error ?? (loading ? "Carregando comissões…" : `${summary?.count ?? 0} comissão(ões) cadastrada(s) · Total dos parceiros por competência.`)}</p>
+        {summary && !error && <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4"><div><dt className="text-xs text-muted-ink">Pago ao parceiro</dt><dd className="mt-1 text-base font-semibold tabular-nums [overflow-wrap:anywhere]">{money(Number(summary.paid))}</dd></div><div><dt className="text-xs text-muted-ink">A pagar ao parceiro</dt><dd className="mt-1 text-base font-semibold tabular-nums [overflow-wrap:anywhere]">{money(Number(summary.pending))}</dd></div></dl>}
       </article>
       {hiring ?? <DashboardHiringCard loading={loading} error={error} />}
     </div>
-    <p className="text-xs leading-5 text-muted-ink">Comissão geral inclui recebidas e pendentes pela competência mensal. Contratação soma R$ 10 por negócio nas fases Negócios Fechados Geral e Negócios Fechados Allp Fit do funil Negócios | Alle Energia, pelo campo Criado e pela Academia Allp Fit.</p>
+    <p className="text-xs leading-5 text-muted-ink">Comissão recorrente do parceiro soma as comissões dos parceiros cadastradas, pagas e pendentes, pela competência mensal. Contratação soma R$ 10 por negócio nas fases Negócios Fechados Geral e Negócios Fechados Allp Fit do funil Negócios | Alle Energia, pelo campo Criado e pela Academia Allp Fit.</p>
   </section>;
 }

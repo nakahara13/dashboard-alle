@@ -19,19 +19,19 @@ export function dashboardCommissionFilters(params: DashboardParams, today: strin
 }
 
 export type DashboardCommissionFilters = ReturnType<typeof dashboardCommissionFilters>;
-export type DashboardCommissionSummary = { total: string; received: string; pending: string; count: number };
+export type DashboardCommissionSummary = { total: string; paid: string; pending: string; count: number };
 
 export async function getDashboardCommissions(db: Pick<Prisma.TransactionClient, "comissao">, filters: DashboardCommissionFilters): Promise<DashboardCommissionSummary> {
   const groups = await db.comissao.groupBy({
-    by: ["status_recebimento"],
+    by: ["status_pagamento"],
     where: {
       competencia: { gte: filters.inicio, lte: filters.fim },
       ...(filters.unidade ? { cliente: { unidade_id: Number(filters.unidade) } } : {}),
     },
-    _sum: { valor_comissao_empresa: true },
+    _sum: { valor_comissao_parceiro: true },
     _count: true,
   });
-  const total = groups.reduce((sum, group) => sum.plus(group._sum.valor_comissao_empresa ?? 0), new Prisma.Decimal(0));
-  const value = (status: string) => groups.find((group) => group.status_recebimento === status)?._sum.valor_comissao_empresa?.toFixed(2) ?? "0.00";
-  return { total: total.toFixed(2), received: value("Recebido"), pending: value("Pendente"), count: groups.reduce((sum, group) => sum + group._count, 0) };
+  const total = groups.reduce((sum, group) => sum.plus(group._sum.valor_comissao_parceiro ?? 0), new Prisma.Decimal(0));
+  const value = (status: string) => groups.find((group) => group.status_pagamento === status)?._sum.valor_comissao_parceiro?.toFixed(2) ?? "0.00";
+  return { total: total.toFixed(2), paid: value("Pago"), pending: value("Pendente"), count: groups.reduce((sum, group) => sum + group._count, 0) };
 }

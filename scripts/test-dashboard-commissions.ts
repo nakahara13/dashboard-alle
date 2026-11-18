@@ -47,19 +47,21 @@ async function main() {
           data_recebimento: status === "Recebido" ? new Date("2099-03-01T00:00:00Z") : null,
         } });
       }
-      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[0].id) }), { total: "30.30", received: "10.10", pending: "20.20", count: 2 });
-      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, inicio: "2098-01", unidade: String(units[0].id) }), { total: "20.20", received: "0.00", pending: "20.20", count: 1 });
-      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[1].id) }), { total: "30.30", received: "30.30", pending: "0.00", count: 1 });
-      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[2].id) }), { total: "0.00", received: "0.00", pending: "0.00", count: 0 });
+      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[0].id) }), { total: "4.00", paid: "2.00", pending: "2.00", count: 2 }, "Soma R$ 2 por comissão do parceiro, independentemente dos valores e do recebimento da empresa.");
+      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, inicio: "2098-01", unidade: String(units[0].id) }), { total: "2.00", paid: "2.00", pending: "0.00", count: 1 }, "Pagamento ao parceiro entra como pago mesmo com recebimento da empresa pendente.");
+      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[1].id) }), { total: "2.00", paid: "0.00", pending: "2.00", count: 1 }, "Recebimento da empresa não quita a comissão do parceiro.");
+      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[2].id) }), { total: "0.00", paid: "0.00", pending: "0.00", count: 0 });
       const all = await getDashboardCommissions(tx, filters);
       assert.equal(all.count, baseline.count + 4);
-      assert.equal(all.total, new Prisma.Decimal(baseline.total).plus("101.00").toFixed(2));
-      assert.equal(all.received, new Prisma.Decimal(baseline.received).plus("40.40").toFixed(2));
-      assert.equal(all.pending, new Prisma.Decimal(baseline.pending).plus("60.60").toFixed(2));
+      assert.equal(all.total, new Prisma.Decimal(baseline.total).plus("8.00").toFixed(2));
+      assert.equal(all.paid, new Prisma.Decimal(baseline.paid).plus("4.00").toFixed(2));
+      assert.equal(all.pending, new Prisma.Decimal(baseline.pending).plus("4.00").toFixed(2));
+      await tx.comissao.updateMany({ where: { cliente_id: clients[1].id, competencia: "2098-01" }, data: { valor_comissao_parceiro: "2.25", margem: new Prisma.Decimal("20.20").minus("2.25") } });
+      assert.deepEqual(await getDashboardCommissions(tx, { ...filters, unidade: String(units[0].id) }), { total: "4.25", paid: "2.25", pending: "2.00", count: 2 }, "Usa o valor do parceiro salvo na comissão, preservando valores históricos e centavos.");
       throw rollback;
     }, { isolationLevel: "RepeatableRead", timeout: 15000 }).catch((error) => { if (error !== rollback) throw error; });
     assert.equal(await db.unidadeAllpFit.count({ where: { nome: { startsWith: marker } } }), 0);
-    console.log("PASSOU: competências, virada de ano, unidade, todas as unidades, clientes inativos e sem unidade, recebido/pendente, centavos e estado vazio. Rollback confirmado.");
+    console.log("PASSOU: comissão do parceiro, R$ 2 por registro, status de pagamento independente do recebimento da empresa, competências, unidades, centavos, valores históricos e estado vazio. Rollback confirmado.");
   } finally { await db.$disconnect(); }
 }
 void main().catch((error) => { console.error(error instanceof Error ? error.message : "Teste falhou."); process.exitCode = 1; });
