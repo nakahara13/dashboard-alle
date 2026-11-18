@@ -6,6 +6,7 @@ import { isoDate, parseDate } from "./dashboard";
 export type BitrixConfig = { webhookUrl: string; categoryId: number; cpfField: string; unitField: string };
 export type BitrixField = { type: string; isMultiple?: boolean; items?: { ID: string; VALUE: string }[] };
 export type BitrixDeal = Record<string, unknown>;
+export type BitrixHiring = { academies: { id: string; nome: string; count: number }[]; unassignedCount: number };
 type BitrixResponse = { result: unknown; next?: number; error?: string };
 
 export function bitrixConfig(env: Record<string, string | undefined> = process.env): BitrixConfig {
@@ -52,16 +53,29 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     throw new Error("O Bitrix está ocupado. Tente novamente em alguns instantes.");
   }
 
-  async function unitOptions(): Promise<{ id: string; nome: string }[]> {
+  async function dealFields(): Promise<Record<string, BitrixField>> {
     const { result } = await call("crm.deal.fields", {});
     if (!result || typeof result !== "object" || Array.isArray(result)) throw new Error("Não foi possível ler os campos dos negócios no Bitrix.");
-    const fields = result as Record<string, BitrixField>;
-    const cpf = fields[config.cpfField], unit = fields[config.unitField];
-    if (cpf?.type !== "string" || cpf.isMultiple || unit?.type !== "enumeration" || unit.isMultiple || !Array.isArray(unit.items)) throw new Error("Os campos CPF e Academia Allp Fit do Bitrix não correspondem à configuração da integração.");
+    return result as Record<string, BitrixField>;
+  }
+
+  function academyOptions(fields: Record<string, BitrixField>): { id: string; nome: string }[] {
+    const unit = fields[config.unitField];
+    if (unit?.type !== "enumeration" || unit.isMultiple || !Array.isArray(unit.items)) throw new Error("O campo Academia Allp Fit do Bitrix não corresponde à configuração da integração.");
+    const seen = new Set<string>();
     return unit.items.map((item) => {
       if (!item || typeof item.ID !== "string" || typeof item.VALUE !== "string" || !item.ID || !item.VALUE.trim()) throw new Error("O Bitrix retornou uma opção de unidade inválida.");
+      if (seen.has(item.ID)) throw new Error("O Bitrix retornou opções de unidade duplicadas.");
+      seen.add(item.ID);
       return { id: item.ID, nome: item.VALUE.trim() };
     });
+  }
+
+  async function unitOptions(): Promise<{ id: string; nome: string }[]> {
+    const fields = await dealFields();
+    const cpf = fields[config.cpfField], unit = fields[config.unitField];
+    if (cpf?.type !== "string" || cpf.isMultiple || unit?.type !== "enumeration" || unit.isMultiple || !Array.isArray(unit.items)) throw new Error("Os campos CPF e Academia Allp Fit do Bitrix não correspondem à configuração da integração.");
+    return academyOptions(fields);
   }
 
   // Busca as duas apresentações usuais do CPF e percorre todas as páginas do funil.
@@ -88,9 +102,9 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
   }
 
   // Resolve as duas fases pelo nome no funil, sem inferir a fase pela semântica de ganho/perda.
-  async function revenueStageIds(): Promise<string[]> {
+  async function closedStageIds(): Promise<string[]> {
     const { result } = await call("crm.dealcategory.stage.list", { id: config.categoryId });
-    if (!Array.isArray(result)) throw new Error("Não foi possível consultar as fases do faturamento no Bitrix.");
+    if (!Array.isArray(result)) throw new Error("Não foi possível consultar as fases de negócios fechados no Bitrix.");
     const names = ["Negócios Fechados Allp Fit", "Negócios Fechados Geral"];
     return names.map((name) => {
       const matches = result.filter((stage) => stage && typeof stage === "object" && stage.NAME === name);
@@ -99,11 +113,10 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     });
   }
 
-  // Montante/Moeda somente das duas fases de negócios fechados, sem cruzar CPF ou cliente local.
-  async function revenueTotal(inicio: string, fim: string): Promise<number> {
+  async function* closedDeals(inicio: string, fim: string, select: string[]): AsyncGenerator<BitrixDeal> {
     const first = parseDate(inicio), last = parseDate(fim);
     if (first > last) throw new Error("A data inicial não pode ser posterior à data final.");
-    const stageIds = await revenueStageIds();
+    const stageIds = await closedStageIds();
     const following = new Date(last);
     following.setUTCDate(following.getUTCDate() + 1);
     // Os dias do dashboard usam São Paulo; o Bitrix pode responder em outro fuso.
@@ -111,40 +124,63 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     const until = `${isoDate(following)}T00:00:00-03:00`;
     const fromTime = Date.parse(from), untilTime = Date.parse(until);
     const seen = new Set<string>();
-    let totalCents = BigInt(0);
     let start = 0;
     for (;;) {
       const data = await call("crm.deal.list", {
         filter: { "=CATEGORY_ID": config.categoryId, "@STAGE_ID": stageIds, ">=DATE_CREATE": from, "<DATE_CREATE": until },
-        select: ["ID", "CATEGORY_ID", "STAGE_ID", "OPPORTUNITY", "CURRENCY_ID", "DATE_CREATE"], order: { ID: "ASC" }, start,
+        select, order: { ID: "ASC" }, start,
       });
-      if (!Array.isArray(data.result)) throw new Error("O Bitrix retornou um faturamento inválido. Tente novamente.");
+      if (!Array.isArray(data.result)) throw new Error("O Bitrix retornou uma lista de negócios fechados inválida. Tente novamente.");
       for (const row of data.result as BitrixDeal[]) {
         if (!row || typeof row !== "object" || String(row.CATEGORY_ID) !== String(config.categoryId)) throw new Error("O Bitrix retornou negócios fora do funil configurado.");
-        if (typeof row.STAGE_ID !== "string" || !stageIds.includes(row.STAGE_ID)) throw new Error("O Bitrix retornou negócios fora das fases permitidas para o faturamento.");
+        if (typeof row.STAGE_ID !== "string" || !stageIds.includes(row.STAGE_ID)) throw new Error("O Bitrix retornou negócios fora das fases de negócios fechados.");
         const created = typeof row.DATE_CREATE === "string" ? Date.parse(row.DATE_CREATE) : NaN;
         if (!Number.isFinite(created) || created < fromTime || created >= untilTime) throw new Error("O Bitrix retornou negócios fora do período selecionado.");
         const id = String(row.ID ?? "");
-        if (!/^\d+$/.test(id) || seen.has(id)) throw new Error("Não foi possível percorrer o faturamento do Bitrix. Tente novamente.");
+        if (!/^[1-9]\d*$/.test(id) || seen.has(id)) throw new Error("Não foi possível percorrer os negócios fechados do Bitrix. Tente novamente.");
         seen.add(id);
-        if (row.CURRENCY_ID !== "BRL") throw new Error("Há valores em outra moeda no período. Não foi possível totalizar o faturamento em reais.");
-        // A API envia decimais com até oito casas. Arredonda em centavos sem ponto flutuante.
-        const value = typeof row.OPPORTUNITY === "string" || typeof row.OPPORTUNITY === "number" ? String(row.OPPORTUNITY) : "";
-        const amount = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
-        if (!amount) throw new Error("Há valores inválidos no faturamento do Bitrix. Tente novamente.");
-        const fraction = (amount[3] ?? "").padEnd(3, "0");
-        const cents = BigInt(amount[2]) * BigInt(100) + BigInt(fraction.slice(0, 2)) + (fraction[2] >= "5" ? BigInt(1) : BigInt(0));
-        totalCents += amount[1] ? -cents : cents;
+        yield row;
       }
       if (data.next === undefined) break;
-      if (!Number.isSafeInteger(data.next) || data.next <= start) throw new Error("Não foi possível percorrer o faturamento do Bitrix. Tente novamente.");
+      if (!Number.isSafeInteger(data.next) || data.next <= start) throw new Error("Não foi possível percorrer os negócios fechados do Bitrix. Tente novamente.");
       start = data.next;
       await wait(550);
+    }
+  }
+
+  // Montante/Moeda somente das duas fases de negócios fechados, sem cruzar CPF ou cliente local.
+  async function revenueTotal(inicio: string, fim: string): Promise<number> {
+    let totalCents = BigInt(0);
+    for await (const row of closedDeals(inicio, fim, ["ID", "CATEGORY_ID", "STAGE_ID", "OPPORTUNITY", "CURRENCY_ID", "DATE_CREATE"])) {
+      if (row.CURRENCY_ID !== "BRL") throw new Error("Há valores em outra moeda no período. Não foi possível totalizar o faturamento em reais.");
+      // A API envia decimais com até oito casas. Arredonda em centavos sem ponto flutuante.
+      const value = typeof row.OPPORTUNITY === "string" || typeof row.OPPORTUNITY === "number" ? String(row.OPPORTUNITY) : "";
+      const amount = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+      if (!amount) throw new Error("Há valores inválidos no faturamento do Bitrix. Tente novamente.");
+      const fraction = (amount[3] ?? "").padEnd(3, "0");
+      const cents = BigInt(amount[2]) * BigInt(100) + BigInt(fraction.slice(0, 2)) + (fraction[2] >= "5" ? BigInt(1) : BigInt(0));
+      totalCents += amount[1] ? -cents : cents;
     }
     const cents = Number(totalCents);
     if (!Number.isSafeInteger(cents)) throw new Error("O faturamento excede o limite de valor suportado.");
     return cents / 100;
   }
 
-  return { unitOptions, dealsByCpf, revenueTotal };
+  // Cada negócio fechado conta uma vez para a academia indicada no próprio Bitrix.
+  async function hiringByAcademy(inicio: string, fim: string): Promise<BitrixHiring> {
+    if (parseDate(inicio) > parseDate(fim)) throw new Error("A data inicial não pode ser posterior à data final.");
+    const options = academyOptions(await dealFields());
+    const academies = new Map(options.map((option) => [option.id, { ...option, count: 0 }]));
+    let unassignedCount = 0;
+    for await (const row of closedDeals(inicio, fim, ["ID", "CATEGORY_ID", "STAGE_ID", "DATE_CREATE", config.unitField])) {
+      const value = row[config.unitField];
+      if (value === undefined || value === null || value === "" || value === false || value === "0" || value === 0) { unassignedCount++; continue; }
+      const academy = (typeof value === "string" || typeof value === "number") ? academies.get(String(value)) : undefined;
+      if (!academy) throw new Error("Há negócios com Academia Allp Fit não reconhecida no Bitrix. Não foi possível calcular a contratação.");
+      academy.count++;
+    }
+    return { academies: [...academies.values()], unassignedCount };
+  }
+
+  return { unitOptions, dealsByCpf, revenueTotal, hiringByAcademy };
 }

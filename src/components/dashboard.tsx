@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { PERIODS, displayDate, money } from "@/lib/dashboard";
 
 type DashboardData = { activeStudents: number; incoming: number; outgoing: number; entriesCount: number; exitsCount: number };
-export function Dashboard({ range, data, error, revenue, podium }: { range: { inicio: string; fim: string; period: string }; data: DashboardData | null; error: string | null; revenue: ReactNode; podium: ReactNode }) {
+export function Dashboard({ range, data, error, revenue, podium, commissions, commissionParams = {} }: { range: { inicio: string; fim: string; period: string }; data: DashboardData | null; error: string | null; revenue: ReactNode; podium: ReactNode; commissions: ReactNode; commissionParams?: Record<string, string> }) {
   const cards = [
     { title: "Entradas", value: data ? money(data.incoming) : "—", description: `${data?.entriesCount ?? 0} recebimento(s) com status Recebido.`, color: "dashboard-kpi-incoming text-white", icon: "↗" },
     { title: "Saídas", value: data ? money(data.outgoing) : "—", description: `${data?.exitsCount ?? 0} conta(s) com status Pago.`, color: "dashboard-kpi-outgoing text-[var(--brand-orange)]", icon: "↘" },
@@ -12,11 +12,12 @@ export function Dashboard({ range, data, error, revenue, podium }: { range: { in
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><h1 className="border-l-4 border-accent pl-3 text-3xl font-semibold tracking-tight">Dashboard</h1><p className="mt-2 text-xs text-muted-ink">{displayDate(range.inicio)} a {displayDate(range.fim)}</p></div>
       <section aria-label="Filtros do dashboard" className="flex max-w-full flex-wrap items-center gap-2">
-        <nav aria-label="Períodos rápidos" className="flex flex-wrap gap-1 rounded-lg border border-line bg-surface p-1">{PERIODS.map((period) => <Link key={period.id} href={`/?periodo=${period.id}`} aria-current={range.period === period.id ? "page" : undefined} className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${range.period === period.id ? "bg-accent-soft text-accent-ink" : "text-secondary hover:bg-muted"}`}>{period.label}</Link>)}</nav>
+        <nav aria-label="Períodos rápidos" className="flex flex-wrap gap-1 rounded-lg border border-line bg-surface p-1">{PERIODS.map((period) => <Link key={period.id} href={`/?${new URLSearchParams({ ...commissionParams, periodo: period.id })}`} aria-current={range.period === period.id ? "page" : undefined} className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${range.period === period.id ? "bg-accent-soft text-accent-ink" : "text-secondary hover:bg-muted"}`}>{period.label}</Link>)}</nav>
         <details key={range.period} open={range.period === "personalizado"} className="relative">
           <summary className="cursor-pointer rounded-lg border border-line bg-surface px-3 py-3 text-xs font-medium text-secondary">Personalizado</summary>
           <form key={`${range.inicio}-${range.fim}`} action="/" method="get" className="absolute right-0 top-full z-20 mt-2 flex w-72 max-w-[calc(100vw-3rem)] flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-7 shadow-lg">
             <input type="hidden" name="periodo" value="personalizado" />
+            {Object.entries(commissionParams).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
             <div className="w-full"><label htmlFor="dashboard-inicio" className="mb-1 block text-xs font-medium text-secondary">De</label><input id="dashboard-inicio" name="inicio" type="date" required defaultValue={range.inicio} className="min-h-10 w-full rounded-lg border border-line px-3 text-sm" /></div>
             <div className="w-full"><label htmlFor="dashboard-fim" className="mb-1 block text-xs font-medium text-secondary">Até</label><input id="dashboard-fim" name="fim" type="date" required defaultValue={range.fim} className="min-h-10 w-full rounded-lg border border-line px-3 text-sm" /></div>
             <button className="min-h-10 w-full rounded-lg bg-accent px-4 text-sm font-medium text-white hover:bg-accent-hover">Aplicar período</button>
@@ -35,6 +36,7 @@ export function Dashboard({ range, data, error, revenue, podium }: { range: { in
       </Link>
     </div>
     <p className="text-xs leading-5 text-muted-ink">Faturamento pela data de criação no Bitrix. Entradas e saídas por vencimento, conforme as datas cadastradas nas contas. Recebimentos sem vencimento ficam fora do período. Os atalhos de mês e ano usam períodos móveis até hoje.</p>
+    {commissions}
     {podium}
   </div>;
 }

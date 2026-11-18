@@ -69,7 +69,7 @@ async function main() {
     await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { OPPORTUNITY: value })] } }]).api.revenueTotal(inicio, fim), /valores inválidos/);
   }
   await assert.rejects(() => mockApi([{ data: { result: [deal(1, "9007199254740991.00")] } }]).api.revenueTotal(inicio, fim), /limite de valor/);
-  await assert.rejects(() => mockApi([{ data: { result: {} } }]).api.revenueTotal(inicio, fim), /faturamento inválido/);
+  await assert.rejects(() => mockApi([{ data: { result: {} } }]).api.revenueTotal(inicio, fim), /lista de negócios fechados inválida/);
   await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00")], next: 0 } }]).api.revenueTotal(inicio, fim), /percorrer/);
   await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00")], next: 50 } }, { data: { result: [deal(1, "1.00")] } }]).api.revenueTotal(inicio, fim), /percorrer/);
 
