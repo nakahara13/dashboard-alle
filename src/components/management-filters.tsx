@@ -1,3 +1,4 @@
+import { MonthInput } from "@/components/formatted-input";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -25,7 +26,7 @@ export function ManagementFilters({ basePath, values, children, statuses, search
       {statuses && <nav aria-label="Filtro rápido por status" className="flex flex-wrap gap-1 rounded-xl bg-muted p-1">{[{ value: "", label: "Todas" }, ...statuses].map(item => <Link key={item.value} href={href({ status: item.value })} aria-current={(values.status || "") === item.value ? "page" : undefined} className={`rounded-lg px-3 py-2 text-xs font-medium ${(values.status || "") === item.value ? "bg-surface text-accent-ink shadow-sm" : "text-muted-ink hover:text-primary"}`}>{item.label}</Link>)}</nav>}
       {(search || competence) && <form key={JSON.stringify(values)} method="get" action={basePath} className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
         {Object.entries(values).filter(([key, value]) => key !== search?.key && !(competence && key === "competencia") && key !== "pagina" && value).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
-        {competence && <label htmlFor={`${path}-quick-competence`} className="grid min-w-0 gap-1 text-xs text-secondary">Competência<input id={`${path}-quick-competence`} type="month" name="competencia" defaultValue={values.competencia} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></label>}
+        {competence && <label htmlFor={`${path}-quick-competence`} className="grid min-w-0 gap-1 text-xs text-secondary">Competência<MonthInput id={`${path}-quick-competence`} name="competencia" defaultValue={values.competencia} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></label>}
         {search && <div className="min-w-0 flex-1 basis-48"><label className="sr-only" htmlFor={`${path}-quick-search`}>{search.label}</label><input id={`${path}-quick-search`} type="search" name={search.key} defaultValue={values[search.key]} placeholder={search.label} maxLength={search.max} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></div>}
         <button className="min-h-11 rounded-lg border border-line px-4 text-sm hover:bg-muted">Buscar</button>
       </form>}

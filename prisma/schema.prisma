@@ -32,6 +32,7 @@ model criar_pagamento {
 
   comissao Comissao? @relation("EntradaComissao")
   descricao String? @db.VarChar(500)
+  comprovantes ComprovanteFinanceiro[]
 
   @@index([conta_bancaria_id])
   @@index([metodo_id])
@@ -91,6 +92,7 @@ model ContaPagar {
   status String @default("Pendente") @db.VarChar(20)
 
   comissao Comissao? @relation("SaidaComissao")
+  comprovantes ComprovanteFinanceiro[]
 
   @@index([favorecido_id])
   @@index([vencimento, id])
@@ -118,8 +120,30 @@ model Usuario {
   senha_hash String? @db.VarChar(255)
   criado_em DateTime @default(now()) @db.Timestamptz(6)
   sessoes SessaoUsuario[]
+  comprovantes ComprovanteFinanceiro[]
 
   @@map("usuarios")
+}
+
+model ComprovanteFinanceiro {
+  id String @id @default(uuid()) @db.Uuid
+  conta_pagar_id BigInt?
+  conta_pagar ContaPagar? @relation(fields: [conta_pagar_id], references: [id], onDelete: Restrict)
+  recebimento_id BigInt?
+  recebimento criar_pagamento? @relation(fields: [recebimento_id], references: [id_do_registro], onDelete: Restrict)
+  nome String @db.VarChar(255)
+  content_type String @db.VarChar(100)
+  tamanho_bytes Int
+  s3_bucket String @db.VarChar(63)
+  s3_key String @unique @db.VarChar(512)
+  enviado_por_id Int?
+  enviado_por Usuario? @relation(fields: [enviado_por_id], references: [id], onDelete: SetNull)
+  criado_em DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([conta_pagar_id, criado_em])
+  @@index([recebimento_id, criado_em])
+  @@index([enviado_por_id])
+  @@map("comprovantes_financeiros")
 }
 
 model SessaoUsuario {

@@ -6,11 +6,13 @@ import { getPrisma } from "@/lib/prisma";
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { createPayment, validatePayment, type PaymentInput } from "@/lib/pagamentos";
+import { ReceiptError, readOptionalReceiptFile, getReceiptStorageConfig } from "@/lib/financial-receipt-storage";
+import { persistFinancialReceipt } from "@/lib/financial-receipts";
 
 export type PaymentState = { success: boolean; message: string };
 
 export async function savePayment(_previous: PaymentState, form: FormData): Promise<PaymentState> {
-  await requireUser();
+  const user = await requireUser();
   let id: bigint | undefined;
   try {
     if (form.has("id")) id = parseRecordId(String(form.get("id")));
@@ -30,15 +32,22 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
     return { success: false, message: error instanceof Error ? error.message : "Verifique os campos informados." };
   }
   try {
+    const file = await readOptionalReceiptFile(form);
+    if (file) getReceiptStorageConfig();
     const db = getPrisma();
     if (!await db.parceiro.findUnique({ where: { id: Number(input.parceiro_id) }, select: { id: true } })) {
       return { success: false, message: "O parceiro selecionado não existe. Atualize a página e selecione novamente." };
     }
-    const payment = await createPayment(db, input, id);
+    const payment = await db.$transaction(async (tx) => {
+      const saved = await createPayment(tx, input, id);
+      if (file) await persistFinancialReceipt(tx, "receber", saved.id_do_registro.toString(), user.id, file);
+      return saved;
+    }, { timeout: 30_000 });
     revalidatePath("/");
     revalidatePath("/contas-a-receber");
     return { success: true, message: id ? "Recebimento atualizado com sucesso." : `Recebimento registrado com sucesso. Pagamento nº ${payment.id_do_pagamento.toString()}.` };
   } catch (error) {
+    if (error instanceof ReceiptError) return { success: false, message: error.message };
     if (error instanceof Error && error.message.startsWith("Edite este lançamento")) return { success: false, message: error.message };
     return { success: false, message: "Não foi possível salvar o recebimento. Verifique a conexão com o banco e tente novamente." };
   }
@@ -52,7 +61,7 @@ export async function deletePayment(id: string) {
     revalidatePath("/");
     return { success: true, message: "Registro excluído com sucesso." };
   } catch (error) {
-    if (typeof error === "object" && error && "code" in error && error.code === "P2003") return { success: false, message: "Este lançamento está vinculado a uma comissão e não pode ser excluído separadamente." };
+    if (typeof error === "object" && error && "code" in error && error.code === "P2003") return { success: false, message: "Este lançamento possui comprovantes ou está vinculado a uma comissão e não pode ser excluído separadamente." };
     return { success: false, message: "Não foi possível excluir o registro. Atualize a página e tente novamente." };
   }
 }

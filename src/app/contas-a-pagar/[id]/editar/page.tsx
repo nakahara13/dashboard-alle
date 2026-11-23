@@ -1,3 +1,4 @@
+import { receiptSummarySelect, serializeReceipt } from "@/lib/financial-receipts";
 import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { PayableForm } from "@/components/payable-form";
@@ -11,10 +12,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const db = getPrisma();
   const types = await db.tipo.findMany({ orderBy: { nome: "asc" } });
   const [row, partners] = await Promise.all([
-    db.contaPagar.findUnique({ where: { id } }),
+    db.contaPagar.findUnique({ where: { id }, include: { comprovantes: { select: receiptSummarySelect, orderBy: { criado_em: "asc" } } } }),
     db.parceiro.findMany({ select: { id: true, nome: true, documento: true }, orderBy: [{ nome: "asc" }, { id: "asc" }] }),
   ]);
   if (!row) notFound();
-  const initial = { id: row.id.toString(), favorecido_id: String(row.favorecido_id), descricao: row.descricao, tipo_id: String(row.tipo_id), lancamento: row.lancamento.toISOString().slice(0, 10), competencia: row.competencia.split("-").reverse().join("/"), vencimento: row.vencimento.toISOString().slice(0, 10), valor: row.valor.toFixed(2).replace(".", ","), status: row.status };
+  const initial = { comprovantes: row.comprovantes.map(serializeReceipt), id: row.id.toString(), favorecido_id: String(row.favorecido_id), descricao: row.descricao, tipo_id: String(row.tipo_id), lancamento: row.lancamento.toISOString().slice(0, 10), competencia: row.competencia.split("-").reverse().join("/"), vencimento: row.vencimento.toISOString().slice(0, 10), valor: row.valor.toFixed(2).replace(".", ","), status: row.status };
   return <div className="mx-auto w-full max-w-7xl"><PayableForm key={initial.id} types={types} partners={partners} initial={initial} /></div>;
 }

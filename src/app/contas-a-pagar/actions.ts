@@ -6,10 +6,12 @@ import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
 import { createPayable, validatePayable, type PayableInput } from "@/lib/contas-a-pagar";
+import { ReceiptError, readOptionalReceiptFile, getReceiptStorageConfig } from "@/lib/financial-receipt-storage";
+import { persistFinancialReceipt } from "@/lib/financial-receipts";
 
 type State = { success: boolean; message: string };
 export async function savePayable(_previous: State, form: FormData): Promise<State> {
-  await requireUser();
+  const user = await requireUser();
   let id: bigint | undefined;
   try {
     if (form.has("id")) id = parseRecordId(String(form.get("id")));
@@ -28,11 +30,18 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
     return { success: false, message: error instanceof Error ? error.message : "Verifique os campos informados." };
   }
   try {
-    const payable = await createPayable(getPrisma(), input, id);
+    const file = await readOptionalReceiptFile(form);
+    if (file) getReceiptStorageConfig();
+    const payable = await getPrisma().$transaction(async (db) => {
+      const saved = await createPayable(db, input, id);
+      if (file) await persistFinancialReceipt(db, "pagar", saved.id.toString(), user.id, file);
+      return saved;
+    }, { timeout: 30_000 });
     revalidatePath("/contas-a-pagar");
     revalidatePath("/");
     return { success: true, message: id ? "Conta a pagar atualizada com sucesso." : `Conta a pagar nº ${payable.id} registrada com sucesso.` };
   } catch (error) {
+    if (error instanceof ReceiptError) return { success: false, message: error.message };
     if (error instanceof Error && error.message.startsWith("Edite este lançamento")) return { success: false, message: error.message };
     return { success: false, message: "Não foi possível salvar a conta. Verifique a conexão e o favorecido selecionado e tente novamente." };
   }
@@ -46,7 +55,7 @@ export async function deletePayable(id: string) {
     revalidatePath("/");
     return { success: true, message: "Registro excluído com sucesso." };
   } catch (error) {
-    if (typeof error === "object" && error && "code" in error && error.code === "P2003") return { success: false, message: "Este lançamento está vinculado a uma comissão e não pode ser excluído separadamente." };
+    if (typeof error === "object" && error && "code" in error && error.code === "P2003") return { success: false, message: "Este lançamento possui comprovantes ou está vinculado a uma comissão e não pode ser excluído separadamente." };
     return { success: false, message: "Não foi possível excluir o registro. Atualize a página e tente novamente." };
   }
 }

@@ -260,7 +260,7 @@ button, select { cursor: pointer; }
 
 @media (max-width: 639px) {
   #conteudo :is(section, form).bg-surface { padding: 18px; }
-  #conteudo form > .flex > div:has(input[type="date"]) { flex: 1 1 130px; }
+  #conteudo form > .flex > div:has(input[data-input-format="date"]) { flex: 1 1 130px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

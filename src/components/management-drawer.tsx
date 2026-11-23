@@ -3,11 +3,18 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
-type DrawerFeedback = { saved: (message: string) => void; setPending: (pending: boolean) => void; close: () => void };
+type DrawerFeedback = { saved: (message: string) => void; markClean: () => void; setPending: (pending: boolean) => void; close: () => void };
 const FeedbackContext = createContext<DrawerFeedback | null>(null);
 
 // Forms retain their server actions and report their lifecycle only when inside a drawer.
 export function useDrawerClose() { return useContext(FeedbackContext)?.close; }
+
+// An attachment can be saved while its details drawer remains open.
+export function useDrawerUploadFeedback(pending: boolean) {
+  const feedback = useContext(FeedbackContext);
+  useEffect(() => { feedback?.setPending(pending); }, [feedback, pending]);
+  return feedback?.markClean;
+}
 
 export function useDrawerFeedback(state: { success: boolean; message: string }, pending: boolean) {
   const feedback = useContext(FeedbackContext);
@@ -24,6 +31,7 @@ export function ManagementDrawer({ title, children, onClose, onSaved }: { title:
   const router = useRouter();
   const [feedback] = useState<DrawerFeedback>(() => ({
     close: () => close(),
+    markClean: () => { dirty.current = false; },
     setPending: (value) => { busy.current = value; setPending(value); },
     saved: (message) => { dirty.current = false; onSaved?.(message); onClose(); router.refresh(); },
   }));

@@ -1,5 +1,7 @@
 "use client";
 
+import { DateInput } from "@/components/formatted-input";
+
 import styles from "@/app/comissoes/commissions.module.css";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -50,12 +52,12 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
           <span className={styles.selectionCount} role="status">{selected.length} selecionada(s) nesta página</span>
         </div>
         <div className={styles.paymentGroup} role="group" aria-label="Recebimento das comissões selecionadas">
-          <label className={styles.paymentDate}>Data de recebimento<input type="date" value={receiptDate} onChange={(event) => setReceiptDate(event.target.value)} disabled={pending} className={styles.dateInput} /></label>
+          <label className={styles.paymentDate}>Data de recebimento<DateInput value={receiptDate} onValueChange={setReceiptDate} disabled={pending} className={styles.dateInput} /></label>
           <button type="button" disabled={pending || !selected.length || !receiptDate} className={`${buttonClass} ${styles.payButton}`} onClick={() => update("recebimento", "Recebido")}>Marcar como recebido</button>
           <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("recebimento", "Pendente")}>Marcar como pendente</button>
         </div>
         <div className={styles.paymentGroup} role="group" aria-label="Pagamento das comissões selecionadas">
-          <label className={styles.paymentDate}>Data de pagamento<input type="date" value={date} onChange={(event) => setDate(event.target.value)} disabled={pending} className={styles.dateInput} /></label>
+          <label className={styles.paymentDate}>Data de pagamento<DateInput value={date} onValueChange={setDate} disabled={pending} className={styles.dateInput} /></label>
           <button type="button" disabled={pending || !selected.length || !date} className={`${buttonClass} ${styles.payButton}`} onClick={() => update("pagamento", "Pago")}>Marcar como pago</button>
           <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("pagamento", "Pendente")}>Marcar como pendente</button>
         </div>

@@ -1,3 +1,4 @@
+import { DateInput } from "@/components/formatted-input";
 import { InterfaceIcon } from "@/components/interface-icon";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -19,8 +20,8 @@ export function Dashboard({ range, data, error, revenue, podium, commissions, co
           <form key={`${range.inicio}-${range.fim}`} action="/" method="get" className="absolute right-0 top-full z-20 mt-2 flex w-72 max-w-[calc(100vw-3rem)] flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-7 shadow-lg">
             <input type="hidden" name="periodo" value="personalizado" />
             {Object.entries(commissionParams).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
-            <div className="w-full"><label htmlFor="dashboard-inicio" className="mb-1 block text-xs font-medium text-secondary">De</label><input id="dashboard-inicio" name="inicio" type="date" required defaultValue={range.inicio} className="min-h-10 w-full rounded-lg border border-line px-3 text-sm" /></div>
-            <div className="w-full"><label htmlFor="dashboard-fim" className="mb-1 block text-xs font-medium text-secondary">Até</label><input id="dashboard-fim" name="fim" type="date" required defaultValue={range.fim} className="min-h-10 w-full rounded-lg border border-line px-3 text-sm" /></div>
+            <div className="w-full"><label htmlFor="dashboard-inicio" className="mb-1 block text-xs font-medium text-secondary">De</label><DateInput id="dashboard-inicio" name="inicio" required defaultValue={range.inicio} className="min-h-10 w-full rounded-lg border border-line px-3 text-sm" /></div>
+            <div className="w-full"><label htmlFor="dashboard-fim" className="mb-1 block text-xs font-medium text-secondary">Até</label><DateInput id="dashboard-fim" name="fim" required defaultValue={range.fim} className="min-h-10 w-full rounded-lg border border-line px-3 text-sm" /></div>
             <button className="min-h-10 w-full rounded-lg bg-accent px-4 text-sm font-medium text-on-accent hover:bg-accent-hover">Aplicar período</button>
           </form>
         </details>

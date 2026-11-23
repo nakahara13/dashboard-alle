@@ -1,3 +1,4 @@
+import { MonthInput } from "@/components/formatted-input";
 import { requireUser } from "@/lib/auth";
 import { Pagination } from "@/components/pagination";
 import { ManagementFilters } from "@/components/management-filters";
@@ -55,7 +56,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       <div className={styles.filters}>
         <ManagementFilters basePath={basePath} competence values={filterValues} statuses={[{ value: "ativo", label: "Ativos" }, { value: "inativo", label: "Inativos" }]} search={{ key: "busca", label: "Pesquisar por nome ou CPF", max: 255 }} options={{ distribuidora: options.distributors, unidade: options.units, presenca: clientPresenceOptions }}>
           <form method="get" action={basePath} className="grid gap-4 sm:grid-cols-3">
-            <label className="grid gap-2 text-sm">Competência<input type="month" name="competencia" defaultValue={filters.competence} className={fieldClass} /></label>
+            <label className="grid gap-2 text-sm">Competência<MonthInput name="competencia" defaultValue={filters.competence} className={fieldClass} /></label>
             <label className="grid gap-2 text-sm">Presença na competência<select name="presenca" defaultValue={filters.presence || "consta"} className={fieldClass}>{clientPresenceOptions.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select><span className="text-xs text-muted-ink">Selecione uma competência para comparar os clientes.</span></label>
             <input type="hidden" name="status" value={filters.status} /><label className="grid gap-2 text-sm">Distribuidora<select name="distribuidora" defaultValue={filters.distributor} className={fieldClass}><option value="">Todas</option><option value="sem-vinculo">Sem distribuidora</option>{options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
             <label className="grid gap-2 text-sm">Unidade<select name="unidade" defaultValue={filters.unit} className={fieldClass}><option value="">Todas</option><option value="sem-vinculo">Sem unidade</option>{options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>

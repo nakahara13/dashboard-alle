@@ -1,5 +1,8 @@
 "use client";
 
+import { ReceiptFileInput, ReceiptList } from "@/components/financial-receipts";
+import type { ReceiptSummary } from "@/lib/financial-receipt-types";
+import { DateInput, MoneyInput, MonthInput } from "@/components/formatted-input";
 import { useDrawerFeedback, useDrawerClose } from "@/components/management-drawer";
 import { PaymentMethodSelect, type PaymentMethodOption } from "@/components/payment-method-select";
 import { PAYMENT_STATUSES, type PaymentInput } from "@/lib/pagamentos";
@@ -8,13 +11,9 @@ import Link from "next/link";
 import { useActionState, useId } from "react";
 import { savePayment } from "@/app/contas-a-receber/actions";
 
-const fields = [
-  { name: "valor_total", label: "Valor total (R$)", required: true, placeholder: "0,00", maxLength: 13 },
-  { name: "data_do_pagamento", label: "Data do vencimento", placeholder: "dd/mm/aaaa", type: "date" },
-  { name: "numero_da_nf", label: "Número da NF", placeholder: "Ex.: 000123", maxLength: 100 },
-];
+const inputClass = "min-h-11 w-full rounded-lg border border-line px-3 text-sm disabled:opacity-60";
 
-export function PaymentForm({ types, partners, methods, accounts, initial, onSaved, onCancel }: { types: TipoOption[]; onSaved?: () => void; onCancel?: () => void; initial?: PaymentInput & { id: string }; accounts: { id: number; nome: string; banco: string; agencia: string; numero: string }[]; methods: PaymentMethodOption[]; partners: { id: number; nome: string; documento: string | null }[] }) {
+export function PaymentForm({ types, partners, methods, accounts, initial, onSaved, onCancel }: { types: TipoOption[]; onSaved?: () => void; onCancel?: () => void; initial?: PaymentInput & { id: string; comprovantes?: ReceiptSummary[] }; accounts: { id: number; nome: string; banco: string; agencia: string; numero: string }[]; methods: PaymentMethodOption[]; partners: { id: number; nome: string; documento: string | null }[] }) {
   const [state, action, pending] = useActionState(async (previous: { success: boolean; message: string }, form: FormData) => {
     if (initial) form.set("id", initial.id);
     const result = await savePayment(previous, form);
@@ -39,9 +38,13 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
         <TipoSelect types={types} defaultValue={initial?.tipo_id} id={`${prefix}-tipo_id`} />
         <PaymentMethodSelect methods={methods} defaultValue={initial?.metodo_id} id={`${prefix}-metodo_id`} />
         <div><label htmlFor={`${prefix}-status_do_pagamento`} className="mb-2 block text-sm font-medium">Status do pagamento *</label><select id={`${prefix}-status_do_pagamento`} name="status_do_pagamento" required defaultValue={initial?.status_do_pagamento ?? "Pendente"} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">{PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
-        <div><label htmlFor={`${prefix}-competencia_financeira`} className="mb-2 block text-sm font-medium">Competência financeira *</label><input id={`${prefix}-competencia_financeira`} name="competencia_financeira" defaultValue={initial?.competencia_financeira} type="text" inputMode="numeric" placeholder="mm/aaaa" required maxLength={7} pattern="(0[1-9]|1[0-2])/[0-9]{4}" title="Informe o mês e o ano no formato MM/AAAA, por exemplo: 09/2026." onChange={(event) => { const digits = event.currentTarget.value.replace(/\D/g, "").slice(0, 6); event.currentTarget.value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits; }} aria-describedby={`${prefix}-competencia-hint`} className="min-h-11 w-full rounded-lg border border-line px-3 text-sm disabled:opacity-60" /><p id={`${prefix}-competencia-hint`} className="mt-1 text-xs text-muted-ink">Digite o mês e o ano no formato MM/AAAA. Ex.: 09/2026.</p></div>
-        {fields.map((field) => <div key={field.name}><label htmlFor={`${prefix}-${field.name}`} className="mb-2 block text-sm font-medium">{field.label}{field.required ? " *" : ""}</label><input {...field} defaultValue={initial?.[field.name as keyof PaymentInput]} id={`${prefix}-${field.name}`} type={field.type ?? "text"} aria-describedby={field.type === "date" ? `${prefix}-payment-date-hint` : undefined} inputMode={field.name === "valor_total" ? "decimal" : undefined} className="min-h-11 w-full rounded-lg border border-line px-3 text-sm disabled:opacity-60" />{field.type === "date" && <p id={`${prefix}-payment-date-hint`} className="mt-1 text-xs text-muted-ink">Selecione a data de vencimento.</p>}</div>)}
+        <div><label htmlFor={`${prefix}-competencia_financeira`} className="mb-2 block text-sm font-medium">Competência financeira *</label><MonthInput id={`${prefix}-competencia_financeira`} name="competencia_financeira" defaultValue={initial?.competencia_financeira} required aria-describedby={`${prefix}-competencia-hint`} className={inputClass} /><p id={`${prefix}-competencia-hint`} className="mt-1 text-xs text-muted-ink">Digite o mês e o ano no formato MM/AAAA. Ex.: 09/2026.</p></div>
+        <div><label htmlFor={`${prefix}-valor_total`} className="mb-2 block text-sm font-medium">Valor total (R$) *</label><MoneyInput id={`${prefix}-valor_total`} name="valor_total" defaultValue={initial?.valor_total} required className={inputClass} /></div>
+        <div><label htmlFor={`${prefix}-data_do_pagamento`} className="mb-2 block text-sm font-medium">Data do vencimento</label><DateInput id={`${prefix}-data_do_pagamento`} name="data_do_pagamento" defaultValue={initial?.data_do_pagamento} aria-describedby={`${prefix}-payment-date-hint`} className={inputClass} /><p id={`${prefix}-payment-date-hint`} className="mt-1 text-xs text-muted-ink">Digite a data de vencimento.</p></div>
+        <div><label htmlFor={`${prefix}-numero_da_nf`} className="mb-2 block text-sm font-medium">Número da NF</label><input id={`${prefix}-numero_da_nf`} name="numero_da_nf" defaultValue={initial?.numero_da_nf} placeholder="Ex.: 000123" maxLength={100} className={inputClass} /></div>
+      <ReceiptFileInput className="sm:col-span-2" />
       </fieldset>
+    {!!initial?.comprovantes?.length && <div className="mt-5 space-y-3"><h3 className="text-sm font-semibold">Comprovantes anexados</h3><ReceiptList receipts={initial.comprovantes} /></div>}
       {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
       <button disabled={pending || types.length === 0 || partners.length === 0 || methods.length === 0 || accounts.length === 0} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar recebimento"}</button>
       {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}

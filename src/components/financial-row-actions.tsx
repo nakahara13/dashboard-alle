@@ -1,5 +1,7 @@
 "use client";
 
+import { FinancialReceipts } from "@/components/financial-receipts";
+import type { ReceiptSummary } from "@/lib/financial-receipt-types";
 import { ManagementDrawer, RecordDetails } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
 import { FinancialEditModal, type FinancialEditData } from "@/components/financial-edit-modal";
@@ -7,10 +9,11 @@ import { useState, useTransition } from "react";
 import { deletePayment } from "@/app/contas-a-receber/actions";
 import { deletePayable } from "@/app/contas-a-pagar/actions";
 
-export function FinancialRowActions({ id, label, kind, editData, description }: { id: string; label: string; kind: "receber" | "pagar"; editData: FinancialEditData; description?: string | null }) {
+export function FinancialRowActions({ id, label, kind, editData, description, receipts = [] }: { id: string; label: string; kind: "receber" | "pagar"; editData: FinancialEditData; description?: string | null; receipts?: ReceiptSummary[] }) {
   const [pending, startTransition] = useTransition();
   const [viewing, setViewing] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [attachmentPending, setAttachmentPending] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   function remove() {
@@ -53,7 +56,7 @@ export function FinancialRowActions({ id, label, kind, editData, description }: 
       <RowActionButton action="edit" label={label} type="button" disabled={pending} onClick={() => { setNotice(""); setEditing(true); }}>Editar</RowActionButton>
       <RowActionButton action="delete" label={label} type="button" disabled={pending} onClick={remove}>{pending ? "Excluindo…" : "Excluir"}</RowActionButton>
     </RowActions>
-    {viewing && <ManagementDrawer title={`Detalhes de ${label}`} onClose={() => setViewing(false)}><RecordDetails items={[{ label: "Registro", value: `#${initial.id}` }, ...details]} /><button type="button" onClick={() => { setViewing(false); setEditing(true); }} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-on-accent">Editar</button></ManagementDrawer>}
+    {viewing && <ManagementDrawer title={`Detalhes de ${label}`} onClose={() => setViewing(false)}><RecordDetails items={[{ label: "Registro", value: `#${initial.id}` }, ...details]} /><FinancialReceipts key={`${kind}:${id}`} kind={kind} recordId={id} receipts={receipts} onPendingChange={setAttachmentPending} /><button type="button" disabled={attachmentPending} onClick={() => { setViewing(false); setEditing(true); }} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm text-on-accent">Editar</button></ManagementDrawer>}
     {editing && <FinancialEditModal data={editData} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice("Alterações salvas."); }} />}
     {notice && <p role="status" className="mt-2 text-xs text-accent-ink">{notice}</p>}
     {error && <p role="alert" className="mt-2 max-w-xs whitespace-normal text-danger-ink">{error}</p>}

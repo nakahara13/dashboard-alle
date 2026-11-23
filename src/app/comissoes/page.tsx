@@ -1,3 +1,4 @@
+import { MonthInput } from "@/components/formatted-input";
 import { requireUser } from "@/lib/auth";
 import { Pagination } from "@/components/pagination";
 import { ManagementFilters } from "@/components/management-filters";
@@ -77,7 +78,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       <div className={styles.filters}>
       <ManagementFilters basePath="/comissoes" competence values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={statusOptions} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
       <form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="grid gap-2 text-sm">Competência<input type="month" name="competencia" defaultValue={competence} className={fieldClass} /></label>
+        <label className="grid gap-2 text-sm">Competência<MonthInput name="competencia" defaultValue={competence} className={fieldClass} /></label>
         <label className="grid gap-2 text-sm">Geradora<select name="geradora" defaultValue={generator} className={fieldClass}><option value="">Todas</option><option value="nao-informada">Geradora não informada</option>{data.options.generators.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
         <label className="grid gap-2 text-sm">Unidade Allp Fit<select name="unidade" defaultValue={unit} className={fieldClass}><option value="">Todas</option>{data.options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
         <label className="grid gap-2 text-sm">Distribuidora<select name="distribuidora" defaultValue={distributor} className={fieldClass}><option value="">Todas</option>{data.options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>

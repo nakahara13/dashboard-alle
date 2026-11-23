@@ -38,12 +38,15 @@
     "db:test-commission-overwrite": "node --import tsx scripts/test-commission-overwrite.ts",
     "db:test-commission-overwrite:http": "node --import tsx scripts/test-commission-overwrite-http.ts",
     "db:test-client-reconciliation": "node --import tsx scripts/test-client-reconciliation.ts",
-    "db:test-commission-upgrade": "tsx scripts/test-commission-upgrade.ts"
+    "db:test-commission-upgrade": "tsx scripts/test-commission-upgrade.ts",
+    "test:receipts": "node --import tsx scripts/test-financial-receipt-storage.ts",
+    "db:test-receipts": "node --import tsx scripts/test-financial-receipts.ts"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1172.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "dotenv": "^18.0.4",

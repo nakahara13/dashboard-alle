@@ -1,3 +1,4 @@
+import { MonthInput } from "@/components/formatted-input";
 import { InterfaceIcon } from "@/components/interface-icon";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -27,8 +28,8 @@ export function DashboardCommissionSection({ filters, dashboardRange, units = []
       <input type="hidden" name="periodo" value={dashboardRange.period} />
       <input type="hidden" name="inicio" value={dashboardRange.inicio} />
       <input type="hidden" name="fim" value={dashboardRange.fim} />
-      <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Mês inicial<input type="month" name="comissao_inicio" required defaultValue={filters.inicio} className={fieldClass} /></label>
-      <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Mês final<input type="month" name="comissao_fim" required defaultValue={filters.fim} className={fieldClass} /></label>
+      <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Mês inicial<MonthInput name="comissao_inicio" required defaultValue={filters.inicio} className={fieldClass} /></label>
+      <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Mês final<MonthInput name="comissao_fim" required defaultValue={filters.fim} className={fieldClass} /></label>
       <label className="grid min-w-0 gap-2 text-xs font-medium text-secondary">Unidade<select name="comissao_unidade" defaultValue={filters.unidade} disabled={loading} className={fieldClass}><option value="">Todas as unidades</option>{units.map((unit) => <option key={unit.id} value={unit.id}>{unit.nome}</option>)}</select></label>
       <div className="flex min-h-11 items-center gap-4"><button disabled={loading} className="min-h-11 rounded-lg bg-accent px-4 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">Aplicar filtros</button><Link href={resetHref} className="text-xs text-secondary underline underline-offset-4">Limpar</Link></div>
     </form>
