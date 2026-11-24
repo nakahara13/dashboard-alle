@@ -7,6 +7,7 @@ export type BitrixConfig = { webhookUrl: string; categoryId: number; cpfField: s
 export type BitrixField = { type: string; isMultiple?: boolean; items?: { ID: string; VALUE: string }[] };
 export type BitrixDeal = Record<string, unknown>;
 export type BitrixHiring = { academies: { id: string; nome: string; count: number }[]; unassignedCount: number };
+export type BitrixRevenueSummary = { total: number; clientCount: number; averageInvoice: number };
 type BitrixResponse = { result: unknown; next?: number; error?: string };
 
 export function bitrixConfig(env: Record<string, string | undefined> = process.env): BitrixConfig {
@@ -149,8 +150,9 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
   }
 
   // Montante/Moeda somente das duas fases de negócios fechados, sem cruzar CPF ou cliente local.
-  async function revenueTotal(inicio: string, fim: string): Promise<number> {
+  async function revenueSummary(inicio: string, fim: string): Promise<BitrixRevenueSummary> {
     let totalCents = BigInt(0);
+    let clientCount = 0;
     for await (const row of closedDeals(inicio, fim, ["ID", "CATEGORY_ID", "STAGE_ID", "OPPORTUNITY", "CURRENCY_ID", "DATE_CREATE"])) {
       if (row.CURRENCY_ID !== "BRL") throw new Error("Há valores em outra moeda no período. Não foi possível totalizar o faturamento em reais.");
       // A API envia decimais com até oito casas. Arredonda em centavos sem ponto flutuante.
@@ -160,10 +162,13 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
       const fraction = (amount[3] ?? "").padEnd(3, "0");
       const cents = BigInt(amount[2]) * BigInt(100) + BigInt(fraction.slice(0, 2)) + (fraction[2] >= "5" ? BigInt(1) : BigInt(0));
       totalCents += amount[1] ? -cents : cents;
+      // Cada negócio que compõe o faturamento também entra na base da média.
+      clientCount++;
     }
     const cents = Number(totalCents);
     if (!Number.isSafeInteger(cents)) throw new Error("O faturamento excede o limite de valor suportado.");
-    return cents / 100;
+    const total = cents / 100;
+    return { total, clientCount, averageInvoice: clientCount ? total / clientCount : 0 };
   }
 
   // Cada negócio fechado conta uma vez para a academia indicada no próprio Bitrix.
@@ -182,5 +187,5 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     return { academies: [...academies.values()], unassignedCount };
   }
 
-  return { unitOptions, dealsByCpf, revenueTotal, hiringByAcademy };
+  return { unitOptions, dealsByCpf, revenueSummary, hiringByAcademy };
 }

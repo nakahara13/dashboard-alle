@@ -24,7 +24,7 @@ async function main() {
     { data: { result: [deal(1, "1000.10", "2026-11-01T06:00:00+03:00"), deal(2, "20.20000000", "2026-11-10T12:00:00-03:00", { STAGE_ID: "C42:UC_ZJLB8G" })], next: 50 } },
     { data: { result: [deal(3, "0.03", "2026-11-18T05:59:59+03:00", { STAGE_ID: "C42:WON" }), deal(4, "9.67")] } },
   ]);
-  assert.equal(await pages.api.revenueTotal(inicio, fim), 1030, "Soma todas as páginas das duas fases de negócios fechados, sem depender de CPF ou clientes locais.");
+  assert.deepEqual(await pages.api.revenueSummary(inicio, fim), { total: 1030, clientCount: 4, averageInvoice: 257.5 }, "Soma e conta os mesmos negócios das duas fases em todas as páginas, sem depender de CPF ou clientes locais.");
   assert.equal(pages.calls.length, 3);
   assert.deepEqual(pages.calls[0], {
     method: "crm.dealcategory.stage.list.json", body: { id: 42 }, cache: "no-store",
@@ -40,51 +40,57 @@ async function main() {
   assert.deepEqual(pages.calls[2].body.filter, pages.calls[1].body.filter, "O filtro das fases e do período é mantido em todas as páginas.");
 
   for (const phase of ["C42:NEW", "C42:LOSE", null, "C42:OTHER_WON"]) {
-    await assert.rejects(() => mockApi([{ data: { result: [deal(1, "9999.00", undefined, { STAGE_ID: phase })] } }]).api.revenueTotal(inicio, fim), /fora das fases/);
+    await assert.rejects(() => mockApi([{ data: { result: [deal(1, "9999.00", undefined, { STAGE_ID: phase })] } }]).api.revenueSummary(inicio, fim), /fora das fases/);
   }
   for (const invalidStages of [null, [], stages.filter((stage) => stage.STATUS_ID !== "C42:WON"), [...stages, stages[0]], [{ STATUS_ID: "C42:OTHER", NAME: "Negócios Fechados Allp Fit - Teste" }, stages[1]]]) {
     const invalidStageApi = mockApi([], invalidStages);
-    await assert.rejects(() => invalidStageApi.api.revenueTotal(inicio, fim), /fases|fase/);
+    await assert.rejects(() => invalidStageApi.api.revenueSummary(inicio, fim), /fases|fase/);
     assert.equal(invalidStageApi.calls.length, 1, "Fases ausentes ou ambíguas impedem a consulta de faturamento.");
   }
 
   const singleDay = mockApi([{ data: { result: [deal(1, "0.10"), deal(2, "0.20"), deal(3, "1.00500000"), deal(4, "-0.01"), deal(5, 0)] } }]);
-  assert.equal(await singleDay.api.revenueTotal("2026-11-10", "2026-11-10"), 1.3, "Arredonda por fatura e soma centavos sem erro de ponto flutuante.");
+  assert.deepEqual(await singleDay.api.revenueSummary("2026-11-10", "2026-11-10"), { total: 1.3, clientCount: 5, averageInvoice: 0.26 }, "Arredonda por fatura e inclui na média todos os registros do faturamento, inclusive valores zero e negativos.");
   const empty = mockApi([{ data: { result: [] } }]);
-  assert.equal(await empty.api.revenueTotal(inicio, fim), 0, "Período vazio tem faturamento zero.");
+  assert.deepEqual(await empty.api.revenueSummary(inicio, fim), { total: 0, clientCount: 0, averageInvoice: 0 }, "Período vazio tem faturamento e média zero, sem divisão por zero.");
+  const oneClient = mockApi([{ data: { result: [deal(1, "250.55")] } }]);
+  assert.deepEqual(await oneClient.api.revenueSummary(inicio, fim), { total: 250.55, clientCount: 1, averageInvoice: 250.55 }, "Com um cliente, a média é igual ao faturamento.");
+  const repeatingAverage = mockApi([{ data: { result: [deal(1, "100.00"), deal(2, "100.00"), deal(3, "0.00")] } }]);
+  const repeatingSummary = await repeatingAverage.api.revenueSummary(inicio, fim);
+  assert.equal(repeatingSummary.clientCount, 3);
+  assert.equal(repeatingSummary.averageInvoice, 200 / 3, "A média divide o faturamento pela quantidade, preservando a precisão até a exibição em reais.");
 
   const monthEnd = mockApi([{ data: { result: [] } }]);
-  await monthEnd.api.revenueTotal("2024-02-29", "2024-02-29");
+  await monthEnd.api.revenueSummary("2024-02-29", "2024-02-29");
   assert.equal((monthEnd.calls[1].body.filter as Record<string, unknown>)["<DATE_CREATE"], "2024-03-01T00:00:00-03:00");
   const yearEnd = mockApi([{ data: { result: [] } }]);
-  await yearEnd.api.revenueTotal("2026-12-31", "2026-12-31");
+  await yearEnd.api.revenueSummary("2026-12-31", "2026-12-31");
   assert.equal((yearEnd.calls[1].body.filter as Record<string, unknown>)["<DATE_CREATE"], "2027-01-01T00:00:00-03:00");
 
   for (const created of ["2026-11-01T05:59:59+03:00", "2026-11-18T06:00:00+03:00", "inválido"]) {
-    await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", created)] } }]).api.revenueTotal(inicio, fim), /fora do período/);
+    await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", created)] } }]).api.revenueSummary(inicio, fim), /fora do período/);
   }
-  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { CATEGORY_ID: "8" })] } }]).api.revenueTotal(inicio, fim), /fora do funil/);
-  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { CURRENCY_ID: "USD" })] } }]).api.revenueTotal(inicio, fim), /outra moeda/);
+  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { CATEGORY_ID: "8" })] } }]).api.revenueSummary(inicio, fim), /fora do funil/);
+  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { CURRENCY_ID: "USD" })] } }]).api.revenueSummary(inicio, fim), /outra moeda/);
   for (const value of [null, "", "12,50", "NaN", "Infinity"]) {
-    await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { OPPORTUNITY: value })] } }]).api.revenueTotal(inicio, fim), /valores inválidos/);
+    await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00", undefined, { OPPORTUNITY: value })] } }]).api.revenueSummary(inicio, fim), /valores inválidos/);
   }
-  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "9007199254740991.00")] } }]).api.revenueTotal(inicio, fim), /limite de valor/);
-  await assert.rejects(() => mockApi([{ data: { result: {} } }]).api.revenueTotal(inicio, fim), /lista de negócios fechados inválida/);
-  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00")], next: 0 } }]).api.revenueTotal(inicio, fim), /percorrer/);
-  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00")], next: 50 } }, { data: { result: [deal(1, "1.00")] } }]).api.revenueTotal(inicio, fim), /percorrer/);
+  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "9007199254740991.00")] } }]).api.revenueSummary(inicio, fim), /limite de valor/);
+  await assert.rejects(() => mockApi([{ data: { result: {} } }]).api.revenueSummary(inicio, fim), /lista de negócios fechados inválida/);
+  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00")], next: 0 } }]).api.revenueSummary(inicio, fim), /percorrer/);
+  await assert.rejects(() => mockApi([{ data: { result: [deal(1, "1.00")], next: 50 } }, { data: { result: [deal(1, "1.00")] } }]).api.revenueSummary(inicio, fim), /percorrer/);
 
   const partialFailure = mockApi([{ data: { result: [deal(1, "1000.00")], next: 50 } }, { status: 401, data: { error: "INVALID_CREDENTIALS", error_description: config.webhookUrl } }]);
-  await assert.rejects(() => partialFailure.api.revenueTotal(inicio, fim), (error: Error) => /recusou/.test(error.message) && !error.message.includes(config.webhookUrl), "Falha em outra página não retorna faturamento parcial nem revela o webhook.");
+  await assert.rejects(() => partialFailure.api.revenueSummary(inicio, fim), (error: Error) => /recusou/.test(error.message) && !error.message.includes(config.webhookUrl), "Falha em outra página não retorna faturamento, contagem ou média parciais nem revela o webhook.");
   const retry = mockApi([{ status: 503, data: { error: "QUERY_LIMIT_EXCEEDED" } }, { data: { result: [deal(1, "10.00")] } }]);
-  assert.equal(await retry.api.revenueTotal(inicio, fim), 10);
+  assert.deepEqual(await retry.api.revenueSummary(inicio, fim), { total: 10, clientCount: 1, averageInvoice: 10 });
   assert.equal(retry.calls.length, 3);
-  await assert.rejects(() => mockApi([{ fail: true }, { fail: true }, { fail: true }]).api.revenueTotal(inicio, fim), (error: Error) => /não respondeu/.test(error.message) && !error.message.includes(config.webhookUrl));
+  await assert.rejects(() => mockApi([{ fail: true }, { fail: true }, { fail: true }]).api.revenueSummary(inicio, fim), (error: Error) => /não respondeu/.test(error.message) && !error.message.includes(config.webhookUrl));
 
   const invalid = mockApi([]);
-  await assert.rejects(() => invalid.api.revenueTotal("2026-02-30", fim), /datas válidas/);
-  await assert.rejects(() => invalid.api.revenueTotal(fim, inicio), /data inicial/);
+  await assert.rejects(() => invalid.api.revenueSummary("2026-02-30", fim), /datas válidas/);
+  await assert.rejects(() => invalid.api.revenueSummary(fim, inicio), /data inicial/);
   assert.equal(invalid.calls.length, 0, "Período inválido não consulta o CRM.");
-  console.log("PASSOU: faturamento somente das duas fases de negócios fechados, fases ausentes ou ambíguas, criação, funil, paginação, centavos, dia completo em São Paulo, ano bissexto, períodos vazios, falhas sem total parcial e credencial protegida.");
+  console.log("PASSOU: faturamento e média com a mesma base, contagem em todas as páginas, zero e um cliente, valores zero e negativos, precisão, duas fases, período, fuso, falhas sem resumo parcial e credencial protegida.");
 }
 
 void main().catch((error) => { console.error(error); process.exitCode = 1; });

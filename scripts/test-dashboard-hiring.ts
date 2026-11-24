@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { bitrixConfig, createBitrixClient, type BitrixDeal } from "../src/lib/bitrix";
-import { HIRING_BONUS, hiringDateRange, summarizeDashboardHiring } from "../src/lib/dashboard-hiring";
+import { HIRING_BONUS, dashboardHiringPodium, hiringDateRange, summarizeDashboardHiring } from "../src/lib/dashboard-hiring";
 
 const config = bitrixConfig({ BITRIX_WEBHOOK_URL: "https://example.bitrix24.com/rest/1/test-only/" });
 const inicio = "2026-11-01", fim = "2026-11-30";
@@ -47,16 +47,21 @@ async function main() {
   assert.equal(all.total, 70, "R$ 10 por negócio, independentemente de montante ou da recorrência de R$ 2.");
   assert.equal(all.academies.length, 5);
   assert.equal(all.unassignedCount, 2);
+  assert.deepEqual(dashboardHiringPodium(all).map((academy) => [academy.name, academy.count]), [["Canaã - MG", 2], ["Vila Zeferina - SP", 2], ["Glória - Vila Velha - ES", 1]], "O pódio usa as três maiores contagens do card, com desempate pelo nome e sem negócios sem academia.");
   for (const [name, expected] of [["Canaa - MG", 2], ["Itaquaquecetuba Vila Zeferina - SP", 2], ["Tirol - BH", 1], ["Gloria - ES", 1], ["Vila Velha Itaparica - ES", 1], ["Sem contratos - SP", 0]] as const) {
     const selected = summarizeDashboardHiring(data, name);
     assert.equal(selected.count, expected, `Filtro por unidade: ${name}`);
     assert.equal(selected.total, expected * 10);
     assert.equal(selected.unassignedCount, 0);
     assert.equal(selected.academies[0].name, name);
+    assert.equal(dashboardHiringPodium(selected).length, expected ? 1 : 0, "O pódio respeita o filtro de unidade e não premia unidades sem contratação.");
   }
   assert.throws(() => summarizeDashboardHiring(data, "Academia sem correspondência"), /não possui correspondência/);
   const empty = await mockApi([{ data: { result: [] } }]).api.hiringByAcademy(inicio, fim);
   assert.deepEqual(summarizeDashboardHiring(empty), { count: 0, total: 0, unassignedCount: 0, academies: [] });
+  assert.deepEqual(dashboardHiringPodium(summarizeDashboardHiring(empty)), []);
+  const grouped = summarizeDashboardHiring({ academies: [{ id: "1", nome: "Tirol - MG", count: 2 }, { id: "2", nome: "Tirol - BH", count: 3 }, { id: "3", nome: "Canaã - MG", count: 4 }], unassignedCount: 0 });
+  assert.deepEqual(dashboardHiringPodium(grouped).map((academy) => academy.count), [5, 4], "Agrupa nomes equivalentes da mesma unidade antes do ranking, inclusive quando há menos de três unidades.");
 
   for (const extra of [{ CATEGORY_ID: "99" }, { STAGE_ID: "C42:NEW" }, { DATE_CREATE: "2026-11-01T05:59:59+03:00" }, { DATE_CREATE: "2026-12-01T06:00:00+03:00" }, { DATE_CREATE: "inválido" }, { ID: "0" }]) {
     await assert.rejects(() => mockApi([{ data: { result: [deal(1, "100", extra)] } }]).api.hiringByAcademy(inicio, fim));
@@ -75,6 +80,6 @@ async function main() {
   await assert.rejects(() => invalid.api.hiringByAcademy("2026-02-30", fim));
   await assert.rejects(() => invalid.api.hiringByAcademy(fim, inicio));
   assert.equal(invalid.calls.length, 0);
-  console.log("PASSOU: contratação a R$ 10 por negócio, duas fases, academia, filtros mensais, fuso de São Paulo, paginação, correspondências de unidades, sem academia, zero e falhas sem total parcial.");
+  console.log("PASSOU: contratação a R$ 10 por negócio, pódio das três maiores contagens, desempates, agrupamento de unidades, filtro de unidade, duas fases, filtros mensais, fuso, paginação, zero e falhas sem total parcial.");
 }
 void main().catch((error) => { console.error(error); process.exitCode = 1; });

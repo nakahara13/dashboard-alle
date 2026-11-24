@@ -2,9 +2,9 @@ import type { UnitCommissionPodiumEntry, UnitCommissionPodiumRange } from "@/lib
 import { money } from "@/lib/dashboard";
 
 const places = [
-  { position: "sm:col-start-2 sm:row-start-1", step: "bg-accent text-on-accent sm:h-32", badge: "bg-accent-soft text-accent-ink" },
-  { position: "sm:col-start-1 sm:row-start-1", step: "bg-subtle text-secondary sm:h-24", badge: "bg-subtle text-secondary" },
-  { position: "sm:col-start-3 sm:row-start-1", step: "bg-accent-soft text-accent-ink sm:h-16", badge: "bg-accent-soft text-accent-ink" },
+  { position: "sm:col-start-2 sm:row-start-1", step: "dashboard-podium-first sm:h-32", badge: "dashboard-podium-first" },
+  { position: "sm:col-start-1 sm:row-start-1", step: "dashboard-podium-second sm:h-24", badge: "dashboard-podium-second" },
+  { position: "sm:col-start-3 sm:row-start-1", step: "dashboard-podium-third sm:h-16", badge: "dashboard-podium-third" },
 ];
 
 export function DashboardUnitPodium({ range, entries = null, loading = false, error = null }: { range: UnitCommissionPodiumRange; entries?: UnitCommissionPodiumEntry[] | null; loading?: boolean; error?: string | null }) {

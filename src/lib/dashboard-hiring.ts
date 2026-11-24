@@ -36,3 +36,7 @@ export function summarizeDashboardHiring(data: BitrixHiring, unitName?: string):
   const count = academies.reduce((total, academy) => total + academy.count, 0);
   return { academies, count, total: count * HIRING_BONUS, unassignedCount: unitName ? 0 : data.unassignedCount };
 }
+
+export function dashboardHiringPodium(summary: DashboardHiringSummary) {
+  return summary.academies.filter((academy) => academy.count > 0).slice(0, 3);
+}

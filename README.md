@@ -183,11 +183,15 @@ O dashboard apresenta as três unidades com maior soma de **comissão do parceir
 
 `npm run db:test-unit-commission-podium` valida a agregação, o ranking por mês e intervalos entre competências em tabelas temporárias isoladas, removidas ao final, sem alterar os dados reais.
 
+Logo abaixo, o pódio **Unidades que mais fecham contratações** mostra as três unidades com maior quantidade de contratações. Usa o mesmo resumo e a mesma consulta ao Bitrix do card **Contratação**, seguindo os filtros de mês inicial, mês final e unidade da seção **Comissões e contratação**. Nomes equivalentes de academias são agrupados antes do ranking; empates seguem o nome da unidade. Unidades sem contratações e negócios sem academia não ocupam posições. `npm run test:dashboard-hiring` valida a contagem, o ranking e esses filtros com respostas simuladas.
+
 ## Sincronização de unidades pelo Bitrix
 
 O card **Faturamento** do dashboard usa o mesmo webhook e o mesmo funil **Negócios | Alle Energia** (`BITRIX_DEAL_CATEGORY_ID=42`). Soma o campo **Montante/Moeda** (`OPPORTUNITY`, em BRL) dos negócios pela data **Criado** (`DATE_CREATE`), usando o período selecionado e dias completos no horário de São Paulo. Considera somente as fases **Negócios Fechados Allp Fit** e **Negócios Fechados Geral**, sem cruzar com clientes, CPFs ou alunos cadastrados. As fases são identificadas pelo nome dentro do funil e filtradas por `STAGE_ID`; se alguma não puder ser identificada, o card informa a indisponibilidade. Percorre todas as páginas do Bitrix; se houver falha ou valores em outra moeda, o card informa a indisponibilidade em vez de mostrar um total parcial ou somar moedas diferentes. A consulta é somente de leitura e o card carrega independentemente dos indicadores locais.
 
-`npm run test:dashboard-revenue` valida o filtro das duas fases, a soma monetária, os limites de data e fuso, a paginação e os erros com respostas simuladas, sem banco ou CRM reais.
+O card **Média de faturas**, ao lado de Faturamento, divide o faturamento pela quantidade de clientes do mesmo filtro. Cada negócio incluído na soma conta como um cliente, inclusive quando o valor é zero; total e contagem são obtidos na mesma consulta paginada, sem usar o total de alunos ativos ou depender do cadastro local. A descrição mostra quantos clientes compõem a média. Ambos os cards acompanham o período selecionado e compartilham carregamento e erros; sem negócios no período, mostram R$ 0,00.
+
+`npm run test:dashboard-revenue` valida o filtro das duas fases, a soma monetária, a contagem e a média sobre os mesmos registros, os limites de data e fuso, a paginação e os erros com respostas simuladas, sem banco ou CRM reais.
 
 Em **Clientes → Visão geral**, o botão **Sincronizar unidades com Bitrix** verifica todos os clientes cadastrados, incluindo inativos e independentemente dos filtros e da paginação. A consulta usa o CPF do cadastro nos negócios do funil **Negócios | Alle Energia** (categoria 42), considerando CPF com e sem máscara. Os negócios são somente consultados; a integração não escreve no CRM.
 

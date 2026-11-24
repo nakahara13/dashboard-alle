@@ -1,11 +1,12 @@
 import { requireUser } from "@/lib/auth";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import type { Metadata } from "next";
 import { Dashboard } from "@/components/dashboard";
-import { DashboardRevenue, DashboardRevenueCard } from "@/components/dashboard-revenue";
+import { DashboardRevenue, DashboardRevenueCards } from "@/components/dashboard-revenue";
 import { DashboardUnitPodium } from "@/components/dashboard-unit-podium";
 import { DashboardCommissionSection } from "@/components/dashboard-commissions";
 import { DashboardHiringCard } from "@/components/dashboard-hiring-card";
+import { DashboardHiringPodium } from "@/components/dashboard-hiring-podium";
 import { bitrixConfig, createBitrixClient } from "@/lib/bitrix";
 import { hiringDateRange, summarizeDashboardHiring, type DashboardHiringSummary } from "@/lib/dashboard-hiring";
 import { dashboardCommissionFilters, dashboardCommissionParams, getDashboardCommissions, type DashboardCommissionFilters, type DashboardCommissionSummary } from "@/lib/dashboard-commissions";
@@ -24,8 +25,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
   let error: string | null = null;
   try { range = dashboardRange(params, today); } catch (cause) { error = cause instanceof Error ? cause.message : "Período inválido."; }
   const commissionParams = dashboardCommissionParams(params);
-  const commissions = <Suspense key={JSON.stringify([commissionParams, range.inicio, range.fim])} fallback={<DashboardCommissionSection filters={{ inicio: commissionParams.comissao_inicio || today.slice(0, 7), fim: commissionParams.comissao_fim || today.slice(0, 7), unidade: commissionParams.comissao_unidade || "" }} dashboardRange={range} loading />}><DashboardCommissions params={params} today={today} dashboardRange={range} /></Suspense>;
-  const revenue = error ? <DashboardRevenueCard error="Selecione um período válido para consultar o faturamento." /> : <Suspense key={`${range.inicio}-${range.fim}`} fallback={<DashboardRevenueCard loading />}><DashboardRevenue inicio={range.inicio} fim={range.fim} /></Suspense>;
+  const commissionFallbackFilters = { inicio: commissionParams.comissao_inicio || today.slice(0, 7), fim: commissionParams.comissao_fim || today.slice(0, 7), unidade: commissionParams.comissao_unidade || "" };
+  const commissions = <Suspense key={JSON.stringify([commissionParams, range.inicio, range.fim])} fallback={<DashboardCommissionSection filters={commissionFallbackFilters} dashboardRange={range} loading />}><DashboardCommissions params={params} today={today} dashboardRange={range} /></Suspense>;
+  const hiringPodium = <Suspense key={JSON.stringify(commissionParams)} fallback={<DashboardHiringPodium filters={commissionFallbackFilters} loading />}><UnitHiringPodium params={params} today={today} /></Suspense>;
+  const revenue = error ? <DashboardRevenueCards error="Selecione um período válido para consultar o faturamento." /> : <Suspense key={`${range.inicio}-${range.fim}`} fallback={<DashboardRevenueCards loading />}><DashboardRevenue inicio={range.inicio} fim={range.fim} /></Suspense>;
   const podiumRange = { inicio: range.inicio, fim: range.fim };
   const podium = error ? <DashboardUnitPodium range={podiumRange} error="Selecione um período válido para consultar o pódio." /> : <Suspense key={`${range.inicio}-${range.fim}`} fallback={<DashboardUnitPodium range={podiumRange} loading />}><UnitCommissionPodium range={podiumRange} /></Suspense>;
   let data = null;
@@ -49,10 +52,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
       }, { isolationLevel: "RepeatableRead" });
     } catch { error = "Não foi possível carregar os indicadores. Verifique a conexão e tente novamente."; }
   }
-  return <Dashboard range={{ inicio: range.inicio, fim: range.fim, period: range.period }} data={data} error={error} revenue={revenue} podium={podium} commissions={commissions} commissionParams={commissionParams} />;
+  return <Dashboard range={{ inicio: range.inicio, fim: range.fim, period: range.period }} data={data} error={error} revenue={revenue} podium={podium} hiringPodium={hiringPodium} commissions={commissions} commissionParams={commissionParams} />;
 }
 
-async function DashboardCommissions({ params, today, dashboardRange }: { params: DashboardParams; today: string; dashboardRange: { inicio: string; fim: string; period: string } }) {
+const loadDashboardCommissions = cache(async (params: DashboardParams, today: string) => {
   let filters: DashboardCommissionFilters = {
     inicio: typeof params.comissao_inicio === "string" ? params.comissao_inicio : today.slice(0, 7),
     fim: typeof params.comissao_fim === "string" ? params.comissao_fim : today.slice(0, 7),
@@ -74,12 +77,20 @@ async function DashboardCommissions({ params, today, dashboardRange }: { params:
     summary = data.summary;
     error = data.error;
   } catch { error = "Não foi possível carregar as comissões. Tente novamente."; }
-  const unitName = units.find((unit) => String(unit.id) === filters.unidade)?.nome;
-  const hiring = error ? <DashboardHiringCard error={error} /> : <Suspense key={`${filters.inicio}-${filters.fim}-${filters.unidade}`} fallback={<DashboardHiringCard loading />}><DashboardHiring filters={filters} unitName={unitName} /></Suspense>;
+  return { filters, units, summary, error };
+});
+
+async function DashboardCommissions({ params, today, dashboardRange }: { params: DashboardParams; today: string; dashboardRange: { inicio: string; fim: string; period: string } }) {
+  const { filters, units, summary, error } = await loadDashboardCommissions(params, today);
+  const hiring = error ? <DashboardHiringCard error={error} /> : <Suspense key={`${filters.inicio}-${filters.fim}-${filters.unidade}`} fallback={<DashboardHiringCard loading />}><DashboardHiring params={params} today={today} /></Suspense>;
   return <DashboardCommissionSection filters={filters} dashboardRange={dashboardRange} units={units} summary={summary} error={error} hiring={hiring} />;
 }
 
-async function DashboardHiring({ filters, unitName }: { filters: DashboardCommissionFilters; unitName?: string }) {
+// Card e pódio compartilham filtros validados e uma única consulta ao Bitrix por renderização.
+const loadDashboardHiring = cache(async (params: DashboardParams, today: string) => {
+  const { filters, units, error: filterError } = await loadDashboardCommissions(params, today);
+  if (filterError) return { filters, summary: null, error: filterError };
+  const unitName = units.find((unit) => String(unit.id) === filters.unidade)?.nome;
   let summary: DashboardHiringSummary | null = null;
   let error: string | null = null;
   try {
@@ -89,7 +100,17 @@ async function DashboardHiring({ filters, unitName }: { filters: DashboardCommis
   } catch (cause) {
     error = cause instanceof Error ? cause.message : "Não foi possível carregar as contratações. Tente novamente.";
   }
+  return { filters, summary, error };
+});
+
+async function DashboardHiring({ params, today }: { params: DashboardParams; today: string }) {
+  const { summary, error } = await loadDashboardHiring(params, today);
   return <DashboardHiringCard summary={summary} error={error} />;
+}
+
+async function UnitHiringPodium({ params, today }: { params: DashboardParams; today: string }) {
+  const { filters, summary, error } = await loadDashboardHiring(params, today);
+  return <DashboardHiringPodium filters={filters} summary={summary} error={error} />;
 }
 
 async function UnitCommissionPodium({ range }: { range: UnitCommissionPodiumRange }) {

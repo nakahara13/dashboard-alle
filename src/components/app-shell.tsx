@@ -76,7 +76,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
   const currentGroup = navigation.find((group) => group.items.some((item) => item === currentItem));
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+    <div className="min-h-screen lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
       <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-surface p-3 text-accent-ink shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
       <aside className="saas-sidebar m-4 overflow-hidden rounded-xl border border-line lg:sticky lg:top-4 lg:mr-0 lg:flex lg:h-[calc(100dvh-2rem)] lg:flex-col lg:self-start">
         <div className="flex shrink-0 items-center justify-end px-6 py-3 lg:hidden">
@@ -85,7 +85,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
           </button>
         </div>
         <div id="sidebar-navigation" className={`${menuOpen ? "flex" : "hidden"} min-h-0 flex-1 flex-col lg:flex`}>
-          <nav aria-label="Menu principal" className="sidebar-nav flex-1 space-y-4 overflow-y-auto px-3 pb-5 pt-5">
+          <nav aria-label="Menu principal" className="sidebar-nav flex-1 space-y-4 overflow-y-auto px-4 pb-6 pt-6">
             {navigation.map((group) => {
               const items = <ul className="space-y-1.5">
                   {group.items.filter((item) => item.href !== "/usuarios" || user.role === "admin").map((item) => {
@@ -119,14 +119,14 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
             <Image src={financeiroLogo} alt="" priority sizes="184px" className="sidebar-logo h-auto w-[184px] max-w-full object-contain" />
           </Link>
           </div>
-          <div className="mx-[18px] mb-5 flex shrink-0 items-center gap-2 border-t border-line pt-4">
+          <div className="mx-5 mb-5 flex shrink-0 items-center gap-2 border-t border-line pt-4">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-muted text-xs font-semibold text-primary">{user.nome.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
               <div className="min-w-0"><p className="truncate text-xs font-semibold text-secondary" title={user.email}>{user.nome}</p><p className="text-xs text-muted-ink">{user.role === "admin" ? "Administrador" : "Gestor"}</p></div>
             </div>
             <ThemeToggle />
           </div>
-          <form action={logoutAction} className="mx-[18px] mb-5">
+          <form action={logoutAction} className="mx-5 mb-5">
             <button className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-ink hover:bg-muted hover:text-primary"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m-7 5h12" /></svg>Sair da conta</button>
           </form>
           </div>
