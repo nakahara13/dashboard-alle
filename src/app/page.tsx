@@ -7,6 +7,10 @@ import { DashboardUnitPodium } from "@/components/dashboard-unit-podium";
 import { DashboardCommissionSection } from "@/components/dashboard-commissions";
 import { DashboardHiringCard } from "@/components/dashboard-hiring-card";
 import { DashboardHiringPodium } from "@/components/dashboard-hiring-podium";
+import { DashboardChartCard } from "@/components/dashboard-chart-card";
+import type { DashboardChartModel } from "@/lib/dashboard-analytics-types";
+import { hiringChartModel, loadDashboardRevenue, loadPreviousDashboardRevenue, previousHiringRange, revenueChartModels } from "@/lib/dashboard-bitrix-analytics";
+import { getDashboardCashflow, getDashboardCommissionAnalytics } from "@/lib/dashboard-financial-analytics";
 import { bitrixConfig, createBitrixClient } from "@/lib/bitrix";
 import { hiringDateRange, summarizeDashboardHiring, type DashboardHiringSummary } from "@/lib/dashboard-hiring";
 import { dashboardCommissionFilters, dashboardCommissionParams, getDashboardCommissions, type DashboardCommissionFilters, type DashboardCommissionSummary } from "@/lib/dashboard-commissions";
@@ -31,6 +35,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
   const revenue = error ? <DashboardRevenueCards error="Selecione um período válido para consultar o faturamento." /> : <Suspense key={`${range.inicio}-${range.fim}`} fallback={<DashboardRevenueCards loading />}><DashboardRevenue inicio={range.inicio} fim={range.fim} /></Suspense>;
   const podiumRange = { inicio: range.inicio, fim: range.fim };
   const podium = error ? <DashboardUnitPodium range={podiumRange} error="Selecione um período válido para consultar o pódio." /> : <Suspense key={`${range.inicio}-${range.fim}`} fallback={<DashboardUnitPodium range={podiumRange} loading />}><UnitCommissionPodium range={podiumRange} /></Suspense>;
+  const chartError = error ? "Selecione um período válido para consultar os gráficos." : null;
+  const analytics = <section aria-labelledby="dashboard-analytics-title" className="space-y-4">
+    <div><h2 id="dashboard-analytics-title" className="text-xl font-semibold tracking-tight">Desempenho no período</h2><p className="mt-1 text-sm text-muted-ink">Evolução dos indicadores e comparação com o período anterior de mesma duração.</p></div>
+    <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+      {["revenue-trend", "cashflow", "invoice-trend", "revenue-units"].map((id) => {
+        const placeholder = id === "cashflow" ? chartPlaceholder(id, "Entradas × saídas") : revenueChartModels(null, range.inicio, range.fim).find((chart) => chart.id === id)!;
+        return chartError ? <DashboardChartCard key={id} chart={placeholder} error={chartError} /> : <Suspense key={`${id}-${range.inicio}-${range.fim}`} fallback={<DashboardChartCard chart={placeholder} loading />}>{id === "cashflow" ? <CashflowAnalytics range={podiumRange} /> : <RevenueAnalytics range={podiumRange} id={id} />}</Suspense>;
+      })}
+    </div>
+  </section>;
   let data = null;
   if (!error) {
     try {
@@ -52,7 +66,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
       }, { isolationLevel: "RepeatableRead" });
     } catch { error = "Não foi possível carregar os indicadores. Verifique a conexão e tente novamente."; }
   }
-  return <Dashboard range={{ inicio: range.inicio, fim: range.fim, period: range.period }} data={data} error={error} revenue={revenue} podium={podium} hiringPodium={hiringPodium} commissions={commissions} commissionParams={commissionParams} />;
+  return <Dashboard range={{ inicio: range.inicio, fim: range.fim, period: range.period }} data={data} error={error} revenue={revenue} analytics={analytics} podium={podium} hiringPodium={hiringPodium} commissions={commissions} commissionParams={commissionParams} />;
 }
 
 const loadDashboardCommissions = cache(async (params: DashboardParams, today: string) => {
@@ -83,24 +97,30 @@ const loadDashboardCommissions = cache(async (params: DashboardParams, today: st
 async function DashboardCommissions({ params, today, dashboardRange }: { params: DashboardParams; today: string; dashboardRange: { inicio: string; fim: string; period: string } }) {
   const { filters, units, summary, error } = await loadDashboardCommissions(params, today);
   const hiring = error ? <DashboardHiringCard error={error} /> : <Suspense key={`${filters.inicio}-${filters.fim}-${filters.unidade}`} fallback={<DashboardHiringCard loading />}><DashboardHiring params={params} today={today} /></Suspense>;
-  return <DashboardCommissionSection filters={filters} dashboardRange={dashboardRange} units={units} summary={summary} error={error} hiring={hiring} />;
+  const key = `${filters.inicio}-${filters.fim}-${filters.unidade}`;
+  const charts = <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+    <Suspense key={`hiring-${key}`} fallback={<DashboardChartCard chart={hiringChartModel(null, filters)} loading />}><HiringAnalytics params={params} today={today} /></Suspense>
+    <Suspense key={`commission-${key}`} fallback={<CommissionChartPlaceholders loading />}><CommissionAnalytics params={params} today={today} /></Suspense>
+  </div>;
+  return <DashboardCommissionSection filters={filters} dashboardRange={dashboardRange} units={units} summary={summary} error={error} hiring={hiring} charts={charts} />;
 }
 
 // Card e pódio compartilham filtros validados e uma única consulta ao Bitrix por renderização.
 const loadDashboardHiring = cache(async (params: DashboardParams, today: string) => {
   const { filters, units, error: filterError } = await loadDashboardCommissions(params, today);
-  if (filterError) return { filters, summary: null, error: filterError };
+  if (filterError) return { filters, summary: null, source: null, unitName: undefined, error: filterError };
   const unitName = units.find((unit) => String(unit.id) === filters.unidade)?.nome;
   let summary: DashboardHiringSummary | null = null;
   let error: string | null = null;
+  let source = null;
   try {
     const range = hiringDateRange(filters.inicio, filters.fim);
-    const data = await createBitrixClient(bitrixConfig()).hiringByAcademy(range.inicio, range.fim);
-    summary = summarizeDashboardHiring(data, unitName);
+    source = await createBitrixClient(bitrixConfig()).hiringAnalytics(range.inicio, range.fim);
+    summary = summarizeDashboardHiring(source.hiring, unitName);
   } catch (cause) {
     error = cause instanceof Error ? cause.message : "Não foi possível carregar as contratações. Tente novamente.";
   }
-  return { filters, summary, error };
+  return { filters, summary, source, unitName, error };
 });
 
 async function DashboardHiring({ params, today }: { params: DashboardParams; today: string }) {
@@ -122,4 +142,51 @@ async function UnitCommissionPodium({ range }: { range: UnitCommissionPodiumRang
     error = "Não foi possível carregar o pódio das unidades. Tente novamente.";
   }
   return <DashboardUnitPodium range={range} entries={entries} error={error} />;
+}
+
+function chartPlaceholder(id: string, title: string): DashboardChartModel {
+  return { id, title, description: "", kind: "bar", format: "money", points: [], series: [], value: null, valueLabel: "Total no período", previousValue: null, comparisonLabel: "Período anterior", empty: true };
+}
+
+async function RevenueAnalytics({ range, id }: { range: UnitCommissionPodiumRange; id: string }) {
+  const [{ data, error }, previous] = await Promise.all([loadDashboardRevenue(range.inicio, range.fim), loadPreviousDashboardRevenue(range.inicio, range.fim)]);
+  const chart = revenueChartModels(data, range.inicio, range.fim, previous).find((model) => model.id === id)!;
+  return <DashboardChartCard chart={chart} error={error ?? (id === "revenue-units" ? data?.unitsError : null)} />;
+}
+
+async function CashflowAnalytics({ range }: { range: UnitCommissionPodiumRange }) {
+  try {
+    const chart = await getPrisma().$transaction((db) => getDashboardCashflow(db, range), { isolationLevel: "RepeatableRead" });
+    return <DashboardChartCard chart={chart} />;
+  } catch { return <DashboardChartCard chart={chartPlaceholder("cashflow", "Entradas × saídas")} error="Não foi possível carregar as entradas e saídas. Tente novamente." />; }
+}
+
+async function HiringAnalytics({ params, today }: { params: DashboardParams; today: string }) {
+  const { filters, source, unitName, error } = await loadDashboardHiring(params, today);
+  let previousCount: number | null = null;
+  let comparisonLabel = "Competências anteriores";
+  if (!error) {
+    try {
+      const range = previousHiringRange(filters, today);
+      comparisonLabel = `${range.inicio.split("-").reverse().join("/")} a ${range.fim.split("-").reverse().join("/")}`;
+      const data = await createBitrixClient(bitrixConfig()).hiringByAcademy(range.inicio, range.fim);
+      previousCount = summarizeDashboardHiring(data, unitName).count;
+    } catch { /* O gráfico atual continua disponível sem a comparação. */ }
+  }
+  return <DashboardChartCard chart={hiringChartModel(error ? null : source, filters, unitName, previousCount, comparisonLabel)} error={error} />;
+}
+
+const commissionChartTitles = [["commission-status", "Comissões pagas × pendentes"], ["commission-margin", "Margem das comissões"], ["commission-savings", "Economia gerada aos clientes"]] as const;
+
+function CommissionChartPlaceholders({ loading = false, error = null }: { loading?: boolean; error?: string | null }) {
+  return <>{commissionChartTitles.map(([id, title]) => <DashboardChartCard key={id} chart={chartPlaceholder(id, title)} loading={loading} error={error} />)}</>;
+}
+
+async function CommissionAnalytics({ params, today }: { params: DashboardParams; today: string }) {
+  const { filters, error } = await loadDashboardCommissions(params, today);
+  if (error) return <CommissionChartPlaceholders error={error} />;
+  try {
+    const charts = await getPrisma().$transaction((db) => getDashboardCommissionAnalytics(db, filters), { isolationLevel: "RepeatableRead" });
+    return <>{[charts.status, charts.margin, charts.savings].map((chart) => <DashboardChartCard key={chart.id} chart={chart} />)}</>;
+  } catch { return <CommissionChartPlaceholders error="Não foi possível carregar os gráficos de comissões. Tente novamente." />; }
 }

@@ -14,9 +14,10 @@ type Props = {
   error?: string | null;
   loading?: boolean;
   hiring?: ReactNode;
+  charts?: ReactNode;
 };
 
-export function DashboardCommissionSection({ filters, dashboardRange, units = [], summary = null, error = null, loading = false, hiring }: Props) {
+export function DashboardCommissionSection({ filters, dashboardRange, units = [], summary = null, error = null, loading = false, hiring, charts }: Props) {
   const resetHref = `/?${new URLSearchParams({ periodo: dashboardRange.period, inicio: dashboardRange.inicio, fim: dashboardRange.fim })}#dashboard-commissions`;
   const fieldClass = "min-h-11 w-full min-w-0 rounded-lg border border-line bg-surface px-3 text-sm text-ink";
   return <section id="dashboard-commissions" aria-labelledby="dashboard-commissions-title" aria-busy={loading || undefined} className="space-y-5 border-t border-line pt-7 scroll-mt-6">
@@ -43,5 +44,6 @@ export function DashboardCommissionSection({ filters, dashboardRange, units = []
       {hiring ?? <DashboardHiringCard loading={loading} error={error} />}
     </div>
     <p className="text-xs leading-5 text-muted-ink">Comissão recorrente do parceiro soma as comissões dos parceiros cadastradas, pagas e pendentes, pela competência mensal. Contratação soma R$ 10 por negócio nas fases Negócios Fechados Geral e Negócios Fechados Allp Fit do funil Negócios | Alle Energia, pelo campo Criado e pela Academia Allp Fit.</p>
+    {charts}
   </section>;
 }

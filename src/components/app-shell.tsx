@@ -133,7 +133,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
         </div>
       </aside>
       <div className="flex min-w-0 flex-col">
-        <main id="conteudo" tabIndex={-1} className="flex min-w-0 flex-1 flex-col p-5 sm:p-7 lg:min-h-dvh">{children}</main>
+        <main id="conteudo" tabIndex={-1} className={`flex min-w-0 flex-1 flex-col lg:min-h-dvh ${pathname === "/" ? "p-3 sm:p-4" : "p-5 sm:p-7"}`}>{children}</main>
       </div>
     </div>
   );

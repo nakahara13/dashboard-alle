@@ -1,5 +1,6 @@
 import "server-only";
 import { normalizeClientCpf } from "./clientes";
+import { bitrixUnitName } from "./bitrix-units";
 import { isoDate, parseDate } from "./dashboard";
 
 // A URL secreta é lida apenas no servidor e nunca integra os dados enviados à tela.
@@ -8,7 +9,33 @@ export type BitrixField = { type: string; isMultiple?: boolean; items?: { ID: st
 export type BitrixDeal = Record<string, unknown>;
 export type BitrixHiring = { academies: { id: string; nome: string; count: number }[]; unassignedCount: number };
 export type BitrixRevenueSummary = { total: number; clientCount: number; averageInvoice: number };
+export type BitrixRevenueAnalytics = {
+  summary: BitrixRevenueSummary;
+  days: { date: string; total: number; clientCount: number }[];
+  units: { name: string; total: number; clientCount: number }[];
+  unitsError: string | null;
+};
+export type BitrixHiringAnalytics = { hiring: BitrixHiring; days: { date: string; academyId: string; count: number }[] };
 type BitrixResponse = { result: unknown; next?: number; error?: string };
+
+function dealRevenueCents(row: BitrixDeal): bigint {
+  if (row.CURRENCY_ID !== "BRL") throw new Error("Há valores em outra moeda no período. Não foi possível totalizar o faturamento em reais.");
+  const value = typeof row.OPPORTUNITY === "string" || typeof row.OPPORTUNITY === "number" ? String(row.OPPORTUNITY) : "";
+  const amount = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+  if (!amount) throw new Error("Há valores inválidos no faturamento do Bitrix. Tente novamente.");
+  const fraction = (amount[3] ?? "").padEnd(3, "0");
+  const cents = BigInt(amount[2]) * BigInt(100) + BigInt(fraction.slice(0, 2)) + (fraction[2] >= "5" ? BigInt(1) : BigInt(0));
+  return amount[1] ? -cents : cents;
+}
+
+function revenueValue(cents: bigint): number {
+  const value = Number(cents);
+  if (!Number.isSafeInteger(value)) throw new Error("O faturamento excede o limite de valor suportado.");
+  return value / 100;
+}
+
+const bitrixDateFormatter = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" });
+const bitrixDay = (created: unknown) => bitrixDateFormatter.format(new Date(String(created)));
 
 export function bitrixConfig(env: Record<string, string | undefined> = process.env): BitrixConfig {
   const webhookUrl = env.BITRIX_WEBHOOK_URL?.trim();
@@ -154,38 +181,78 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     let totalCents = BigInt(0);
     let clientCount = 0;
     for await (const row of closedDeals(inicio, fim, ["ID", "CATEGORY_ID", "STAGE_ID", "OPPORTUNITY", "CURRENCY_ID", "DATE_CREATE"])) {
-      if (row.CURRENCY_ID !== "BRL") throw new Error("Há valores em outra moeda no período. Não foi possível totalizar o faturamento em reais.");
-      // A API envia decimais com até oito casas. Arredonda em centavos sem ponto flutuante.
-      const value = typeof row.OPPORTUNITY === "string" || typeof row.OPPORTUNITY === "number" ? String(row.OPPORTUNITY) : "";
-      const amount = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
-      if (!amount) throw new Error("Há valores inválidos no faturamento do Bitrix. Tente novamente.");
-      const fraction = (amount[3] ?? "").padEnd(3, "0");
-      const cents = BigInt(amount[2]) * BigInt(100) + BigInt(fraction.slice(0, 2)) + (fraction[2] >= "5" ? BigInt(1) : BigInt(0));
-      totalCents += amount[1] ? -cents : cents;
+      totalCents += dealRevenueCents(row);
       // Cada negócio que compõe o faturamento também entra na base da média.
       clientCount++;
     }
-    const cents = Number(totalCents);
-    if (!Number.isSafeInteger(cents)) throw new Error("O faturamento excede o limite de valor suportado.");
-    const total = cents / 100;
+    const total = revenueValue(totalCents);
     return { total, clientCount, averageInvoice: clientCount ? total / clientCount : 0 };
   }
 
+  async function revenueAnalytics(inicio: string, fim: string): Promise<BitrixRevenueAnalytics> {
+    let totalCents = BigInt(0), clientCount = 0;
+    const days = new Map<string, { cents: bigint; count: number }>();
+    const units = new Map<string, { cents: bigint; count: number }>();
+    let unitsError: string | null = null;
+    for await (const row of closedDeals(inicio, fim, ["ID", "CATEGORY_ID", "STAGE_ID", "OPPORTUNITY", "CURRENCY_ID", "DATE_CREATE", config.unitField])) {
+      const cents = dealRevenueCents(row), date = bitrixDay(row.DATE_CREATE);
+      totalCents += cents;
+      clientCount++;
+      const day = days.get(date) ?? { cents: BigInt(0), count: 0 };
+      day.cents += cents; day.count++; days.set(date, day);
+      const value = row[config.unitField];
+      const unassigned = value === undefined || value === null || value === "" || value === false || value === "0" || value === 0;
+      if (!unassigned && typeof value !== "string" && typeof value !== "number") { unitsError = "Há negócios com unidade inválida no Bitrix."; continue; }
+      const id = unassigned ? "" : String(value);
+      const unit = units.get(id) ?? { cents: BigInt(0), count: 0 };
+      unit.cents += cents; unit.count++; units.set(id, unit);
+    }
+    const named = new Map<string, { name: string; cents: bigint; count: number }>();
+    if (!unitsError) {
+      try {
+        const options = [...units.keys()].some(Boolean) ? academyOptions(await dealFields()) : [];
+        const names = new Map(options.map((option) => [option.id, option.nome]));
+        for (const [id, unit] of units) {
+          const name = id ? names.get(id) : "Sem unidade informada";
+          if (!name) throw new Error("Há negócios com Academia Allp Fit não reconhecida no Bitrix.");
+          const key = id ? bitrixUnitName(name) : "__unassigned__";
+          const grouped = named.get(key) ?? { name, cents: BigInt(0), count: 0 };
+          grouped.cents += unit.cents; grouped.count += unit.count; named.set(key, grouped);
+        }
+      } catch (cause) { unitsError = cause instanceof Error ? cause.message : "Não foi possível consultar o faturamento por unidade."; }
+    }
+    const total = revenueValue(totalCents);
+    return {
+      summary: { total, clientCount, averageInvoice: clientCount ? total / clientCount : 0 },
+      days: [...days].sort(([a], [b]) => a.localeCompare(b)).map(([date, day]) => ({ date, total: revenueValue(day.cents), clientCount: day.count })),
+      units: unitsError ? [] : [...named.values()].map((unit) => ({ name: unit.name, total: revenueValue(unit.cents), clientCount: unit.count })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "pt-BR")),
+      unitsError,
+    };
+  }
+
   // Cada negócio fechado conta uma vez para a academia indicada no próprio Bitrix.
-  async function hiringByAcademy(inicio: string, fim: string): Promise<BitrixHiring> {
+  async function hiringAnalytics(inicio: string, fim: string): Promise<BitrixHiringAnalytics> {
     if (parseDate(inicio) > parseDate(fim)) throw new Error("A data inicial não pode ser posterior à data final.");
     const options = academyOptions(await dealFields());
     const academies = new Map(options.map((option) => [option.id, { ...option, count: 0 }]));
     let unassignedCount = 0;
+    const days = new Map<string, { date: string; academyId: string; count: number }>();
     for await (const row of closedDeals(inicio, fim, ["ID", "CATEGORY_ID", "STAGE_ID", "DATE_CREATE", config.unitField])) {
       const value = row[config.unitField];
       if (value === undefined || value === null || value === "" || value === false || value === "0" || value === 0) { unassignedCount++; continue; }
       const academy = (typeof value === "string" || typeof value === "number") ? academies.get(String(value)) : undefined;
       if (!academy) throw new Error("Há negócios com Academia Allp Fit não reconhecida no Bitrix. Não foi possível calcular a contratação.");
       academy.count++;
+      const date = bitrixDay(row.DATE_CREATE), key = `${date}:${academy.id}`;
+      const day = days.get(key) ?? { date, academyId: academy.id, count: 0 };
+      day.count++; days.set(key, day);
     }
-    return { academies: [...academies.values()], unassignedCount };
+    return { hiring: { academies: [...academies.values()], unassignedCount }, days: [...days.values()] };
   }
 
-  return { unitOptions, dealsByCpf, revenueSummary, hiringByAcademy };
+  async function hiringByAcademy(inicio: string, fim: string): Promise<BitrixHiring> {
+    return (await hiringAnalytics(inicio, fim)).hiring;
+  }
+
+  return { unitOptions, dealsByCpf, revenueSummary, revenueAnalytics, hiringByAcademy, hiringAnalytics };
 }

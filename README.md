@@ -183,7 +183,17 @@ O dashboard apresenta as três unidades com maior soma de **comissão do parceir
 
 `npm run db:test-unit-commission-podium` valida a agregação, o ranking por mês e intervalos entre competências em tabelas temporárias isoladas, removidas ao final, sem alterar os dados reais.
 
-Logo abaixo, o pódio **Unidades que mais fecham contratações** mostra as três unidades com maior quantidade de contratações. Usa o mesmo resumo e a mesma consulta ao Bitrix do card **Contratação**, seguindo os filtros de mês inicial, mês final e unidade da seção **Comissões e contratação**. Nomes equivalentes de academias são agrupados antes do ranking; empates seguem o nome da unidade. Unidades sem contratações e negócios sem academia não ocupam posições. `npm run test:dashboard-hiring` valida a contagem, o ranking e esses filtros com respostas simuladas.
+Abaixo da seção Comissões e contratação, o pódio **Unidades que mais fecham contratações** mostra as três unidades com maior quantidade de contratações. Usa o mesmo resumo e a mesma consulta ao Bitrix do card **Contratação**, seguindo os filtros de mês inicial, mês final e unidade da seção **Comissões e contratação**. Nomes equivalentes de academias são agrupados antes do ranking; empates seguem o nome da unidade. Unidades sem contratações e negócios sem academia não ocupam posições. `npm run test:dashboard-hiring` valida a contagem, o ranking e esses filtros com respostas simuladas.
+
+## Gráficos do dashboard
+
+A seção **Desempenho no período** acompanha o filtro de datas do topo e apresenta evolução do faturamento, entradas × saídas com saldo por intervalo, evolução da média de faturas e faturamento das 10 maiores unidades. Faturamento e média compartilham a consulta do card Faturamento. O agrupamento do Bitrix usa os dias de São Paulo; a média de cada intervalo considera todos os seus negócios, inclusive faturas com valor zero. Os nomes equivalentes de academias são agrupados; negócios sem unidade aparecem identificados. Uma falha nos metadados das unidades afeta apenas esse ranking, preservando total e evolução.
+
+Os gráficos de **Comissões e contratação** acompanham seus filtros de meses e unidade: contratações por mês, comissões dos parceiros pagas × pendentes, margem das comissões e economia gerada aos clientes. Contratações compartilham os dados do card e do pódio. Margem corresponde à comissão da empresa menos a comissão dos parceiros, antes das outras despesas; economia soma `valor_economia`. Os status de pagamento do parceiro são independentes do recebimento pela empresa. As consultas incluem clientes inativos e preenchem intervalos sem registros com zero.
+
+Os gráficos mostram comparação com o período anterior: mesma quantidade de dias para o filtro geral e mesmas competências para as comissões. Nas contratações de um período em andamento, a referência anterior termina no dia equivalente, respeitando o último dia do mês. Uma base anterior zero aparece como **Sem base anterior**, sem divisão por zero. Uma falha na comparação do Bitrix mantém os dados atuais disponíveis. Valores negativos são preservados, e a variação percentual é neutra. Cada gráfico oferece tooltip e tabela **Ver dados**, além de estados de carregamento, vazio e erro. O dashboard aproveita a largura disponível e usa padding menor apenas nessa tela, preservando a sidebar.
+
+`npm run test:dashboard-analytics` valida as agregações com respostas simuladas, sem gravar no banco ou no Bitrix: precisão monetária, datas e fusos, períodos anteriores, competências vazias, aliases de unidades, filtros, margens negativas e erros sem resumo parcial.
 
 ## Sincronização de unidades pelo Bitrix
 

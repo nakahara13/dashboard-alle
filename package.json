@@ -12,6 +12,7 @@
     "test:dashboard-revenue": "node --conditions=react-server --import tsx scripts/test-dashboard-revenue.ts",
     "test:dashboard-commissions": "node --import tsx scripts/test-dashboard-commissions.ts",
     "test:dashboard-hiring": "node --conditions=react-server --import tsx scripts/test-dashboard-hiring.ts",
+    "test:dashboard-analytics": "node --import tsx scripts/test-dashboard-financial-analytics.ts && node --conditions=react-server --import tsx scripts/test-dashboard-bitrix-analytics.ts",
     "db:test-unit-commission-podium": "node --import tsx scripts/test-dashboard-unit-podium.ts",
     "container:test": "node scripts/test-container.mjs",
     "api:token": "node scripts/create-api-token.mjs",

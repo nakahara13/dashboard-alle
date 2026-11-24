@@ -1,5 +1,6 @@
 import { DashboardKpiCard } from "@/components/dashboard-kpi-card";
-import { bitrixConfig, createBitrixClient, type BitrixRevenueSummary } from "@/lib/bitrix";
+import type { BitrixRevenueSummary } from "@/lib/bitrix";
+import { loadDashboardRevenue } from "@/lib/dashboard-bitrix-analytics";
 import { money } from "@/lib/dashboard";
 
 export function DashboardRevenueCards({ summary = null, loading = false, error = null }: { summary?: BitrixRevenueSummary | null; loading?: boolean; error?: string | null }) {
@@ -11,12 +12,6 @@ export function DashboardRevenueCards({ summary = null, loading = false, error =
 }
 
 export async function DashboardRevenue({ inicio, fim }: { inicio: string; fim: string }) {
-  let summary: BitrixRevenueSummary | null = null;
-  let error: string | null = null;
-  try {
-    summary = await createBitrixClient(bitrixConfig()).revenueSummary(inicio, fim);
-  } catch (cause) {
-    error = cause instanceof Error ? cause.message : "Não foi possível carregar o faturamento. Tente novamente.";
-  }
-  return <DashboardRevenueCards summary={summary} error={error} />;
+  const { data, error } = await loadDashboardRevenue(inicio, fim);
+  return <DashboardRevenueCards summary={data?.summary} error={error} />;
 }

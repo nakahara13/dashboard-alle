@@ -5,12 +5,12 @@ import type { ReactNode } from "react";
 import { PERIODS, displayDate, money } from "@/lib/dashboard";
 
 type DashboardData = { activeStudents: number; incoming: number; outgoing: number; entriesCount: number; exitsCount: number };
-export function Dashboard({ range, data, error, revenue, podium, hiringPodium, commissions, commissionParams = {} }: { range: { inicio: string; fim: string; period: string }; data: DashboardData | null; error: string | null; revenue: ReactNode; podium: ReactNode; hiringPodium: ReactNode; commissions: ReactNode; commissionParams?: Record<string, string> }) {
+export function Dashboard({ range, data, error, revenue, analytics, podium, hiringPodium, commissions, commissionParams = {} }: { range: { inicio: string; fim: string; period: string }; data: DashboardData | null; error: string | null; revenue: ReactNode; analytics?: ReactNode; podium: ReactNode; hiringPodium: ReactNode; commissions: ReactNode; commissionParams?: Record<string, string> }) {
   const cards = [
     { title: "Entradas", value: data ? money(data.incoming) : "—", description: `${data?.entriesCount ?? 0} recebimento(s) com status Recebido.`, icon: "incoming" },
     { title: "Saídas", value: data ? money(data.outgoing) : "—", description: `${data?.exitsCount ?? 0} conta(s) com status Pago.`, icon: "outgoing" },
   ] as const;
-  return <div className="mx-auto w-full max-w-7xl space-y-6">
+  return <div className="w-full min-w-0 space-y-5">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1><p className="mt-2 text-xs text-muted-ink">{displayDate(range.inicio)} a {displayDate(range.fim)}</p></div>
       <section aria-label="Filtros do dashboard" className="flex max-w-full flex-wrap items-center gap-2">
@@ -34,6 +34,7 @@ export function Dashboard({ range, data, error, revenue, podium, hiringPodium, c
       <DashboardKpiCard title="Alunos ativos" icon="users" value={data ? data.activeStudents.toLocaleString("pt-BR") : null} description="Total atual no cadastro." href="/cadastros/clientes/visao-geral?status=ativo" linkLabel="Ver alunos" />
     </div>
     <p className="text-xs leading-5 text-muted-ink">Faturamento pela data de criação no Bitrix. Entradas e saídas por vencimento, conforme as datas cadastradas nas contas. Recebimentos sem vencimento ficam fora do período. Os atalhos de mês e ano usam períodos móveis até hoje.</p>
+    {analytics}
     {podium}
     {commissions}
     {hiringPodium}
