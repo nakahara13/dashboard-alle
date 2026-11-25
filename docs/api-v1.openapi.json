@@ -10471,7 +10471,7 @@
           {
             "in": "query",
             "name": "periodo",
-            "description": "hoje, ontem, 7dias, mes, ano ou personalizado. Padrão: mes (intervalo móvel de um mês).",
+            "description": "hoje, ontem, 7dias, mes, 6meses, ano ou personalizado. Padrão: 6meses (intervalo móvel de seis meses).",
             "schema": {
               "type": "string",
               "enum": [
@@ -10479,6 +10479,7 @@
                 "ontem",
                 "7dias",
                 "mes",
+                "6meses",
                 "ano",
                 "personalizado"
               ]

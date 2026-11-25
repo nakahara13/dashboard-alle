@@ -14,9 +14,9 @@ export function RowActions({ label, children }: { label: string; children: React
   return <div role="group" aria-label={`Ações de ${label}`} className="flex w-max flex-col items-stretch gap-2">{children}</div>;
 }
 
-export function RowActionButton({ action, label, children, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> & { action: Action; label: string }) {
+export function RowActionButton({ action, label, children, iconOnly = false, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> & { action: Action; label: string; iconOnly?: boolean }) {
   return <button {...props} type="button" title={`${labels[action]} ${label}`} aria-label={`${labels[action]} ${label}`} className={`inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${action === "delete" ? "border-line bg-surface text-danger-ink hover:border-danger-ink hover:bg-danger-soft" : action === "edit" ? "border-accent-line bg-accent-soft text-accent-ink hover:bg-accent-soft/70" : "border-line bg-surface text-secondary hover:bg-muted"}`}>
     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">{icons[action]}</svg>
-    <span>{children ?? labels[action]}</span>
+    {!iconOnly && <span>{children ?? labels[action]}</span>}
   </button>;
 }

@@ -1,7 +1,7 @@
 import { MonthInput } from "@/components/formatted-input";
 import { requireUser } from "@/lib/auth";
 import { Pagination } from "@/components/pagination";
-import { ManagementFilters } from "@/components/management-filters";
+import { DashboardKpiCard } from "@/components/dashboard-kpi-card";
 import { CreateRecord } from "@/components/management-drawer";
 import { CommissionForm } from "@/components/commission-forms";
 import type { Metadata } from "next";
@@ -12,6 +12,7 @@ import { positiveId, commissionInclude, serializeCommission } from "@/lib/comiss
 import { parseCompetence } from "@/lib/contas-a-pagar";
 import { CommissionTable } from "@/components/commission-table";
 import { formatMoney } from "@/lib/recebimentos-filtros";
+import { InterfaceIcon } from "@/components/interface-icon";
 import styles from "./commissions.module.css";
 
 export const metadata: Metadata = { title: "Comissões | Financeiro Alle" };
@@ -57,44 +58,57 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   let content;
   if (data) {
     const totals = { pendingReceipt: new Prisma.Decimal(0), received: new Prisma.Decimal(0), pendingPayment: new Prisma.Decimal(0), paid: new Prisma.Decimal(0), margin: new Prisma.Decimal(0) };
+    const monthly = new Map<string, typeof totals>();
     for (const group of data.groups) {
+      if (!monthly.has(group.competencia)) monthly.set(group.competencia, { pendingReceipt: new Prisma.Decimal(0), received: new Prisma.Decimal(0), pendingPayment: new Prisma.Decimal(0), paid: new Prisma.Decimal(0), margin: new Prisma.Decimal(0) });
+      const month = monthly.get(group.competencia)!;
       const entryKey = group.status_recebimento === "Recebido" ? "received" : "pendingReceipt";
       totals[entryKey] = totals[entryKey].plus(group._sum.valor_comissao_empresa ?? 0);
+      month[entryKey] = month[entryKey].plus(group._sum.valor_comissao_empresa ?? 0);
       if (group.status_pagamento !== "Não se aplica") {
         const exitKey = group.status_pagamento === "Pago" ? "paid" : "pendingPayment";
         totals[exitKey] = totals[exitKey].plus(group._sum.valor_comissao_parceiro ?? 0);
+        month[exitKey] = month[exitKey].plus(group._sum.valor_comissao_parceiro ?? 0);
       }
       totals.margin = totals.margin.plus(group._sum.margem ?? 0);
+      month.margin = month.margin.plus(group._sum.margem ?? 0);
     }
+    const months = [...monthly.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, values]) => values);
+    const cards = [
+      { title: "Total a receber", key: "pendingReceipt", icon: "revenue", description: "Comissões pendentes de recebimento" },
+      { title: "Total recebido", key: "received", icon: "incoming", tone: "success", description: "Comissões recebidas das geradoras" },
+      { title: "A pagar aos parceiros", key: "pendingPayment", icon: "outgoing", description: "Pagamentos pendentes aos parceiros" },
+      { title: "Pago aos parceiros", key: "paid", icon: "outgoing", tone: "success", description: "Pagamentos realizados aos parceiros" },
+      { title: "Margem", key: "margin", icon: "invoice", description: "Comissão da empresa menos a do parceiro" },
+    ] as const;
     const href = (page: number) => `/comissoes?${new URLSearchParams({ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query, pagina: String(page) })}`;
     const fieldClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm";
     content = <>
 
       <div className={styles.summary}>
-        <div className={styles.metrics} aria-label="Indicadores de comissões">{[{ label: "Total a receber", value: totals.pendingReceipt, tone: "receipt" }, { label: "Total recebido", value: totals.received, tone: "success" }, { label: "A pagar aos parceiros", value: totals.pendingPayment, tone: "pending" }, { label: "Pago aos parceiros", value: totals.paid, tone: "success" }, { label: "Margem", value: totals.margin, tone: "margin" }].map((card) => <article key={card.label} className={styles.metric} data-tone={card.tone}><p className={styles.metricLabel}>{card.label}</p><p className={`${styles.metricValue} ${card.value.lt(0) ? "text-danger-ink" : ""}`}>{money(card.value.toFixed(2))}</p></article>)}</div>
+        <div className={styles.metrics} aria-label="Indicadores de comissões">{cards.map((card) => <DashboardKpiCard key={card.key} title={card.title} value={money(totals[card.key].toFixed(2))} description={card.description} icon={card.icon} tone={"tone" in card ? card.tone : undefined} trend={months.map((month) => Number(month[card.key].toFixed(2)))} />)}</div>
         <p className={styles.summaryHint}>Totais de todos os registros dos filtros selecionados. Margem = comissão da empresa − comissão do parceiro, independentemente do recebimento e pagamento.</p>
       </div>
       <section className={styles.panel} aria-labelledby="commissions-title">
-      <div className={styles.filters}>
-      <ManagementFilters basePath="/comissoes" competence values={{ geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }} search={{ key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }} statuses={statusOptions} options={{ geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners }}>
-      <form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="grid gap-2 text-sm">Competência<MonthInput name="competencia" defaultValue={competence} className={fieldClass} /></label>
-        <label className="grid gap-2 text-sm">Geradora<select name="geradora" defaultValue={generator} className={fieldClass}><option value="">Todas</option><option value="nao-informada">Geradora não informada</option>{data.options.generators.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-        <label className="grid gap-2 text-sm">Unidade Allp Fit<select name="unidade" defaultValue={unit} className={fieldClass}><option value="">Todas</option>{data.options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-        <label className="grid gap-2 text-sm">Distribuidora<select name="distribuidora" defaultValue={distributor} className={fieldClass}><option value="">Todas</option>{data.options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-        <label className="grid gap-2 text-sm">Gestor / parceiro<select name="parceiro" defaultValue={partner} className={fieldClass}><option value="">Todos</option>{data.options.partners.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
-        <label className="grid gap-2 text-sm">Status<select name="status" defaultValue={status} className={fieldClass}><option value="">Todas</option>{statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-        <label className="grid gap-2 text-sm">Buscar cliente<input name="busca" placeholder="Nome ou UC" defaultValue={query} maxLength={255} className={fieldClass} /></label>
-        <div className="flex items-center gap-4 sm:col-span-2 lg:col-span-4"><button className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">Aplicar filtros</button><Link href="/comissoes" className="text-sm text-accent-ink underline">Limpar filtros</Link></div>
-      </form>
-      </ManagementFilters>
-      <p className="mt-3 text-xs text-muted-ink"><Link href={`/cadastros/clientes/visao-geral${competence ? `?${new URLSearchParams({ competencia: competence })}` : ""}`} className="text-accent-ink underline">{competence ? "Conferir clientes que constam ou não nesta competência" : "Consultar histórico mensal dos clientes"}</Link></p>
-      </div>
-      {data.unassignedCount > 0 && <p role="status" className={styles.notice}>{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
-      {/* A visão geral concentra consulta e edição; criação e importação têm páginas próprias. */}
-      <div className={styles.tableHeader}><h2 id="commissions-title">Comissões <span className={styles.count}>({data.count})</span></h2><p id="commissions-scroll-hint">Role a tabela para consultar todas as colunas <span aria-hidden="true">↔</span></p></div>
-        <CommissionTable key={JSON.stringify(data.rows)} rows={data.rows} options={data.options} />
-        <div className={styles.pagination}><Pagination page={data.page} pages={data.pages} href={href} label="Paginação de comissões" /></div>
+      <CommissionTable key={JSON.stringify(data.rows)} rows={data.rows} options={data.options}
+        filterProps={{ basePath: "/comissoes", appearance: "capsule", values: { geradora: generator, unidade: unit, competencia: competence, distribuidora: distributor, parceiro: partner, status, busca: query }, search: { key: "busca", label: "Buscar cliente por nome ou UC", max: 255 }, statuses: statusOptions, options: { geradora: data.options.generators, unidade: data.options.units, distribuidora: data.options.distributors, parceiro: data.options.partners } }}
+        advancedFilters={<form method="get" action="/comissoes" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="calendar" />Competência</span><MonthInput name="competencia" defaultValue={competence} className={fieldClass} /></label>
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="energy" />Geradora</span><select name="geradora" defaultValue={generator} className={fieldClass}><option value="">Todas</option><option value="nao-informada">Geradora não informada</option>{data.options.generators.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="building" />Unidade Allp Fit</span><select name="unidade" defaultValue={unit} className={fieldClass}><option value="">Todas</option>{data.options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="energy" />Distribuidora</span><select name="distribuidora" defaultValue={distributor} className={fieldClass}><option value="">Todas</option>{data.options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="users" />Gestor / parceiro</span><select name="parceiro" defaultValue={partner} className={fieldClass}><option value="">Todos</option>{data.options.partners.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></label>
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="status" />Status</span><select name="status" defaultValue={status} className={fieldClass}><option value="">Todas</option>{statusOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+          <label className="grid gap-2 text-sm"><span className={styles.filterLabel}><InterfaceIcon name="search" />Buscar cliente</span><input name="busca" placeholder="Nome ou UC" defaultValue={query} maxLength={255} className={fieldClass} /></label>
+          <div className="flex flex-wrap items-center gap-4 sm:col-span-2 lg:col-span-4"><button className={styles.applyFilters}><InterfaceIcon name="filters" />Aplicar filtros</button><Link href="/comissoes" className={styles.clearFilters}><InterfaceIcon name="close" />Limpar filtros</Link></div>
+        </form>}
+        filterFooter={<p className="mt-3 text-xs text-muted-ink"><Link href={`/cadastros/clientes/visao-geral${competence ? `?${new URLSearchParams({ competencia: competence })}` : ""}`} className="text-accent-ink underline">{competence ? "Conferir clientes que constam ou não nesta competência" : "Consultar histórico mensal dos clientes"}</Link></p>}
+      >
+        {data.unassignedCount > 0 && <p role="status" className={styles.notice}>{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
+        {/* A visão geral concentra consulta e edição; criação e importação têm páginas próprias. */}
+        <div className={styles.tableHeader}><h2 id="commissions-title">Comissões <span className={styles.count}>({data.count})</span></h2><p id="commissions-scroll-hint">Role a tabela para consultar todas as colunas <span aria-hidden="true">↔</span></p></div>
+      </CommissionTable>
+        <div className={styles.pagination}><Pagination page={data.page} pages={data.pages} href={href} label="Paginação de comissões" compact /></div>
       </section>
     </>;
   } else {
@@ -114,7 +128,7 @@ async function loadCommissions(db: ReturnType<typeof getPrisma>, where: Prisma.C
       const units = await tx.unidadeAllpFit.findMany({ orderBy: { nome: "asc" } });
       const unassignedCount = await tx.comissao.count({ where: { geradora_id: null } });
       const count = await tx.comissao.count({ where });
-      const groups = await tx.comissao.groupBy({ by: ["status_recebimento", "status_pagamento"], where, _sum: { valor_comissao_empresa: true, valor_comissao_parceiro: true, margem: true } });
+      const groups = await tx.comissao.groupBy({ by: ["competencia", "status_recebimento", "status_pagamento"], where, _sum: { valor_comissao_empresa: true, valor_comissao_parceiro: true, margem: true } });
       const pages = Math.max(1, Math.ceil(count / 20)), page = Math.min(requestedPage, pages);
       const rows = await tx.comissao.findMany({ where, include: commissionInclude, orderBy: [{ competencia: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 });
       return { options: { clients, distributors, partners, accounts, methods, generators, units }, unassignedCount, count, groups, page, pages, rows: rows.map(serializeCommission) };

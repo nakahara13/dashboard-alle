@@ -6,7 +6,7 @@ import { Prisma, PrismaClient } from "../src/generated/prisma/client";
 import { dashboardCommissionFilters, dashboardCommissionParams, getDashboardCommissions } from "../src/lib/dashboard-commissions";
 
 const today = "2026-11-18";
-assert.deepEqual(dashboardCommissionFilters({}, today), { inicio: "2026-11", fim: "2026-11", unidade: "" });
+assert.deepEqual(dashboardCommissionFilters({}, today), { inicio: "2026-08", fim: "2026-11", unidade: "" });
 assert.deepEqual(dashboardCommissionParams({ periodo: "ano", comissao_inicio: "2026-01", comissao_fim: "2026-11", comissao_unidade: "2" }), { comissao_inicio: "2026-01", comissao_fim: "2026-11", comissao_unidade: "2" });
 for (const params of [{ comissao_inicio: "2026-13" }, { comissao_fim: "0000-01" }, { comissao_inicio: "2026-12", comissao_fim: "2026-11" }, ...["0", "-1", "1.5", "2147483648", "abc"].map((comissao_unidade) => ({ comissao_unidade }))]) {
   assert.throws(() => dashboardCommissionFilters(params, today));

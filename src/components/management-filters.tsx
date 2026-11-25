@@ -1,15 +1,19 @@
 import { MonthInput } from "@/components/formatted-input";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { InterfaceIcon } from "@/components/interface-icon";
+import styles from "./management-filters.module.css";
 
 const labels: Record<string, string> = { inicio: "De", fim: "Até", status: "Status", busca: "Pesquisa", descricao: "Descrição", parceiro: "Parceiro", favorecido: "Favorecido", conta: "Conta bancária", metodo: "Método", tipo: "Tipo", competencia: "Competência", presenca: "Presença na competência", distribuidora: "Distribuidora", unidade: "Unidade", geradora: "Geradora" };
 type Option = { id: string | number; nome: string };
-export function ManagementFilters({ basePath, values, children, statuses, search, competence, options = {} }: {
+export function ManagementFilters({ basePath, values, children, statuses, search, competence, options = {}, appearance = "default" }: {
   basePath: string; values: Record<string, string>; children: ReactNode;
   statuses?: { value: string; label: string }[]; search?: { key: string; label: string; max: number };
   competence?: boolean;
+  appearance?: "default" | "capsule";
   options?: Record<string, Option[]>;
 }) {
+  const capsule = appearance === "capsule";
   const [path, hash] = basePath.split("#");
   const href = (patch: Record<string, string>) => {
     const query = new URLSearchParams();
@@ -22,18 +26,18 @@ export function ManagementFilters({ basePath, values, children, statuses, search
   const active = Object.entries(values).filter(([key, value]) => value && key !== "pagina" && !(key === "presenca" && value === "todos"));
   const display = (key: string, value: string) => options[key]?.find(item => String(item.id) === value)?.nome ?? statuses?.find(item => key === "status" && item.value === value)?.label ?? (/^\d{4}-\d{2}(-\d{2})?$/.test(value) ? value.split("-").reverse().join("/") : value);
   return <div className="my-5 space-y-3">
-    <div className="flex flex-wrap items-end gap-3">
-      {statuses && <nav aria-label="Filtro rápido por status" className="flex flex-wrap gap-1 rounded-xl bg-muted p-1">{[{ value: "", label: "Todas" }, ...statuses].map(item => <Link key={item.value} href={href({ status: item.value })} aria-current={(values.status || "") === item.value ? "page" : undefined} className={`rounded-lg px-3 py-2 text-xs font-medium ${(values.status || "") === item.value ? "bg-surface text-accent-ink shadow-sm" : "text-muted-ink hover:text-primary"}`}>{item.label}</Link>)}</nav>}
-      {(search || competence) && <form key={JSON.stringify(values)} method="get" action={basePath} className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
+    <div className={capsule ? styles.quickFilters : "flex flex-wrap items-end gap-3"}>
+      {statuses && <nav aria-label="Filtro rápido por status" className={capsule ? styles.statusTabs : "flex flex-wrap gap-1 rounded-xl bg-muted p-1"}>{[{ value: "", label: "Todas" }, ...statuses].map(item => <Link key={item.value} href={href({ status: item.value })} aria-current={(values.status || "") === item.value ? "page" : undefined} className={capsule ? styles.statusTab : `rounded-lg px-3 py-2 text-xs font-medium ${(values.status || "") === item.value ? "bg-surface text-accent-ink shadow-sm" : "text-muted-ink hover:text-primary"}`}>{item.label}</Link>)}</nav>}
+      {(search || competence) && <form key={JSON.stringify(values)} method="get" action={basePath} className={capsule ? styles.quickForm : "flex min-w-0 flex-1 flex-wrap items-end gap-2"}>
         {Object.entries(values).filter(([key, value]) => key !== search?.key && !(competence && key === "competencia") && key !== "pagina" && value).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
         {competence && <label htmlFor={`${path}-quick-competence`} className="grid min-w-0 gap-1 text-xs text-secondary">Competência<MonthInput id={`${path}-quick-competence`} name="competencia" defaultValue={values.competencia} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></label>}
-        {search && <div className="min-w-0 flex-1 basis-48"><label className="sr-only" htmlFor={`${path}-quick-search`}>{search.label}</label><input id={`${path}-quick-search`} type="search" name={search.key} defaultValue={values[search.key]} placeholder={search.label} maxLength={search.max} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></div>}
-        <button className="min-h-11 rounded-lg border border-line px-4 text-sm hover:bg-muted">Buscar</button>
+        {search && <div className={capsule ? styles.searchBox : "min-w-0 flex-1 basis-48"}><label className="sr-only" htmlFor={`${path}-quick-search`}>{search.label}</label><input id={`${path}-quick-search`} type="search" name={search.key} defaultValue={values[search.key]} placeholder={capsule ? "Nome ou UC do cliente" : search.label} maxLength={search.max} className={capsule ? styles.searchInput : "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"} />{capsule && <button type="submit" className={styles.searchButton}><InterfaceIcon name="search" /><span>Buscar</span></button>}</div>}
+        {(!capsule || !search) && <button className="min-h-11 rounded-lg border border-line px-4 text-sm hover:bg-muted">Buscar</button>}
       </form>}
     </div>
-    <details key={JSON.stringify(values)} className="rounded-xl border border-line">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-secondary">Filtros{active.length ? ` · ${active.length} ativo(s)` : " avançados"}</summary>
-      <div className="border-t border-line p-4">{children}</div>
+    <details key={JSON.stringify(values)} className={capsule ? styles.advanced : "rounded-xl border border-line"}>
+      <summary className={capsule ? styles.advancedTrigger : "cursor-pointer px-4 py-3 text-sm font-medium text-secondary"}>{capsule ? <><span className={styles.filterIcon}><InterfaceIcon name="filters" /></span><span>Filtros avançados</span>{active.length > 0 && <span className={styles.activeCount}>{active.length} ativo(s)</span>}<span className={styles.chevron}><InterfaceIcon name="chevron" /></span></> : <>Filtros{active.length ? ` · ${active.length} ativo(s)` : " avançados"}</>}</summary>
+      <div className={capsule ? styles.advancedContent : "border-t border-line p-4"}>{children}</div>
     </details>
     {active.length > 0 && <div className="flex flex-wrap items-center gap-2" aria-label="Filtros ativos">{active.map(([key, value]) => <Link key={key} href={href({ [key]: "" })} aria-label={`Remover filtro ${labels[key] || key}: ${display(key, value)}`} className="rounded-full bg-accent-soft px-3 py-1.5 text-xs text-accent-ink">{labels[key] || key}: {display(key, value)} <span aria-hidden="true">×</span></Link>)}<Link href={basePath} className="px-2 text-xs text-muted-ink underline">Limpar filtros</Link></div>}
   </div>;

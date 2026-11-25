@@ -58,8 +58,8 @@ export function CommissionRowActions({ row, options }: { row: CommissionRow; opt
   const [message, setMessage] = useState("");
   return <>
     <RowActions label={row.cliente.nome}>
-      <RowActionButton action="view" label={row.cliente.nome} aria-haspopup="dialog" onClick={() => { setMessage(""); setMode("view"); }} />
-      <RowActionButton action="edit" label={row.cliente.nome} aria-haspopup="dialog" onClick={() => { setMessage(""); setMode("edit"); }} />
+      <RowActionButton action="edit" iconOnly label={row.cliente.nome} aria-haspopup="dialog" onClick={() => { setMessage(""); setMode("edit"); }} />
+      <RowActionButton action="view" iconOnly label={row.cliente.nome} aria-haspopup="dialog" onClick={() => { setMessage(""); setMode("view"); }} />
     </RowActions>
     {message && <p role="status" className="mt-2 text-xs text-accent-ink">{message}</p>}
     {mode && <CommissionDetails row={row} options={options} initialEditing={mode === "edit"} onClose={() => setMode(null)} onSaved={setMessage} />}

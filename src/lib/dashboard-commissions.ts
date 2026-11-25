@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { parseCompetence } from "./contas-a-pagar";
-import type { DashboardParams } from "./dashboard";
+import { isoDate, parseDate, type DashboardParams } from "./dashboard";
 
 export const COMMISSION_FILTER_KEYS = ["comissao_inicio", "comissao_fim", "comissao_unidade"] as const;
 
@@ -10,7 +10,9 @@ export function dashboardCommissionParams(params: DashboardParams) {
 
 export function dashboardCommissionFilters(params: DashboardParams, today: string) {
   const text = (key: string) => typeof params[key] === "string" ? params[key] : "";
-  const inicio = parseCompetence(text("comissao_inicio") || today.slice(0, 7));
+  const first = parseDate(`${today.slice(0, 7)}-01`);
+  first.setUTCMonth(first.getUTCMonth() - 3);
+  const inicio = parseCompetence(text("comissao_inicio") || isoDate(first).slice(0, 7));
   const fim = parseCompetence(text("comissao_fim") || today.slice(0, 7));
   if (inicio > fim) throw new Error("A competência inicial não pode ser posterior à competência final.");
   const unidade = text("comissao_unidade");

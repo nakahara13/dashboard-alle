@@ -133,7 +133,7 @@ paths["/"] = { get: { tags: ["Sistema"], summary: "Descobrir recursos e versão"
 paths["/health"] = { get: { tags: ["Sistema"], summary: "Verificar API e conexão com banco", operationId: "verificar_saude", responses: { "200": response(envelope({ type: "object", properties: { status: { type: "string", example: "ok" }, servico: { type: "string" }, versao: { type: "string" }, banco: { type: "string", example: "conectado" } } })), ...errors } } };
 paths["/openapi.json"] = { get: { tags: ["Sistema"], summary: "Baixar especificação OpenAPI 3.0.3", operationId: "consultar_openapi", responses: { "200": response({ type: "object" }), ...errors } } };
 export const dashboardFilters: Filter[] = [
-  { name: "periodo", description: "hoje, ontem, 7dias, mes, ano ou personalizado. Padrão: mes (intervalo móvel de um mês).", schema: { type: "string", enum: ["hoje", "ontem", "7dias", "mes", "ano", "personalizado"] } },
+  { name: "periodo", description: "hoje, ontem, 7dias, mes, 6meses, ano ou personalizado. Padrão: 6meses (intervalo móvel de seis meses).", schema: { type: "string", enum: ["hoje", "ontem", "7dias", "mes", "6meses", "ano", "personalizado"] } },
   { name: "dia", description: "Um dia específico YYYY-MM-DD, sem periodo explícito." },
   ...dateFilters.map((filter) => ({ ...filter, description: `${filter.description} Informe ambas com periodo=personalizado (ou sem periodo).` })),
 ];

@@ -1,5 +1,5 @@
 export type DashboardParams = Record<string, string | string[] | undefined>;
-export const PERIODS = [ { id: "hoje", label: "Hoje" }, { id: "ontem", label: "Ontem" },{ id: "7dias", label: "7 dias" }, { id: "mes", label: "Mês" }, { id: "ano", label: "1 ano" }];
+export const PERIODS = [ { id: "hoje", label: "Hoje" }, { id: "ontem", label: "Ontem" },{ id: "7dias", label: "7 dias" }, { id: "mes", label: "Mês" }, { id: "6meses", label: "6 meses" }, { id: "ano", label: "1 ano" }];
 const day = 86400000;
 export function isoDate(value: Date) { return value.toISOString().slice(0, 10); }
 export function parseDate(value: string) {
@@ -9,15 +9,15 @@ export function parseDate(value: string) {
 }
 export function dashboardRange(params: DashboardParams, today: string) {
   const text = (key: string) => typeof params[key] === "string" ? params[key] : "";
-  const period = text("periodo") || (text("inicio") || text("fim") ? "personalizado" : "mes");
+  const period = text("periodo") || (text("inicio") || text("fim") ? "personalizado" : "6meses");
   let end = parseDate(today);
   let start = end;
   if (period === "personalizado") { start = parseDate(text("inicio")); end = parseDate(text("fim")); }
   else if (text("dia") && !text("periodo")) { start = end = parseDate(text("dia")); }
   else if (period === "ontem") { start = end = new Date(end.getTime() - day); }
   else if (period === "7dias") start = new Date(end.getTime() - 6 * day);
-  else if (period === "mes" || period === "ano") {
-    const months = period === "mes" ? 1 : 12;
+  else if (period === "mes" || period === "6meses" || period === "ano") {
+    const months = period === "mes" ? 1 : period === "6meses" ? 6 : 12;
     const first = new Date(end); first.setUTCDate(1); first.setUTCMonth(first.getUTCMonth() - months);
     const last = new Date(first); last.setUTCMonth(last.getUTCMonth() + 1); last.setUTCDate(0);
     first.setUTCDate(Math.min(end.getUTCDate(), last.getUTCDate()));

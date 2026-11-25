@@ -1,10 +1,12 @@
 "use client";
 
 import { DateInput } from "@/components/formatted-input";
+import { InterfaceIcon } from "@/components/interface-icon";
 
 import styles from "@/app/comissoes/commissions.module.css";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { ManagementFilters } from "@/components/management-filters";
 import { CommissionRowActions } from "@/components/commission-row-actions";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import type { CommissionOptions } from "@/components/commission-forms";
@@ -19,7 +21,14 @@ function CellText({ value }: { value: string }) {
   return <span className={styles.cellText} title={value}>{value}</span>;
 }
 
-export function CommissionTable({ rows, options }: { rows: CommissionRow[]; options: CommissionOptions }) {
+export function CommissionTable({ rows, options, filterProps, advancedFilters, filterFooter, children }: {
+  rows: CommissionRow[];
+  options: CommissionOptions;
+  filterProps: Omit<ComponentProps<typeof ManagementFilters>, "children">;
+  advancedFilters: ReactNode;
+  filterFooter: ReactNode;
+  children: ReactNode;
+}) {
   const [selected, setSelected] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [receiptDate, setReceiptDate] = useState("");
@@ -27,10 +36,27 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const allCheckbox = useRef<HTMLInputElement>(null);
+  const tableScroll = useRef<HTMLDivElement>(null);
+  const tableScrollId = useId();
+  const [horizontalScroll, setHorizontalScroll] = useState({ left: 0, maximum: 0 });
   const allSelected = rows.length > 0 && selected.length === rows.length;
   useEffect(() => {
     if (allCheckbox.current) allCheckbox.current.indeterminate = selected.length > 0 && !allSelected;
   }, [selected.length, allSelected]);
+  useEffect(() => {
+    const element = tableScroll.current;
+    if (!element) return;
+    const sync = () => {
+      const maximum = Math.max(0, element.scrollWidth - element.clientWidth);
+      const left = Math.max(0, Math.min(element.scrollLeft, maximum));
+      setHorizontalScroll((previous) => previous.left === left && previous.maximum === maximum ? previous : { left, maximum });
+    };
+    const observer = new ResizeObserver(sync);
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    element.addEventListener("scroll", sync, { passive: true });
+    return () => { observer.disconnect(); element.removeEventListener("scroll", sync); };
+  }, [rows.length]);
   function update(type: "recebimento" | "pagamento", status: "Pago" | "Pendente" | "Recebido") {
     const form = new FormData();
     selected.forEach((id) => form.append("ids", id));
@@ -44,29 +70,36 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
   }
   const buttonClass = styles.bulkButton;
   return <>
-    {rows.length > 0 && <>
-      <div className={styles.bulkToolbar}>
-        <div className={styles.selectionGroup} role="group" aria-label="Seleção de comissões">
-          <button type="button" disabled={pending} className={buttonClass} onClick={() => setSelected(rows.map((row) => row.id))}>Marcar todas</button>
-          <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => setSelected([])}>Desmarcar todas</button>
-          <span className={styles.selectionCount} role="status">{selected.length} selecionada(s) nesta página</span>
-        </div>
-        <div className={styles.paymentGroup} role="group" aria-label="Recebimento das comissões selecionadas">
-          <label className={styles.paymentDate}>Data de recebimento<DateInput value={receiptDate} onValueChange={setReceiptDate} disabled={pending} className={styles.dateInput} /></label>
-          <button type="button" disabled={pending || !selected.length || !receiptDate} className={`${buttonClass} ${styles.payButton}`} onClick={() => update("recebimento", "Recebido")}>Marcar como recebido</button>
-          <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("recebimento", "Pendente")}>Marcar como pendente</button>
-        </div>
-        <div className={styles.paymentGroup} role="group" aria-label="Pagamento das comissões selecionadas">
-          <label className={styles.paymentDate}>Data de pagamento<DateInput value={date} onValueChange={setDate} disabled={pending} className={styles.dateInput} /></label>
-          <button type="button" disabled={pending || !selected.length || !date} className={`${buttonClass} ${styles.payButton}`} onClick={() => update("pagamento", "Pago")}>Marcar como pago</button>
-          <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("pagamento", "Pendente")}>Marcar como pendente</button>
-        </div>
-      </div>
-      <p className={styles.paymentHint}>As ações de recebimento alteram o recebimento da geradora. Marcar o recebimento como pendente limpa a data de recebimento. As ações de pagamento alteram somente o pagamento ao gestor / parceiro. Os status e as datas são independentes. A comissão do parceiro é R$ 2,00, mesmo sem unidade vinculada. Sem beneficiário identificado, o pagamento permanece pendente até o vínculo.</p>
-    </>}
+    <div className={styles.filters}>
+      <ManagementFilters {...filterProps}>
+        {advancedFilters}
+        {rows.length > 0 && <>
+          <div className={styles.bulkToolbar}>
+            <div className={styles.paymentGroup} data-kind="receipt" role="group" aria-label="Recebimento das comissões selecionadas">
+              <label className={styles.paymentDate}><span className={styles.operationLabel}><InterfaceIcon name="incoming" />Data de recebimento</span><DateInput value={receiptDate} onValueChange={setReceiptDate} disabled={pending} className={styles.dateInput} /></label>
+              <button type="button" disabled={pending || !selected.length || !receiptDate} className={`${buttonClass} ${styles.payButton}`} onClick={() => update("recebimento", "Recebido")}><InterfaceIcon name="incoming" />Marcar como recebido</button>
+              <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("recebimento", "Pendente")}>Marcar como pendente</button>
+            </div>
+            <div className={styles.paymentGroup} data-kind="payment" role="group" aria-label="Pagamento das comissões selecionadas">
+              <label className={styles.paymentDate}><span className={styles.operationLabel}><InterfaceIcon name="outgoing" />Data de pagamento</span><DateInput value={date} onValueChange={setDate} disabled={pending} className={styles.dateInput} /></label>
+              <button type="button" disabled={pending || !selected.length || !date} className={`${buttonClass} ${styles.payButton}`} onClick={() => update("pagamento", "Pago")}><InterfaceIcon name="outgoing" />Marcar como pago</button>
+              <button type="button" disabled={pending || !selected.length} className={buttonClass} onClick={() => update("pagamento", "Pendente")}>Marcar como pendente</button>
+            </div>
+          </div>
+          <p className={styles.paymentHint}>As ações de recebimento alteram o recebimento da geradora. Marcar o recebimento como pendente limpa a data de recebimento. As ações de pagamento alteram somente o pagamento ao gestor / parceiro. Os status e as datas são independentes. A comissão do parceiro é R$ 2,00, mesmo sem unidade vinculada. Sem beneficiário identificado, o pagamento permanece pendente até o vínculo.</p>
+        </>}
+      </ManagementFilters>
+      {filterFooter}
+    </div>
+    {children}
+    {rows.length > 0 && <div className={styles.selectionGroup} role="group" aria-label="Seleção de comissões">
+        <button type="button" disabled={pending} className={`${buttonClass} ${styles.selectAllButton}`} onClick={() => setSelected(rows.map((row) => row.id))}><InterfaceIcon name="check" />Marcar todas</button>
+        <button type="button" disabled={pending || !selected.length} className={`${buttonClass} ${styles.deselectAllButton}`} onClick={() => setSelected([])}><InterfaceIcon name="close" />Desmarcar todas</button>
+        <span className={styles.selectionCount} role="status">{selected.length} selecionada(s) nesta página</span>
+    </div>}
     {pending && <p role="status" className={styles.feedback}>Atualizando comissões…</p>}
     {result && <p role={result.success ? "status" : "alert"} className={`${styles.feedback} ${result.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{result.message}</p>}
-    {!rows.length ? <p className={styles.empty}>Nenhuma comissão encontrada.</p> : <div className={styles.tableScroll} role="region" aria-label="Tabela de comissões" aria-describedby="commissions-scroll-hint" tabIndex={0}>
+    {!rows.length ? <p className={styles.empty}>Nenhuma comissão encontrada.</p> : <><div ref={tableScroll} id={tableScrollId} className={styles.tableScroll} role="region" aria-label="Tabela de comissões" aria-describedby="commissions-scroll-hint" tabIndex={0}>
       <table className={styles.table}>
         <caption className="sr-only">Comissões por cliente e competência</caption>
         <thead><tr>
@@ -89,6 +122,15 @@ export function CommissionTable({ rows, options }: { rows: CommissionRow[]; opti
           <td className={styles.rowActions}><CommissionRowActions row={row} options={options} /></td>
         </tr>)}</tbody>
       </table>
-    </div>}
+    </div>
+      {horizontalScroll.maximum > 0 && <div className={styles.horizontalScroll}>
+        <span aria-hidden="true">↔</span>
+        <input type="range" min={0} max={horizontalScroll.maximum} step={1} value={horizontalScroll.left} aria-label="Rolagem horizontal da tabela de comissões" aria-controls={tableScrollId} onChange={(event) => {
+          const left = Number(event.target.value);
+          if (tableScroll.current) tableScroll.current.scrollLeft = left;
+          setHorizontalScroll((previous) => ({ ...previous, left }));
+        }} />
+      </div>}
+    </>}
   </>;
 }

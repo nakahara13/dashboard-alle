@@ -15,7 +15,7 @@ import { bitrixConfig, createBitrixClient } from "@/lib/bitrix";
 import { hiringDateRange, summarizeDashboardHiring, type DashboardHiringSummary } from "@/lib/dashboard-hiring";
 import { dashboardCommissionFilters, dashboardCommissionParams, getDashboardCommissions, type DashboardCommissionFilters, type DashboardCommissionSummary } from "@/lib/dashboard-commissions";
 import { getPrisma } from "@/lib/prisma";
-import { dashboardRange, type DashboardParams } from "@/lib/dashboard";
+import { dashboardRange, isoDate, trendBuckets, type DashboardParams } from "@/lib/dashboard";
 import { getUnitCommissionPodium, type UnitCommissionPodiumEntry, type UnitCommissionPodiumRange } from "@/lib/dashboard-unit-podium";
 
 export const metadata: Metadata = { title: "Dashboard | Financeiro Alle" };
@@ -29,7 +29,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
   let error: string | null = null;
   try { range = dashboardRange(params, today); } catch (cause) { error = cause instanceof Error ? cause.message : "Período inválido."; }
   const commissionParams = dashboardCommissionParams(params);
-  const commissionFallbackFilters = { inicio: commissionParams.comissao_inicio || today.slice(0, 7), fim: commissionParams.comissao_fim || today.slice(0, 7), unidade: commissionParams.comissao_unidade || "" };
+  const commissionDefaults = dashboardCommissionFilters({}, today);
+  const commissionFallbackFilters = { inicio: commissionParams.comissao_inicio || commissionDefaults.inicio, fim: commissionParams.comissao_fim || commissionDefaults.fim, unidade: commissionParams.comissao_unidade || "" };
   const commissions = <Suspense key={JSON.stringify([commissionParams, range.inicio, range.fim])} fallback={<DashboardCommissionSection filters={commissionFallbackFilters} dashboardRange={range} loading />}><DashboardCommissions params={params} today={today} dashboardRange={range} /></Suspense>;
   const hiringPodium = <Suspense key={JSON.stringify(commissionParams)} fallback={<DashboardHiringPodium filters={commissionFallbackFilters} loading />}><UnitHiringPodium params={params} today={today} /></Suspense>;
   const revenue = error ? <DashboardRevenueCards error="Selecione um período válido para consultar o faturamento." /> : <Suspense key={`${range.inicio}-${range.fim}`} fallback={<DashboardRevenueCards loading />}><DashboardRevenue inicio={range.inicio} fim={range.fim} /></Suspense>;
@@ -54,15 +55,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
         const exits = await db.contaPagar.groupBy({ by: ["vencimento"], where: { vencimento: dates, status: "Pago" }, _sum: { valor: true }, _count: true });
         const activeStudents = await db.cliente.count({ where: { ativo: true } });
         let incoming = 0; let outgoing = 0;
+        const buckets = trendBuckets(range.start, range.end);
+        const trend = new Map(buckets.points.map((point) => [point.date, point]));
         for (const row of entries) {
           const cents = Math.round(Number(row._sum.valor_total?.toFixed(2) ?? 0) * 100);
           incoming += cents;
+          const point = row.data_do_pagamento ? trend.get(isoDate(row.data_do_pagamento).slice(0, buckets.monthly ? 7 : 10)) : undefined;
+          if (point) point.entradas += cents / 100;
         }
         for (const row of exits) {
           const cents = Math.round(Number(row._sum.valor?.toFixed(2) ?? 0) * 100);
           outgoing += cents;
+          const point = trend.get(isoDate(row.vencimento).slice(0, buckets.monthly ? 7 : 10));
+          if (point) point.saidas += cents / 100;
         }
-        return { activeStudents, incoming: incoming / 100, outgoing: outgoing / 100, entriesCount: entries.reduce((sum, row) => sum + row._count, 0), exitsCount: exits.reduce((sum, row) => sum + row._count, 0) };
+        return { activeStudents, incoming: incoming / 100, outgoing: outgoing / 100, entriesCount: entries.reduce((sum, row) => sum + row._count, 0), exitsCount: exits.reduce((sum, row) => sum + row._count, 0), trend: buckets.points };
       }, { isolationLevel: "RepeatableRead" });
     } catch { error = "Não foi possível carregar os indicadores. Verifique a conexão e tente novamente."; }
   }
@@ -70,9 +77,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<Das
 }
 
 const loadDashboardCommissions = cache(async (params: DashboardParams, today: string) => {
+  const defaults = dashboardCommissionFilters({}, today);
   let filters: DashboardCommissionFilters = {
-    inicio: typeof params.comissao_inicio === "string" ? params.comissao_inicio : today.slice(0, 7),
-    fim: typeof params.comissao_fim === "string" ? params.comissao_fim : today.slice(0, 7),
+    inicio: typeof params.comissao_inicio === "string" ? params.comissao_inicio : defaults.inicio,
+    fim: typeof params.comissao_fim === "string" ? params.comissao_fim : defaults.fim,
     unidade: typeof params.comissao_unidade === "string" ? params.comissao_unidade : "",
   };
   let error: string | null = null;

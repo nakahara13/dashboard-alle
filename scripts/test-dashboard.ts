@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import { dashboardRange, trendBuckets } from "../src/lib/dashboard";
+import { dashboardCommissionFilters } from "../src/lib/dashboard-commissions";
+import { hiringDateRange } from "../src/lib/dashboard-hiring";
 const today = "2026-09-30";
-for (const [periodo, inicio, fim] of [["hoje", today, today], ["ontem", "2026-09-29", "2026-09-29"], ["7dias", "2026-09-24", today], ["mes", "2026-08-31", today], ["ano", "2025-10-01", today]]) {
+for (const [periodo, inicio, fim] of [["hoje", today, today], ["ontem", "2026-09-29", "2026-09-29"], ["7dias", "2026-09-24", today], ["mes", "2026-08-31", today], ["6meses", "2026-03-31", today], ["ano", "2025-10-01", today]]) {
   const range = dashboardRange({ periodo }, today);
   assert.equal(range.inicio, inicio); assert.equal(range.fim, fim);
 }
 assert.equal(dashboardRange({ periodo: "mes" }, "2024-03-31").inicio, "2024-03-01");
 assert.equal(dashboardRange({ periodo: "ontem" }, "2026-01-01").inicio, "2025-12-31");
 assert.equal(dashboardRange({ periodo: "ano" }, "2024-02-29").inicio, "2023-03-01");
+assert.equal(dashboardRange({ periodo: "6meses" }, "2026-11-25").inicio, "2026-05-26");
+assert.equal(dashboardRange({ periodo: "6meses" }, "2026-03-31").inicio, "2025-10-01");
+assert.equal(dashboardRange({ periodo: "6meses" }, "2024-08-31").inicio, "2024-03-01");
 for (const params of [{ periodo: "invalido" }, { periodo: "personalizado", inicio: "2026-02-30", fim: today }, { inicio: today, fim: "2026-09-01" }, { inicio: today }]) assert.throws(() => dashboardRange(params, today));
 const range = dashboardRange({ inicio: "2026-09-01", fim: "2026-09-03" }, today);
 const daily = trendBuckets(range.start, range.end);
@@ -17,7 +22,12 @@ assert.ok(daily.points.every((point) => point.entradas === 0 && point.saidas ===
 const yearly = dashboardRange({ periodo: "ano" }, today);
 assert.equal(trendBuckets(yearly.start, yearly.end).points.length, 12);
 assert.equal(trendBuckets(yearly.start, yearly.end).monthly, true);
-console.log("PASSOU: atalhos, limites de mês/ano, ano bissexto, datas inválidas e agrupamentos.");
-
-assert.equal(dashboardRange({}, today).period, "mes");
-assert.equal(dashboardRange({}, today).inicio, dashboardRange({ periodo: "mes" }, today).inicio);
+assert.equal(dashboardRange({}, today).period, "6meses");
+assert.equal(dashboardRange({}, today).inicio, dashboardRange({ periodo: "6meses" }, today).inicio);
+const commissionFilters = dashboardCommissionFilters({}, "2026-11-25");
+assert.deepEqual(commissionFilters, { inicio: "2026-08", fim: "2026-11", unidade: "" });
+assert.deepEqual(hiringDateRange(commissionFilters.inicio, commissionFilters.fim), { inicio: "2026-08-01", fim: "2026-11-30" });
+assert.deepEqual(dashboardCommissionFilters({}, "2026-01-31"), { inicio: "2025-10", fim: "2026-01", unidade: "" });
+assert.deepEqual(dashboardCommissionFilters({}, "2024-03-31"), { inicio: "2023-12", fim: "2024-03", unidade: "" });
+assert.deepEqual(dashboardCommissionFilters({ comissao_inicio: "2026-06", comissao_fim: "2026-09", comissao_unidade: "2" }, "2026-11-25"), { inicio: "2026-06", fim: "2026-09", unidade: "2" });
+console.log("PASSOU: padrão de seis meses, atalhos, limites de mês/ano, ano bissexto, datas inválidas, agrupamentos e padrão de comissões/contratação com filtros manuais preservados.");
