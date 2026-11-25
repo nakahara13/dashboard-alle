@@ -2,8 +2,10 @@
 
 import { DateInput, MoneyInput, MonthInput } from "@/components/formatted-input";
 import clientStyles from "@/app/cadastros/clientes/client-registration.module.css";
+import financialStyles from "@/components/financial-management.module.css";
+import { InterfaceIcon } from "@/components/interface-icon";
 import { useDrawerFeedback } from "@/components/management-drawer";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { saveCommissionAction, saveCommissionCatalog, previewCommissionImport, confirmCommissionImport, type ImportConfirmState, type State } from "@/app/comissoes/actions";
 import type { CommissionRow } from "@/lib/comissao-module";
 import type { ImportRow } from "@/lib/comissao-import";
@@ -79,27 +81,29 @@ export function SimpleCommissionCatalog({ kind, title, options, createOnly = fal
   </form>;
 }
 // Cadastro de clientes preserva os vínculos usados nas novas comissões.
-export function ClientCommissionCatalog({ options }: { options: CommissionOptions }) {
+export function ClientCommissionCatalog({ options, hideHeading = false }: { options: CommissionOptions; hideHeading?: boolean }) {
   const [state, action, pending] = useActionState(saveCommissionCatalog, initial);
   useDrawerFeedback(state, pending);
+  const fieldId = useId();
   const [id, setId] = useState("");
   const client = options.clients.find((item) => String(item.id) === id);
-  return <form action={action}><h2>Cadastro manual</h2><p className={clientStyles.description}>Crie um novo cliente ou selecione um cadastro existente para editar.</p><input type="hidden" name="cadastro" value="cliente" />
-    <fieldset disabled={pending} className="grid gap-4"><Select name="id" label="Cliente" empty="Novo cliente" options={options.clients.map((item) => ({ ...item, nome: `${item.nome} · ${item.uc}` }))} value={id} onChange={setId} />
+  // Falhas preservam o rascunho; no sucesso, o reset também volta o seletor para Novo cliente.
+  return <form action={action} onReset={(event) => { if (state.success) setId(""); else event.preventDefault(); }} className={clientStyles.manualForm}>{!hideHeading && <><h2>Cadastro manual</h2><p className={clientStyles.description}>Crie um novo cliente ou selecione um cadastro existente para editar.</p></>}<input type="hidden" name="cadastro" value="cliente" />
+    <fieldset disabled={pending} className="grid gap-4"><div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-cliente`} className={financialStyles.filterLabel}><InterfaceIcon name="users" />Cliente</label><select id={`${fieldId}-cliente`} name="id" value={id} onChange={(event) => setId(event.target.value)} className={financialStyles.field}><option value="">Novo cliente</option>{options.clients.map((item) => <option key={item.id} value={item.id}>{item.nome} · {item.uc}</option>)}</select></div>
       <div key={`${id}-${JSON.stringify(client)}`} className={clientStyles.groups}>
         <div className={clientStyles.formGroup}><h3>Informações do cliente</h3><div className={clientStyles.fieldGrid}>
-          <label className="grid gap-2 text-sm">Nome *<input name="nome" required maxLength={255} defaultValue={client?.nome} className={fieldClass} /></label>
-          <label className="grid gap-2 text-sm">CPF (opcional)<input name="cpf" inputMode="numeric" maxLength={14} defaultValue={client?.cpf ?? ""} className={fieldClass} /></label>
+          <div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-nome`} className={financialStyles.filterLabel}><InterfaceIcon name="users" />Nome *</label><input id={`${fieldId}-nome`} name="nome" required maxLength={255} defaultValue={client?.nome} className={financialStyles.field} placeholder="Nome completo do cliente" /></div>
+          <div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-cpf`} className={financialStyles.filterLabel}><InterfaceIcon name="invoice" />CPF (opcional)</label><input id={`${fieldId}-cpf`} name="cpf" inputMode="numeric" maxLength={14} defaultValue={client?.cpf ?? ""} className={financialStyles.field} placeholder="000.000.000-00" /></div>
         </div></div>
         <div className={clientStyles.formGroup}><h3>Unidade consumidora e vínculos</h3><div className={clientStyles.fieldGrid}>
-          <label className="grid gap-2 text-sm">UC / instalação / código único *<input name="uc" required maxLength={100} defaultValue={client?.uc} className={fieldClass} /></label>
-          <Select name="distribuidora_id" label="Distribuidora da UC" options={options.distributors} defaultValue={client?.distribuidora_id ? String(client.distribuidora_id) : ""} empty="Não informada" />
-          <Select name="unidade_id" label="Unidade Allp Fit de origem" options={options.units} defaultValue={client?.unidade_id ? String(client.unidade_id) : ""} empty="Sem unidade vinculada" />
-          <Select name="parceiro_id" label="Gestor / parceiro específico do cliente" options={options.partners} defaultValue={client?.parceiro_id ? String(client.parceiro_id) : ""} empty="Usar gestor da unidade, quando houver" />
+          <div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-uc`} className={financialStyles.filterLabel}><InterfaceIcon name="energy" />UC / instalação / código único *</label><input id={`${fieldId}-uc`} name="uc" required maxLength={100} defaultValue={client?.uc} className={financialStyles.field} placeholder="Código da unidade consumidora" /></div>
+          <div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-distribuidora`} className={financialStyles.filterLabel}><InterfaceIcon name="energy" />Distribuidora da UC</label><select id={`${fieldId}-distribuidora`} name="distribuidora_id" defaultValue={client?.distribuidora_id ? String(client.distribuidora_id) : ""} className={financialStyles.field}><option value="">Não informada</option>{options.distributors.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div>
+          <div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-unidade`} className={financialStyles.filterLabel}><InterfaceIcon name="building" />Unidade Allp Fit de origem</label><select id={`${fieldId}-unidade`} name="unidade_id" defaultValue={client?.unidade_id ? String(client.unidade_id) : ""} className={financialStyles.field}><option value="">Sem unidade vinculada</option>{options.units.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div>
+          <div className="grid min-w-0 gap-2"><label htmlFor={`${fieldId}-parceiro`} className={financialStyles.filterLabel}><InterfaceIcon name="users" />Gestor / parceiro específico do cliente</label><select id={`${fieldId}-parceiro`} name="parceiro_id" defaultValue={client?.parceiro_id ? String(client.parceiro_id) : ""} className={financialStyles.field}><option value="">Usar gestor da unidade, quando houver</option>{options.partners.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div>
         </div></div>
       </div>
     </fieldset><p className="mt-3 text-xs text-muted-ink">O parceiro específico tem prioridade sobre o gestor da unidade. Alterações no cliente ou na unidade preenchem novas comissões; comissões existentes mantêm seu beneficiário.</p>
-    <Notice state={state} /><div className={clientStyles.actions}><button disabled={pending} className={buttonClass}>{pending ? "Salvando…" : id ? "Salvar cliente" : "Cadastrar cliente"}</button></div>
+    <Notice state={state} /><div className={clientStyles.actions}><button disabled={pending} className={financialStyles.primaryButton}><InterfaceIcon name="check" />{pending ? "Salvando…" : id ? "Salvar cliente" : "Cadastrar cliente"}</button></div>
   </form>;
 }
 

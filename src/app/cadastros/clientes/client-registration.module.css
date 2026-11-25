@@ -1,41 +1,75 @@
-.page { width: 100%; max-width: 1120px; min-width: 0; margin-inline: auto; }
-.page > div { max-width: none; }
+.page { --financial-gradient: linear-gradient(100deg, #f67216 0%, #ff1650 100%); container: client-registration / inline-size; width: 100%; min-width: 0; margin-inline: auto; }
+.page > div { max-width: none; min-width: 0; }
 .page > div > div:first-child { align-items: center; }
-.page h1 { font-size: 26px; font-weight: 600; }
-.page > div > div:first-child > div > p { margin-top: 8px; font-size: 13px; }
-.viewAll { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--accent-ink); font-size: 13px; font-weight: 500; }
+.page h1 { border-left: 0; padding-left: 0; font-size: 26px; line-height: 1.3; font-weight: 600; letter-spacing: -.035em; }
+.page > div > div:first-child > div > p { margin-top: 8px; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
+.viewAll { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--secondary); font-size: 13px; line-height: 20px; font-weight: 600; }
 .viewAll:hover { background: var(--muted); }
-.manual, .importCard { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-.manual h2, .importCard h2 { margin: 0; font-size: 17px; font-weight: 600; }
-.description { margin-top: 8px; font-size: 13px; line-height: 1.5; color: var(--muted-ink); }
-.manual fieldset { margin-top: 20px; gap: 20px; }
-.groups { display: grid; gap: 24px; }
-.formGroup { padding-top: 20px; border-top: 1px solid var(--line); }
-.formGroup h3 { margin-bottom: 16px; font-size: 15px; font-weight: 600; }
-.fieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.manual label, .importCard label { min-width: 0; gap: 6px; font-size: 12px; font-weight: 500; }
-.manual input, .manual select, .importCard input, .importCard select { min-height: 40px; border-radius: 8px; font-size: 13px; }
-.manual input:hover, .manual select:hover, .importCard input:hover { border-color: var(--faint); }
-.manual input:disabled, .manual select:disabled, .importCard input:disabled { opacity: .6; cursor: not-allowed; }
-.manual > form > p { max-width: 90ch; font-size: 12px; line-height: 1.6; }
-.actions { display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
-.actions button, .importCard button { min-height: 40px; border-radius: 8px; padding: 8px 16px; font-size: 13px; }
-.importCard form { margin-top: 20px; min-width: 0; }
-.upload { padding: 16px; border: 1px dashed var(--line); border-radius: 8px; background: var(--muted); }
-.upload input { min-width: 0; padding: 8px; border: 1px solid var(--line); background: var(--surface); }
-.upload input::file-selector-button { margin-right: 12px; padding: 6px 12px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-ink); font-size: 12px; }
-.upload:focus-within { border-color: var(--accent); }
-.upload:has(input:valid) { border-color: var(--accent-ink); }
-.uploadHint { margin-top: 8px; color: var(--muted-ink); font-size: 11px; font-weight: 400; }
-.requirements { margin-top: 16px; border: 1px solid var(--line); border-radius: 8px; }
-.requirements summary { padding: 12px 16px; color: var(--secondary); font-size: 12px; font-weight: 500; cursor: pointer; }
-.requirements ul { display: grid; gap: 8px; padding: 0 16px 16px 32px; list-style: disc; font-size: 12px; line-height: 1.6; color: var(--muted-ink); }
-.importCard :global(.overflow-x-auto) { max-width: 100%; }
+.viewAll svg { width: 17px; height: 17px; flex-shrink: 0; }
+.manual, .importCard { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.manualTrigger { display: flex; align-items: center; gap: 14px; padding: 20px 24px; border-radius: 12px; background: linear-gradient(110deg, color-mix(in srgb, var(--detail-orange-soft) 40%, var(--surface)), var(--surface)); cursor: pointer; list-style: none; }
+.manualTrigger::-webkit-details-marker { display: none; }
+.manualIcon { display: grid; width: 40px; height: 40px; flex-shrink: 0; place-items: center; border-radius: 11px; background: var(--detail-orange-soft); color: var(--detail-orange); }
+.manualHeading { display: block; min-width: 0; }
+.manualHeading > span { display: block; margin-top: 4px; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
+.manual h2, .importCard h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.chevron { display: inline-flex; margin-left: auto; flex-shrink: 0; color: var(--muted-ink); }
+.chevron svg { width: 18px; height: 18px; }
+.manual[open] > .manualTrigger > .chevron, .requirements[open] > summary > .chevron { transform: rotate(180deg); }
+.manualContent { min-width: 0; padding: 24px; border-top: 1px solid var(--line); }
+.description { margin-top: 8px; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
+.manualForm { min-width: 0; text-align: left; font-size: 13px; line-height: 20px; font-weight: 400; }
+.manualForm fieldset { min-width: 0; margin-top: 0; gap: 20px; }
+.manualForm > .description { margin-bottom: 20px; }
+.manualForm > p:not([role]):not(.description) { color: var(--muted-ink); font-size: 12px; line-height: 18px; }
+.manualForm > p[role] { padding: 16px; border-radius: 11px; font-size: 13px; line-height: 20px; }
+.manualForm > p[role="status"] { background: var(--success-soft); color: var(--success-ink); }
+.manualForm > p[role="alert"] { background: var(--danger-soft); color: var(--danger-ink); }
+.groups { display: grid; min-width: 0; gap: 24px; }
+.formGroup { min-width: 0; padding-top: 20px; border-top: 1px solid var(--line); }
+.formGroup h3 { margin-bottom: 16px; color: var(--primary); font-size: 15px; line-height: 22px; font-weight: 600; }
+.fieldGrid { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 16px; }
+.fieldGrid > div { display: grid; min-width: 0; align-content: start; gap: 8px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-top: 20px; }
+.manualForm .actions { padding-top: 16px; border-top: 1px solid var(--line); }
+.actions > button { max-width: 100%; }
+.importCard { padding: 24px; }
+.importCard form { min-width: 0; }
+.upload { display: grid; gap: 8px; margin-top: 20px; padding: 16px; border: 1px dashed var(--line); border-radius: 12px; background: var(--muted); }
+.fileInput { box-sizing: border-box; width: 100%; min-width: 0; height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--primary); font-size: 13px; line-height: 20px; font-weight: 400; }
+.fileInput::file-selector-button { margin-right: 10px; padding: 5px 10px; border: 0; border-radius: 6px; background: var(--detail-orange-soft); color: var(--detail-orange); font: inherit; line-height: 20px; font-weight: 600; cursor: pointer; }
+.fileInput:disabled { opacity: .6; cursor: not-allowed; }
+.fileInput:disabled::file-selector-button { cursor: not-allowed; }
+.upload:focus-within { border-color: var(--detail-orange); }
+.uploadHint { color: var(--muted-ink); font-size: 12px; line-height: 18px; font-weight: 400; }
+.requirements { margin-top: 16px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+.requirements summary { display: flex; min-height: 48px; align-items: center; gap: 10px; padding: 12px 16px; background: var(--muted); color: var(--secondary); font-size: 13px; line-height: 20px; font-weight: 600; list-style: none; cursor: pointer; }
+.requirements summary::-webkit-details-marker { display: none; }
+.requirementsTitle { display: inline-flex; min-width: 0; align-items: center; gap: 8px; }
+.requirementsTitle > svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--detail-orange); }
+.requirements ul { display: grid; gap: 8px; padding: 16px 20px 16px 34px; list-style: disc; color: var(--muted-ink); font-size: 12px; line-height: 18px; }
+.previewForm { display: grid; gap: 16px; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+.previewForm > p:not([role]) { color: var(--secondary); font-size: 13px; line-height: 20px; }
+.previewForm .actions { margin-top: 0; }
+.importTable { min-width: 1180px; }
+.importTable :is(th, td):nth-child(7) { min-width: 224px; }
+.importTable :is(th, td):last-child { min-width: 240px; white-space: normal; }
+.importTable tr.duplicateRow { --row-bg: var(--muted); color: var(--muted-ink); background: var(--row-bg); }
+.importTable tr.invalidRow { --row-bg: var(--danger-soft); background: var(--row-bg); }
+.checkbox { width: 18px; height: 18px; min-height: 18px; accent-color: var(--brand-orange); cursor: pointer; }
+.checkbox:disabled { opacity: .6; cursor: not-allowed; }
+.clientName { display: block; max-width: 224px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 20px; font-weight: 600; }
+.uc { font-variant-numeric: tabular-nums; }
+.situation { display: block; max-width: 260px; color: var(--secondary); font-size: 13px; line-height: 20px; font-weight: 400; }
+.notice { margin-top: 16px; padding: 16px; border-radius: 11px; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
+.previewForm .notice { margin-top: 0; }
+.successNotice { background: var(--success-soft); color: var(--success-ink); }
+.errorNotice { background: var(--danger-soft); color: var(--danger-ink); }
+.manualTrigger:focus-visible, .requirements summary:focus-visible, .viewAll:focus-visible, .fileInput:focus-visible, .checkbox:focus-visible, .actions > button:focus-visible { outline: 2px solid var(--detail-orange); outline-offset: 3px; }
+@container (min-width: 720px) { .fieldGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 639px) {
-  .manual, .importCard { padding: 20px; }
-  .fieldGrid { grid-template-columns: minmax(0, 1fr); }
-  .actions button { width: 100%; }
-  .importCard form > button { width: 100%; }
+  .manualTrigger { gap: 10px; padding: 16px; }
+  .manualIcon { width: 36px; height: 36px; }
+  .manualContent, .importCard { padding: 16px; }
   .upload { padding: 12px; }
-  .upload input { width: 100%; font-size: 12px; }
 }
