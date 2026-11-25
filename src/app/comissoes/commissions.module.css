@@ -34,8 +34,6 @@
 .tableHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 20px 12px; }
 .tableHeader h2 { font-size: 16px; font-weight: 600; }
 .count { color: var(--muted-ink); font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; }
-.tableHeader > p { font-size: 11px; color: var(--muted-ink); }
-.tableHeader > p > span { margin-left: 8px; font-size: 16px; }
 .bulkToolbar { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
 .selectionGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--muted); }
 .paymentGroup { --operation-ink: var(--success-ink); --operation-soft: var(--success-soft); --operation-gradient: linear-gradient(100deg, #13834d 0%, #19a974 100%); display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; min-width: 0; padding: 15px; border: 1px solid color-mix(in srgb, var(--operation-ink) 20%, var(--line)); border-radius: 15px; background: color-mix(in srgb, var(--operation-soft) 45%, var(--surface)); }
@@ -58,27 +56,19 @@
 .paymentHint { padding: 12px 0 0; color: var(--muted-ink); font-size: 11px; line-height: 1.5; }
 .feedback { margin: 0 20px 16px; padding: 12px; border-radius: 8px; font-size: 12px; }
 .empty { padding: 32px 20px; background: var(--muted); color: var(--muted-ink); text-align: center; font-size: 13px; }
-.tableScroll { max-width: 100%; max-height: min(70vh, 640px); overflow-x: scroll; overflow-y: auto; border-block: 1px solid var(--line); scrollbar-width: auto; scrollbar-color: var(--detail-orange) var(--detail-orange-soft); scrollbar-gutter: stable; isolation: isolate; }
+.tableScroll { max-width: 100%; max-height: min(70vh, 640px); overflow-x: auto; overflow-y: auto; border-block: 1px solid var(--line); scrollbar-width: auto; scrollbar-color: var(--detail-orange) var(--detail-orange-soft); scrollbar-gutter: stable; isolation: isolate; }
 .tableScroll::-webkit-scrollbar { width: 13px; height: 14px; }
 .tableScroll::-webkit-scrollbar-track { background: var(--detail-orange-soft); }
 .tableScroll::-webkit-scrollbar-thumb { min-width: 44px; border: 3px solid var(--detail-orange-soft); border-radius: 999px; background: var(--detail-orange); }
 .tableScroll::-webkit-scrollbar-thumb:hover { background: var(--brand-orange); }
 .tableScroll::-webkit-scrollbar-corner { background: var(--detail-orange-soft); }
 @supports selector(::-webkit-scrollbar) { .tableScroll { scrollbar-color: auto; } }
-.horizontalScroll { display: flex; align-items: center; gap: 10px; padding: 9px 20px; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--detail-orange); }
-.horizontalScroll > span { flex-shrink: 0; font-size: 20px; line-height: 1; }
-.horizontalScroll input { appearance: none; width: 100%; min-width: 0; min-height: 18px; height: 18px; margin: 0; padding: 0; border: 0; border-radius: 999px; background: transparent; cursor: ew-resize; }
-.horizontalScroll input::-webkit-slider-runnable-track { height: 14px; border-radius: 999px; background: var(--detail-orange-soft); }
-.horizontalScroll input::-webkit-slider-thumb { appearance: none; width: 72px; height: 14px; border: 2px solid var(--detail-orange-soft); border-radius: 999px; background: var(--detail-orange); }
-.horizontalScroll input::-moz-range-track { height: 14px; border-radius: 999px; background: var(--detail-orange-soft); }
-.horizontalScroll input::-moz-range-thumb { width: 68px; height: 10px; border: 2px solid var(--detail-orange-soft); border-radius: 999px; background: var(--detail-orange); }
-.horizontalScroll input:hover::-webkit-slider-thumb { background: var(--brand-orange); }
-.horizontalScroll input:hover::-moz-range-thumb { background: var(--brand-orange); }
-.table { width: 100%; border-collapse: separate; border-spacing: 0; white-space: nowrap; text-align: left; font-size: 13px; }
-.table th { position: sticky; top: 0; z-index: 2; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--muted); color: var(--secondary); font-size: 11px; font-weight: 500; }
-.table td { height: 64px; padding: 8px 16px; border-bottom: 1px solid var(--subtle); vertical-align: middle; }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; white-space: nowrap; text-align: left; color: var(--primary); font-size: 14px; font-weight: 500; }
+.table th { position: sticky; top: 0; z-index: 2; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--muted); color: var(--secondary); font-size: 12px; font-weight: 600; }
+.table td { height: 72px; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .table tr:last-child td { border-bottom: 0; }
 .row { --row-bg: var(--surface); background: var(--row-bg); }
+.row:nth-child(even) { --row-bg: color-mix(in srgb, var(--muted) 55%, var(--surface)); background: var(--row-bg); }
 .row:hover { --row-bg: var(--muted); background: var(--row-bg); }
 .row.selectedRow { --row-bg: var(--accent-soft); background: var(--row-bg); }
 .row.warningRow { --row-bg: var(--danger-soft); background: var(--row-bg); }
@@ -86,11 +76,12 @@
 .table .clientCell { position: sticky; left: 44px; z-index: 1; min-width: 216px; width: 216px; background: var(--row-bg, var(--muted)); border-right: 1px solid var(--line); }
 .table th.selectionCell, .table th.clientCell { z-index: 3; }
 .clientName, .clientUC { display: block; max-width: 184px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.clientName { font-weight: 500; }
-.clientUC { margin-top: 4px; font-size: 11px; color: var(--muted-ink); }
+.clientName { font-size: 15px; font-weight: 650; }
+.clientUC { margin-top: 5px; font-size: 12px; color: var(--secondary); }
 .cellText { display: block; max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.table .moneyCell { text-align: right; font-variant-numeric: tabular-nums; }
-.table .commissionValue { font-weight: 600; }
+.table .moneyCell { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.table .commissionValue { font-size: 15px; font-weight: 700; }
+.table :global(.status-badge) { padding-block: 6px; font-size: 12px; font-weight: 600; }
 .marginWarning { margin-top: 4px; font-size: 11px; font-weight: 400; color: var(--danger-ink); }
 .notApplicable { font-size: 12px; color: var(--muted-ink); }
 .rowActions > [role="group"] { flex-direction: row; gap: 8px; }

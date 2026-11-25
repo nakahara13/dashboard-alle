@@ -1,0 +1,52 @@
+.headerActions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; }
+.secondaryButton { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 10px 18px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); color: var(--secondary); font-size: 13px; line-height: 20px; font-weight: 600; }
+.secondaryButton:hover { background: var(--muted); }
+.createAction > div > button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: 0; border-radius: 11px; background: var(--financial-gradient, linear-gradient(100deg, #f67216 0%, #ff1650 100%)); color: #ffffff; font-size: 13px; line-height: 20px; font-weight: 600; box-shadow: 0 5px 14px -7px rgb(246 114 22 / .4); }
+.createAction > div > button:hover { filter: brightness(1.05); }
+.hint { color: var(--muted-ink); font-size: 12px; line-height: 18px; font-weight: 400; }
+.controls .advancedGrid { grid-template-columns: minmax(0, 1fr); }
+.presenceSummary { margin: 16px 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--muted); color: var(--secondary); font-size: 13px; line-height: 20px; }
+.table { min-width: 1100px; }
+.table .nameCell { position: sticky; left: 0; z-index: 1; width: 224px; min-width: 224px; max-width: 224px; border-right: 1px solid var(--line); background: var(--row-bg, var(--muted)); }
+.table th.nameCell { z-index: 3; }
+.nameText { display: block; max-width: 192px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 20px; font-weight: 600; }
+.numeric { font-variant-numeric: tabular-nums; }
+.generators { max-width: 224px; margin-top: 8px; white-space: normal; overflow-wrap: anywhere; color: var(--muted-ink); font-size: 12px; line-height: 18px; font-weight: 400; }
+.statusDot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: middle; }
+.active { background: #16a34a; box-shadow: 0 0 0 4px rgb(22 163 74 / .12); }
+.inactive { background: #ef4444; box-shadow: 0 0 0 4px rgb(239 68 68 / .12); }
+.table .actionCell { width: 1%; text-align: right; }
+.actionCell > div > [role="group"] { justify-content: flex-end; margin-left: auto; }
+.actionCell > div > p { max-width: 180px; white-space: normal; text-align: left; }
+.statusAction { display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 8px; padding: 8px 10px; border: 1px solid; border-radius: 8px; font-size: 12px; line-height: 20px; font-weight: 500; }
+.deactivate { border-color: color-mix(in srgb, var(--danger-ink) 35%, var(--line)); background: var(--danger-soft); color: var(--danger-ink); }
+.deactivate:hover { filter: brightness(.95); }
+.activate { border-color: #16a34a55; background: #16a34a15; color: var(--success-ink); }
+.activate:hover { background: #16a34a25; }
+.dangerButton { --financial-gradient: linear-gradient(100deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 5px 14px -7px rgb(220 38 38 / .4); }
+.successButton { --financial-gradient: linear-gradient(100deg, #16a34a 0%, #15803d 100%); box-shadow: 0 5px 14px -7px rgb(22 163 74 / .4); }
+.modalScope :global(.management-drawer) { text-align: left; font-size: 15px; line-height: 24px; font-weight: 400; }
+.modalScope :global(.management-drawer) > header h2 { font-size: 22px; line-height: 28px; font-weight: 600; }
+.modalScope :global(.management-drawer) > header > button, .modalScope :global(.management-drawer) > footer > button { min-height: 44px; font-size: 14px; line-height: 22px; }
+.modalScope .clientForm { text-align: left; font-size: 15px; line-height: 24px; }
+.modalScope .clientForm label { font-size: 14px; line-height: 20px; }
+.modalScope .clientForm input:not([type="hidden"]), .modalScope .clientForm select { font-size: 15px; line-height: 22px; text-align: left; }
+.modalScope .clientForm > p { font-size: 15px; line-height: 24px; }
+.modalScope .clientForm button, .modalScope .detailEdit { font-size: 14px; line-height: 22px; }
+.details { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px 24px; min-width: 0; text-align: left; }
+.details > div { min-width: 0; }
+.details dt { display: flex; align-items: center; gap: 8px; color: var(--muted-ink); font-size: 14px; line-height: 20px; font-weight: 500; }
+.details dt svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--detail-orange); }
+.details dd { margin: 8px 0 0; overflow-wrap: anywhere; color: var(--primary); font-size: 16px; line-height: 24px; font-weight: 600; }
+.details .detailName dd { font-size: 20px; line-height: 28px; }
+.detailStatus { display: flex; align-items: center; justify-content: flex-start; gap: 10px; }
+.detailStatus .statusDot { flex-shrink: 0; }
+@media (min-width: 640px) { .details { grid-template-columns: repeat(2, minmax(0, 1fr)); } .detailName { grid-column: 1 / -1; } }
+@container (min-width: 640px) { .controls .advancedGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (min-width: 1024px) { .controls .advancedGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 639px) {
+  .headerActions { width: 100%; }
+  .presenceSummary { margin-inline: 16px; }
+  .table .nameCell { width: 180px; min-width: 180px; max-width: 180px; }
+  .nameText { max-width: 148px; }
+}

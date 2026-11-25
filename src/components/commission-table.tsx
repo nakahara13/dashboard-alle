@@ -4,7 +4,7 @@ import { DateInput } from "@/components/formatted-input";
 import { InterfaceIcon } from "@/components/interface-icon";
 
 import styles from "@/app/comissoes/commissions.module.css";
-import { useEffect, useId, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ManagementFilters } from "@/components/management-filters";
 import { CommissionRowActions } from "@/components/commission-row-actions";
@@ -36,27 +36,10 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const allCheckbox = useRef<HTMLInputElement>(null);
-  const tableScroll = useRef<HTMLDivElement>(null);
-  const tableScrollId = useId();
-  const [horizontalScroll, setHorizontalScroll] = useState({ left: 0, maximum: 0 });
   const allSelected = rows.length > 0 && selected.length === rows.length;
   useEffect(() => {
     if (allCheckbox.current) allCheckbox.current.indeterminate = selected.length > 0 && !allSelected;
   }, [selected.length, allSelected]);
-  useEffect(() => {
-    const element = tableScroll.current;
-    if (!element) return;
-    const sync = () => {
-      const maximum = Math.max(0, element.scrollWidth - element.clientWidth);
-      const left = Math.max(0, Math.min(element.scrollLeft, maximum));
-      setHorizontalScroll((previous) => previous.left === left && previous.maximum === maximum ? previous : { left, maximum });
-    };
-    const observer = new ResizeObserver(sync);
-    observer.observe(element);
-    if (element.firstElementChild) observer.observe(element.firstElementChild);
-    element.addEventListener("scroll", sync, { passive: true });
-    return () => { observer.disconnect(); element.removeEventListener("scroll", sync); };
-  }, [rows.length]);
   function update(type: "recebimento" | "pagamento", status: "Pago" | "Pendente" | "Recebido") {
     const form = new FormData();
     selected.forEach((id) => form.append("ids", id));
@@ -99,7 +82,7 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
     </div>}
     {pending && <p role="status" className={styles.feedback}>Atualizando comissões…</p>}
     {result && <p role={result.success ? "status" : "alert"} className={`${styles.feedback} ${result.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{result.message}</p>}
-    {!rows.length ? <p className={styles.empty}>Nenhuma comissão encontrada.</p> : <><div ref={tableScroll} id={tableScrollId} className={styles.tableScroll} role="region" aria-label="Tabela de comissões" aria-describedby="commissions-scroll-hint" tabIndex={0}>
+    {!rows.length ? <p className={styles.empty}>Nenhuma comissão encontrada.</p> : <div className={styles.tableScroll} role="region" aria-label="Tabela de comissões" tabIndex={0}>
       <table className={styles.table}>
         <caption className="sr-only">Comissões por cliente e competência</caption>
         <thead><tr>
@@ -122,15 +105,6 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
           <td className={styles.rowActions}><CommissionRowActions row={row} options={options} /></td>
         </tr>)}</tbody>
       </table>
-    </div>
-      {horizontalScroll.maximum > 0 && <div className={styles.horizontalScroll}>
-        <span aria-hidden="true">↔</span>
-        <input type="range" min={0} max={horizontalScroll.maximum} step={1} value={horizontalScroll.left} aria-label="Rolagem horizontal da tabela de comissões" aria-controls={tableScrollId} onChange={(event) => {
-          const left = Number(event.target.value);
-          if (tableScroll.current) tableScroll.current.scrollLeft = left;
-          setHorizontalScroll((previous) => ({ ...previous, left }));
-        }} />
-      </div>}
-    </>}
+    </div>}
   </>;
 }

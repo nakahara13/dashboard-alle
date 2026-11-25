@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "@/components/financial-management.module.css";
+import { InterfaceIcon } from "@/components/interface-icon";
 import { ReceiptFileInput, ReceiptList } from "@/components/financial-receipts";
 import type { ReceiptSummary } from "@/lib/financial-receipt-types";
 import { DateInput, MoneyInput, MonthInput } from "@/components/formatted-input";
@@ -10,7 +12,7 @@ import { useActionState, useId } from "react";
 import { savePayable } from "@/app/contas-a-pagar/actions";
 import { PAYABLE_STATUSES, type PayableInput } from "@/lib/contas-a-pagar";
 
-const inputClass = "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm disabled:opacity-60";
+const inputClass = `${styles.field} disabled:opacity-60`;
 export function PayableForm({ types, partners, initial, onSaved, onCancel }: { types: TipoOption[]; onSaved?: () => void; onCancel?: () => void; initial?: PayableInput & { id: string; comprovantes?: ReceiptSummary[] }; partners: { id: number; nome: string; documento: string | null }[] }) {
   const [state, action, pending] = useActionState(async (previous: { success: boolean; message: string }, form: FormData) => {
     if (initial) form.set("id", initial.id);
@@ -21,10 +23,10 @@ export function PayableForm({ types, partners, initial, onSaved, onCancel }: { t
   useDrawerFeedback(state, pending);
   const drawerClose = useDrawerClose();
   const prefix = useId();
-  return <form action={action} className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
+  return <form action={action} className={`${styles.recordForm} ${drawerClose ? styles.embeddedForm : styles.standaloneForm}`}>
     {initial && <input type="hidden" name="id" value={initial.id} />}
-    <h2 className="text-lg font-semibold">{initial ? "Editar conta a pagar" : "Registrar conta a pagar"}</h2>
-    <p className="mt-2 text-sm text-muted-ink">Informe os dados da despesa. Campos com * são obrigatórios.</p>
+    {!drawerClose && <h2>{initial ? "Editar conta a pagar" : "Registrar conta a pagar"}</h2>}
+    <p className={`${drawerClose ? "" : "mt-2"} text-muted-ink`}>Informe os dados da despesa. Campos com * são obrigatórios.</p>
     {partners.length === 0 && <p className="mt-4 text-sm text-accent-ink">Cadastre um parceiro antes de registrar uma conta. <Link href="/parceiros" className="underline">Cadastrar parceiro</Link></p>}
     {types.length === 0 && <p className="mt-4 text-sm text-accent-ink">Cadastre um tipo antes de registrar uma conta. <Link href="/tipos" className="underline">Cadastrar tipo</Link></p>}
     <fieldset disabled={pending || types.length === 0 || partners.length === 0} className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -40,7 +42,7 @@ export function PayableForm({ types, partners, initial, onSaved, onCancel }: { t
     </fieldset>
     {!!initial?.comprovantes?.length && <div className="mt-5 space-y-3"><h3 className="text-sm font-semibold">Comprovantes anexados</h3><ReceiptList receipts={initial.comprovantes} /></div>}
     {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
-    <button disabled={pending || types.length === 0 || partners.length === 0} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar conta a pagar"}</button>
+    <button disabled={pending || types.length === 0 || partners.length === 0} className={`mt-6 ${styles.primaryButton}`}><InterfaceIcon name={initial ? "check" : "outgoing"} />{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar conta a pagar"}</button>
     {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
       {initial && !onCancel && <Link href="/contas-a-pagar#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
   </form>;

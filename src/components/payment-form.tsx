@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "@/components/financial-management.module.css";
+import { InterfaceIcon } from "@/components/interface-icon";
 import { ReceiptFileInput, ReceiptList } from "@/components/financial-receipts";
 import type { ReceiptSummary } from "@/lib/financial-receipt-types";
 import { DateInput, MoneyInput, MonthInput } from "@/components/formatted-input";
@@ -11,7 +13,7 @@ import Link from "next/link";
 import { useActionState, useId } from "react";
 import { savePayment } from "@/app/contas-a-receber/actions";
 
-const inputClass = "min-h-11 w-full rounded-lg border border-line px-3 text-sm disabled:opacity-60";
+const inputClass = `${styles.field} disabled:opacity-60`;
 
 export function PaymentForm({ types, partners, methods, accounts, initial, onSaved, onCancel }: { types: TipoOption[]; onSaved?: () => void; onCancel?: () => void; initial?: PaymentInput & { id: string; comprovantes?: ReceiptSummary[] }; accounts: { id: number; nome: string; banco: string; agencia: string; numero: string }[]; methods: PaymentMethodOption[]; partners: { id: number; nome: string; documento: string | null }[] }) {
   const [state, action, pending] = useActionState(async (previous: { success: boolean; message: string }, form: FormData) => {
@@ -24,20 +26,20 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
   const drawerClose = useDrawerClose();
   const prefix = useId();
   return (
-    <form action={action} className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
+    <form action={action} className={`${styles.recordForm} ${drawerClose ? styles.embeddedForm : styles.standaloneForm}`}>
       {initial && <input type="hidden" name="id" value={initial.id} />}
-      <h2 className="text-lg font-semibold">{initial ? "Editar recebimento" : "Registrar recebimento"}</h2>
-      <p className="mt-2 text-sm text-muted-ink">{initial ? "Edite os dados deste recebimento." : "Registre o valor recebido, o parceiro e a conta bancária de destino."} Campos com * são obrigatórios.</p>
+      {!drawerClose && <h2>{initial ? "Editar recebimento" : "Registrar recebimento"}</h2>}
+      <p className={`${drawerClose ? "" : "mt-2"} text-muted-ink`}>{initial ? "Edite os dados deste recebimento." : "Registre o valor recebido, o parceiro e a conta bancária de destino."} Campos com * são obrigatórios.</p>
       {partners.length === 0 && <p className="mt-4 text-sm text-accent-ink">Cadastre um parceiro antes de registrar uma entrada. <Link href="/parceiros" className="underline">Cadastrar parceiro</Link></p>}
       {methods.length === 0 && <p className="mt-4 text-sm text-accent-ink">Cadastre um método de pagamento antes de registrar uma entrada. <Link href="/metodos-de-pagamento" className="underline">Cadastrar método</Link></p>}
       {accounts.length === 0 && <p className="mt-4 text-sm text-accent-ink">Cadastre uma conta bancária para receber as entradas. <Link href="/contas-bancarias" className="underline">Cadastrar conta bancária</Link></p>}
     {types.length === 0 && <p className="mt-4 text-sm text-accent-ink">Cadastre um tipo antes de registrar uma conta. <Link href="/tipos" className="underline">Cadastrar tipo</Link></p>}
       <fieldset disabled={pending || types.length === 0 || partners.length === 0 || methods.length === 0 || accounts.length === 0} className="mt-6 grid gap-5 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label htmlFor={`${prefix}-parceiro_id`} className="mb-2 block text-sm font-medium">Parceiro *</label><select id={`${prefix}-parceiro_id`} name="parceiro_id" required defaultValue={initial?.parceiro_id ?? ""} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"><option value="" disabled>Selecione o parceiro</option>{partners.map((partner) => <option key={partner.id} value={partner.id}>{partner.nome}{partner.documento ? ` — ${partner.documento}` : ` — #${partner.id}`}</option>)}</select><p className="mt-2 text-xs text-muted-ink">Selecione o parceiro relacionado a este recebimento.</p></div>
-        <div><label htmlFor={`${prefix}-conta_bancaria_id`} className="mb-2 block text-sm font-medium">Conta bancária *</label><select id={`${prefix}-conta_bancaria_id`} name="conta_bancaria_id" required defaultValue={initial?.conta_bancaria_id ?? ""} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"><option value="" disabled>Selecione a conta bancária</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.nome} — {account.banco} — Ag. {account.agencia} / Conta {account.numero}</option>)}</select><Link href="/contas-bancarias" className="mt-2 inline-block text-xs text-accent-ink underline">Cadastrar conta bancária</Link></div>
+        <div className="sm:col-span-2"><label htmlFor={`${prefix}-parceiro_id`} className="mb-2 block text-sm font-medium">Parceiro *</label><select id={`${prefix}-parceiro_id`} name="parceiro_id" required defaultValue={initial?.parceiro_id ?? ""} className={inputClass}><option value="" disabled>Selecione o parceiro</option>{partners.map((partner) => <option key={partner.id} value={partner.id}>{partner.nome}{partner.documento ? ` — ${partner.documento}` : ` — #${partner.id}`}</option>)}</select><p className="mt-2 text-xs text-muted-ink">Selecione o parceiro relacionado a este recebimento.</p></div>
+        <div><label htmlFor={`${prefix}-conta_bancaria_id`} className="mb-2 block text-sm font-medium">Conta bancária *</label><select id={`${prefix}-conta_bancaria_id`} name="conta_bancaria_id" required defaultValue={initial?.conta_bancaria_id ?? ""} className={inputClass}><option value="" disabled>Selecione a conta bancária</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.nome} — {account.banco} — Ag. {account.agencia} / Conta {account.numero}</option>)}</select><Link href="/contas-bancarias" className="mt-2 inline-block text-xs text-accent-ink underline">Cadastrar conta bancária</Link></div>
         <TipoSelect types={types} defaultValue={initial?.tipo_id} id={`${prefix}-tipo_id`} />
         <PaymentMethodSelect methods={methods} defaultValue={initial?.metodo_id} id={`${prefix}-metodo_id`} />
-        <div><label htmlFor={`${prefix}-status_do_pagamento`} className="mb-2 block text-sm font-medium">Status do pagamento *</label><select id={`${prefix}-status_do_pagamento`} name="status_do_pagamento" required defaultValue={initial?.status_do_pagamento ?? "Pendente"} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm">{PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+        <div><label htmlFor={`${prefix}-status_do_pagamento`} className="mb-2 block text-sm font-medium">Status do pagamento *</label><select id={`${prefix}-status_do_pagamento`} name="status_do_pagamento" required defaultValue={initial?.status_do_pagamento ?? "Pendente"} className={inputClass}>{PAYMENT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
         <div><label htmlFor={`${prefix}-competencia_financeira`} className="mb-2 block text-sm font-medium">Competência financeira *</label><MonthInput id={`${prefix}-competencia_financeira`} name="competencia_financeira" defaultValue={initial?.competencia_financeira} required aria-describedby={`${prefix}-competencia-hint`} className={inputClass} /><p id={`${prefix}-competencia-hint`} className="mt-1 text-xs text-muted-ink">Digite o mês e o ano no formato MM/AAAA. Ex.: 09/2026.</p></div>
         <div><label htmlFor={`${prefix}-valor_total`} className="mb-2 block text-sm font-medium">Valor total (R$) *</label><MoneyInput id={`${prefix}-valor_total`} name="valor_total" defaultValue={initial?.valor_total} required className={inputClass} /></div>
         <div><label htmlFor={`${prefix}-data_do_pagamento`} className="mb-2 block text-sm font-medium">Data do vencimento</label><DateInput id={`${prefix}-data_do_pagamento`} name="data_do_pagamento" defaultValue={initial?.data_do_pagamento} aria-describedby={`${prefix}-payment-date-hint`} className={inputClass} /><p id={`${prefix}-payment-date-hint`} className="mt-1 text-xs text-muted-ink">Digite a data de vencimento.</p></div>
@@ -46,7 +48,7 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
       </fieldset>
     {!!initial?.comprovantes?.length && <div className="mt-5 space-y-3"><h3 className="text-sm font-semibold">Comprovantes anexados</h3><ReceiptList receipts={initial.comprovantes} /></div>}
       {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
-      <button disabled={pending || types.length === 0 || partners.length === 0 || methods.length === 0 || accounts.length === 0} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60">{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar recebimento"}</button>
+      <button disabled={pending || types.length === 0 || partners.length === 0 || methods.length === 0 || accounts.length === 0} className={`mt-6 ${styles.primaryButton}`}><InterfaceIcon name={initial ? "check" : "incoming"} />{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar recebimento"}</button>
       {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
       {initial && !onCancel && <Link href="/contas-a-receber#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
     </form>

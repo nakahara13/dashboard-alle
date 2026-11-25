@@ -106,7 +106,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       >
         {data.unassignedCount > 0 && <p role="status" className={styles.notice}>{data.unassignedCount} comissão(ões) anterior(es) ainda sem geradora informada. Abra os detalhes e selecione a geradora correta. <Link href="/comissoes?geradora=nao-informada" className="underline">Ver pendências</Link></p>}
         {/* A visão geral concentra consulta e edição; criação e importação têm páginas próprias. */}
-        <div className={styles.tableHeader}><h2 id="commissions-title">Comissões <span className={styles.count}>({data.count})</span></h2><p id="commissions-scroll-hint">Role a tabela para consultar todas as colunas <span aria-hidden="true">↔</span></p></div>
+        <div className={styles.tableHeader}><h2 id="commissions-title">Comissões <span className={styles.count}>({data.count})</span></h2></div>
       </CommissionTable>
         <div className={styles.pagination}><Pagination page={data.page} pages={data.pages} href={href} label="Paginação de comissões" compact /></div>
       </section>

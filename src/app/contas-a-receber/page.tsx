@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import styles from "./receivables.module.css";
+import styles from "@/components/financial-management.module.css";
 import { CreateRecord } from "@/components/management-drawer";
 import { ReceivablesHistory } from "@/components/receivables-history";
 import type { HistoryParams } from "@/lib/recebimentos-filtros";

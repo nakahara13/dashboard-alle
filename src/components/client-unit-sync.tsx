@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ManagementDrawer, useDrawerFeedback } from "./management-drawer";
 import { syncClientUnitsBatch } from "@/app/cadastros/clientes/unit-sync-actions";
 import type { UnitSyncSummary } from "@/lib/client-unit-sync";
+import styles from "./client-unit-sync.module.css";
 
 const emptySummary = (): UnitSyncSummary => ({ processed: 0, filled: 0, replaced: 0, unchanged: 0, issues: [] });
 
@@ -64,7 +65,10 @@ export function ClientUnitSync() {
     });
   }
   return <>
-    <button type="button" disabled={pending} aria-haspopup="dialog" onClick={synchronize} className="rounded-lg border border-line px-4 py-3 text-sm font-semibold text-accent-ink hover:bg-muted disabled:opacity-60">{pending ? "Sincronizando unidades…" : "Sincronizar unidades com Bitrix"}</button>
+    <button type="button" disabled={pending} aria-haspopup="dialog" aria-busy={pending} onClick={synchronize} className={styles.button}>
+      <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={styles.icon}><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 7a7 7 0 0 1 11.6-1.3L20 8M4 16l2.3 2.3A7 7 0 0 0 17.9 17" /></svg>
+      <span>{pending ? "Sincronizando unidades…" : "Sincronizar unidades com Bitrix"}</span>
+    </button>
     {open && <ManagementDrawer title="Sincronização de unidades com Bitrix" onClose={() => { if (!pending) setOpen(false); }}><SyncReport summary={summary} total={total} pending={pending} error={error} complete={complete} uncertain={uncertain} /></ManagementDrawer>}
   </>;
 }

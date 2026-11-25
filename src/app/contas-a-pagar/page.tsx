@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import styles from "./payables.module.css";
+import styles from "@/components/financial-management.module.css";
 import { CreateRecord } from "@/components/management-drawer";
 import type { Metadata } from "next";
 import { PayableForm } from "@/components/payable-form";

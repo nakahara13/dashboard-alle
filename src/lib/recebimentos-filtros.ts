@@ -8,8 +8,16 @@ export const PAGE_SIZE = 20;
 
 export function parseHistoryFilters(params: HistoryParams) {
   const text = (key: string) => typeof params[key] === "string" ? params[key] as string : "";
-  const values = { inicio: text("inicio"), fim: text("fim"), competencia: text("competencia"), parceiro: text("parceiro"), conta: text("conta"), metodo: text("metodo"), tipo: text("tipo"), status: text("status") };
+  const values = { inicio: text("inicio"), fim: text("fim"), competencia: text("competencia"), parceiro: text("parceiro"), conta: text("conta"), metodo: text("metodo"), tipo: text("tipo"), status: text("status"), busca: text("busca").trim() };
   const where: Prisma.criar_pagamentoWhereInput = {};
+  if (values.busca.length > 255) throw new Error("A busca deve ter até 255 caracteres.");
+  if (values.busca) {
+    where.OR = [
+      { parceiro: { is: { nome: { contains: values.busca, mode: "insensitive" } } } },
+      { descricao: { contains: values.busca, mode: "insensitive" } },
+      { numero_da_nf: { contains: values.busca, mode: "insensitive" } },
+    ];
+  }
   if (values.competencia) {
     values.competencia = parseCompetence(values.competencia);
     where.competencia_financeira = values.competencia;

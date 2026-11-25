@@ -8,7 +8,7 @@ const labels: Record<string, string> = { inicio: "De", fim: "Até", status: "Sta
 type Option = { id: string | number; nome: string };
 export function ManagementFilters({ basePath, values, children, statuses, search, competence, options = {}, appearance = "default" }: {
   basePath: string; values: Record<string, string>; children: ReactNode;
-  statuses?: { value: string; label: string }[]; search?: { key: string; label: string; max: number };
+  statuses?: { value: string; label: string }[]; search?: { key: string; label: string; max: number; placeholder?: string };
   competence?: boolean;
   appearance?: "default" | "capsule";
   options?: Record<string, Option[]>;
@@ -31,7 +31,7 @@ export function ManagementFilters({ basePath, values, children, statuses, search
       {(search || competence) && <form key={JSON.stringify(values)} method="get" action={basePath} className={capsule ? styles.quickForm : "flex min-w-0 flex-1 flex-wrap items-end gap-2"}>
         {Object.entries(values).filter(([key, value]) => key !== search?.key && !(competence && key === "competencia") && key !== "pagina" && value).map(([key, value]) => <input key={key} type="hidden" name={key} value={value} />)}
         {competence && <label htmlFor={`${path}-quick-competence`} className="grid min-w-0 gap-1 text-xs text-secondary">Competência<MonthInput id={`${path}-quick-competence`} name="competencia" defaultValue={values.competencia} className="min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm" /></label>}
-        {search && <div className={capsule ? styles.searchBox : "min-w-0 flex-1 basis-48"}><label className="sr-only" htmlFor={`${path}-quick-search`}>{search.label}</label><input id={`${path}-quick-search`} type="search" name={search.key} defaultValue={values[search.key]} placeholder={capsule ? "Nome ou UC do cliente" : search.label} maxLength={search.max} className={capsule ? styles.searchInput : "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"} />{capsule && <button type="submit" className={styles.searchButton}><InterfaceIcon name="search" /><span>Buscar</span></button>}</div>}
+        {search && <div className={capsule ? styles.searchBox : "min-w-0 flex-1 basis-48"}><label className="sr-only" htmlFor={`${path}-quick-search`}>{search.label}</label><input id={`${path}-quick-search`} type="search" name={search.key} defaultValue={values[search.key]} placeholder={search.placeholder ?? (capsule ? "Nome ou UC do cliente" : search.label)} maxLength={search.max} className={capsule ? styles.searchInput : "min-h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm"} />{capsule && <button type="submit" className={styles.searchButton}><InterfaceIcon name="search" /><span>Buscar</span></button>}</div>}
         {(!capsule || !search) && <button className="min-h-11 rounded-lg border border-line px-4 text-sm hover:bg-muted">Buscar</button>}
       </form>}
     </div>
