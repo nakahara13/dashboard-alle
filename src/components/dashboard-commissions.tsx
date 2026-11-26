@@ -43,7 +43,7 @@ export function DashboardCommissionSection({ filters, dashboardRange, units = []
       </article>
       {hiring ?? <DashboardHiringCard loading={loading} error={error} />}
     </div>
-    <p className="text-xs leading-5 text-muted-ink">Comissão recorrente do parceiro soma as comissões dos parceiros cadastradas, pagas e pendentes, pela competência mensal. Contratação soma R$ 10 por negócio nas fases Negócios Fechados Geral e Negócios Fechados Allp Fit do funil Negócios | Alle Energia, pelo campo Criado e pela Academia Allp Fit.</p>
+    <p className="text-xs leading-5 text-muted-ink">Comissão recorrente do parceiro soma as comissões dos parceiros cadastradas, pagas e pendentes, pela competência mensal. Contratação soma R$ 10 por negócio somente na fase Negócios Fechados Allp Fit do funil Negócios | Alle Energia, pelo campo Criado e pela Academia Allp Fit.</p>
     {charts}
   </section>;
 }

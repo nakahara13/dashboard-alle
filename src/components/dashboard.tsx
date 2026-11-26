@@ -33,7 +33,7 @@ export function Dashboard({ range, data, error, revenue, analytics, podium, hiri
       {cards.map((card) => <DashboardKpiCard key={card.title} {...card} />)}
       <DashboardKpiCard title="Alunos ativos" icon="users" value={data ? data.activeStudents.toLocaleString("pt-BR") : null} description="Total atual no cadastro." href="/cadastros/clientes/visao-geral?status=ativo" linkLabel="Ver alunos" />
     </div>
-    <p className="text-xs leading-5 text-muted-ink">Faturamento pela data de criação no Bitrix. Entradas e saídas por vencimento, conforme as datas cadastradas nas contas. Recebimentos sem vencimento ficam fora do período. Os atalhos de mês, seis meses e ano usam períodos móveis até hoje.</p>
+    <p className="text-xs leading-5 text-muted-ink">Faturamento somente dos negócios fechados Allp Fit, pela data de criação no Bitrix. Entradas e saídas por vencimento, conforme as datas cadastradas nas contas. Recebimentos sem vencimento ficam fora do período. Os atalhos de mês, seis meses e ano usam períodos móveis até hoje.</p>
     {analytics}
     {podium}
     {commissions}

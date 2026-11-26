@@ -29,15 +29,15 @@ async function main() {
   for (const range of [["2026-13", "2026-13"], ["2026-12", "2026-11"], ["0000-01", "2026-11"]]) assert.throws(() => hiringDateRange(...range as [string, string]));
 
   const mock = mockApi([
-    { data: { result: [deal(1, "100", { DATE_CREATE: "2026-11-01T06:00:00+03:00", OPPORTUNITY: "99999.99" }), deal(2, 100, { STAGE_ID: "C42:GENERAL" }), deal(3, "101")], next: 50 } },
-    { data: { result: [deal(4, "102"), deal(5, "103"), deal(6, "104"), deal(7, "", { STAGE_ID: "C42:GENERAL" }), deal(8, null), deal(9, "101", { DATE_CREATE: "2026-12-01T05:59:59+03:00" })] } },
+    { data: { result: [deal(1, "100", { DATE_CREATE: "2026-11-01T06:00:00+03:00", OPPORTUNITY: "99999.99" }), deal(2, 100), deal(3, "101")], next: 50 } },
+    { data: { result: [deal(4, "102"), deal(5, "103"), deal(6, "104"), deal(7, ""), deal(8, null), deal(9, "101", { DATE_CREATE: "2026-12-01T05:59:59+03:00" })] } },
   ]);
   const data = await mock.api.hiringByAcademy(inicio, fim);
   assert.equal(data.unassignedCount, 2);
   assert.equal(mock.calls.length, 4);
   assert.deepEqual(mock.calls[1], { method: "crm.dealcategory.stage.list.json", body: { id: 42 } });
   assert.deepEqual(mock.calls[2].body, {
-    filter: { "=CATEGORY_ID": 42, "@STAGE_ID": ["C42:WON", "C42:GENERAL"], ">=DATE_CREATE": "2026-11-01T00:00:00-03:00", "<DATE_CREATE": "2026-12-01T00:00:00-03:00" },
+    filter: { "=CATEGORY_ID": 42, "@STAGE_ID": ["C42:WON"], ">=DATE_CREATE": "2026-11-01T00:00:00-03:00", "<DATE_CREATE": "2026-12-01T00:00:00-03:00" },
     select: ["ID", "CATEGORY_ID", "STAGE_ID", "DATE_CREATE", config.unitField], order: { ID: "ASC" }, start: 0,
   });
   assert.equal(mock.calls[3].body.start, 50);
@@ -63,15 +63,20 @@ async function main() {
   const grouped = summarizeDashboardHiring({ academies: [{ id: "1", nome: "Tirol - MG", count: 2 }, { id: "2", nome: "Tirol - BH", count: 3 }, { id: "3", nome: "Canaã - MG", count: 4 }], unassignedCount: 0 });
   assert.deepEqual(dashboardHiringPodium(grouped).map((academy) => academy.count), [5, 4], "Agrupa nomes equivalentes da mesma unidade antes do ranking, inclusive quando há menos de três unidades.");
 
-  for (const extra of [{ CATEGORY_ID: "99" }, { STAGE_ID: "C42:NEW" }, { DATE_CREATE: "2026-11-01T05:59:59+03:00" }, { DATE_CREATE: "2026-12-01T06:00:00+03:00" }, { DATE_CREATE: "inválido" }, { ID: "0" }]) {
+  for (const extra of [{ CATEGORY_ID: "99" }, { STAGE_ID: "C42:GENERAL" }, { STAGE_ID: "C42:NEW" }, { DATE_CREATE: "2026-11-01T05:59:59+03:00" }, { DATE_CREATE: "2026-12-01T06:00:00+03:00" }, { DATE_CREATE: "inválido" }, { ID: "0" }]) {
     await assert.rejects(() => mockApi([{ data: { result: [deal(1, "100", extra)] } }]).api.hiringByAcademy(inicio, fim));
   }
+  for (const unit of ["100", ""]) {
+    await assert.rejects(() => mockApi([{ data: { result: [deal(1)], next: 50 } }, { data: { result: [deal(2, unit, { STAGE_ID: stages[1].STATUS_ID })] } }]).api.hiringByAcademy(inicio, fim), /fora da fase Negócios Fechados Allp Fit/, "Geral não entra em contratações, bônus, pódio ou contagem sem academia, inclusive em outra página.");
+  }
+  const allpFitOnly = await mockApi([{ data: { result: [deal(1)] } }], fields, [stages[0]]).api.hiringByAcademy(inicio, fim);
+  assert.equal(summarizeDashboardHiring(allpFitOnly).count, 1, "A contratação não depende da existência da fase Geral.");
   for (const unit of ["99999", ["100"], { id: "100" }, true]) await assert.rejects(() => mockApi([{ data: { result: [deal(1, unit)] } }]).api.hiringByAcademy(inicio, fim), /Academia Allp Fit não reconhecida/);
   for (const unit of [undefined, null, "", false, 0, "0"]) assert.equal((await mockApi([{ data: { result: [deal(1, unit, { [config.unitField]: unit })] } }]).api.hiringByAcademy(inicio, fim)).unassignedCount, 1);
   for (const invalidFields of [{}, { [config.unitField]: { type: "string" } }, { [config.unitField]: { ...fields[config.unitField], isMultiple: true } }, { [config.unitField]: { ...fields[config.unitField], items: [...options, options[0]] } }]) {
     await assert.rejects(() => mockApi([], invalidFields).api.hiringByAcademy(inicio, fim));
   }
-  for (const invalidStages of [[], [stages[0]], [...stages, stages[0]]]) await assert.rejects(() => mockApi([], fields, invalidStages).api.hiringByAcademy(inicio, fim), /fase/);
+  for (const invalidStages of [[], [stages[1]], [...stages, stages[0]]]) await assert.rejects(() => mockApi([], fields, invalidStages).api.hiringByAcademy(inicio, fim), /fase/);
   await assert.rejects(() => mockApi([{ data: { result: [deal(1)], next: 50 } }, { data: { result: [deal(1)] } }]).api.hiringByAcademy(inicio, fim), /percorrer/);
   await assert.rejects(() => mockApi([{ data: { result: [], next: 0 } }]).api.hiringByAcademy(inicio, fim), /percorrer/);
   await assert.rejects(() => mockApi([{ data: { result: {} } }]).api.hiringByAcademy(inicio, fim), /lista de negócios fechados inválida/);
@@ -80,6 +85,6 @@ async function main() {
   await assert.rejects(() => invalid.api.hiringByAcademy("2026-02-30", fim));
   await assert.rejects(() => invalid.api.hiringByAcademy(fim, inicio));
   assert.equal(invalid.calls.length, 0);
-  console.log("PASSOU: contratação a R$ 10 por negócio, pódio das três maiores contagens, desempates, agrupamento de unidades, filtro de unidade, duas fases, filtros mensais, fuso, paginação, zero e falhas sem total parcial.");
+  console.log("PASSOU: contratação Allp Fit a R$ 10 por negócio, Geral excluída, pódio das três maiores contagens, desempates, agrupamento de unidades, filtro de unidade, filtros mensais, fuso, paginação, zero e falhas sem total parcial.");
 }
 void main().catch((error) => { console.error(error); process.exitCode = 1; });

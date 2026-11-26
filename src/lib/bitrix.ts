@@ -129,22 +129,20 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     }
   }
 
-  // Resolve as duas fases pelo nome no funil, sem inferir a fase pela semântica de ganho/perda.
-  async function closedStageIds(): Promise<string[]> {
+  // Resolve somente a fase Allp Fit pelo nome no funil, sem inferir pela semântica de ganho/perda.
+  async function closedStageId(): Promise<string> {
     const { result } = await call("crm.dealcategory.stage.list", { id: config.categoryId });
     if (!Array.isArray(result)) throw new Error("Não foi possível consultar as fases de negócios fechados no Bitrix.");
-    const names = ["Negócios Fechados Allp Fit", "Negócios Fechados Geral"];
-    return names.map((name) => {
-      const matches = result.filter((stage) => stage && typeof stage === "object" && stage.NAME === name);
-      if (matches.length !== 1 || typeof matches[0].STATUS_ID !== "string" || !matches[0].STATUS_ID) throw new Error(`Não foi possível identificar a fase ${name} no funil do Bitrix.`);
-      return matches[0].STATUS_ID;
-    });
+    const name = "Negócios Fechados Allp Fit";
+    const matches = result.filter((stage) => stage && typeof stage === "object" && stage.NAME === name);
+    if (matches.length !== 1 || typeof matches[0].STATUS_ID !== "string" || !matches[0].STATUS_ID) throw new Error(`Não foi possível identificar a fase ${name} no funil do Bitrix.`);
+    return matches[0].STATUS_ID;
   }
 
   async function* closedDeals(inicio: string, fim: string, select: string[]): AsyncGenerator<BitrixDeal> {
     const first = parseDate(inicio), last = parseDate(fim);
     if (first > last) throw new Error("A data inicial não pode ser posterior à data final.");
-    const stageIds = await closedStageIds();
+    const stageIds = [await closedStageId()];
     const following = new Date(last);
     following.setUTCDate(following.getUTCDate() + 1);
     // Os dias do dashboard usam São Paulo; o Bitrix pode responder em outro fuso.
@@ -161,7 +159,7 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
       if (!Array.isArray(data.result)) throw new Error("O Bitrix retornou uma lista de negócios fechados inválida. Tente novamente.");
       for (const row of data.result as BitrixDeal[]) {
         if (!row || typeof row !== "object" || String(row.CATEGORY_ID) !== String(config.categoryId)) throw new Error("O Bitrix retornou negócios fora do funil configurado.");
-        if (typeof row.STAGE_ID !== "string" || !stageIds.includes(row.STAGE_ID)) throw new Error("O Bitrix retornou negócios fora das fases de negócios fechados.");
+        if (typeof row.STAGE_ID !== "string" || !stageIds.includes(row.STAGE_ID)) throw new Error("O Bitrix retornou negócios fora da fase Negócios Fechados Allp Fit.");
         const created = typeof row.DATE_CREATE === "string" ? Date.parse(row.DATE_CREATE) : NaN;
         if (!Number.isFinite(created) || created < fromTime || created >= untilTime) throw new Error("O Bitrix retornou negócios fora do período selecionado.");
         const id = String(row.ID ?? "");
@@ -176,7 +174,7 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     }
   }
 
-  // Montante/Moeda somente das duas fases de negócios fechados, sem cruzar CPF ou cliente local.
+  // Montante/Moeda somente da fase Negócios Fechados Allp Fit, sem cruzar CPF ou cliente local.
   async function revenueSummary(inicio: string, fim: string): Promise<BitrixRevenueSummary> {
     let totalCents = BigInt(0);
     let clientCount = 0;
@@ -230,7 +228,7 @@ export function createBitrixClient(config: BitrixConfig, request: typeof fetch =
     };
   }
 
-  // Cada negócio fechado conta uma vez para a academia indicada no próprio Bitrix.
+  // Cada negócio da fase Negócios Fechados Allp Fit conta uma vez para a academia indicada no Bitrix.
   async function hiringAnalytics(inicio: string, fim: string): Promise<BitrixHiringAnalytics> {
     if (parseDate(inicio) > parseDate(fim)) throw new Error("A data inicial não pode ser posterior à data final.");
     const options = academyOptions(await dealFields());
