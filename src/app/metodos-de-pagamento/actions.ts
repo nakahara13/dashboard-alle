@@ -4,15 +4,16 @@ import { requireUser } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { createMethod, validateMethod } from "@/lib/metodos-pagamento";
 
 export async function saveMethod(_previous: { success: boolean; message: string }, form: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const nome = String(form.get("nome") ?? "");
   try { validateMethod(nome); } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Verifique o nome." };
   }
-  try { await createMethod(getPrisma(), nome); } catch (error) {
+  try { await auditedTransaction(getPrisma(), user, "/metodos-de-pagamento • Cadastrar método de pagamento", (db) => createMethod(db, nome)); } catch (error) {
     return { success: false, message: typeof error === "object" && error !== null && "code" in error && error.code === "P2002" ? "Este método de pagamento já está cadastrado." : "Não foi possível cadastrar o método. Tente novamente." };
   }
   revalidatePath("/metodos-de-pagamento");

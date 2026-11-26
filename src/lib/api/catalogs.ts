@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
+import { auditedTransaction } from "../audit-context";
 import { saveCommissionCatalogData } from "../comissao-catalog";
 import { normalizeClientCpf, parseClientActive } from "../clientes";
 import { normalizeUC, positiveId } from "../comissao-module";
@@ -105,24 +106,36 @@ function validateCommissionCatalog(resource: "clientes" | "distribuidoras" | "ge
   if (resource === "unidades" && fields.parceiro_id) positiveId(fields.parceiro_id);
 }
 
-async function writeCatalog(db: PrismaClient, resource: Catalog, fields: Record<string, string>, id?: number) {
+function validateCatalogFields(resource: Catalog, fields: Record<string, string>) {
+  switch (resource) {
+    case "clientes":
+    case "distribuidoras":
+    case "geradoras":
+    case "unidades": return validateCommissionCatalog(resource, fields);
+    case "parceiros": return validatePartner({ nome: fields.nome, documento: fields.documento, email: fields.email, telefone: fields.telefone });
+    case "contas-bancarias": return validateBankAccount({ nome: fields.nome, banco: fields.banco, agencia: fields.agencia, numero: fields.numero, titular: fields.titular });
+    case "metodos-pagamento": return validateMethod(fields.nome);
+    case "tipos": return validateTipo(fields.nome);
+    case "usuarios": return validateUser({ nome: fields.nome, email: fields.email, role: fields.role });
+  }
+}
+
+async function writeCatalog(db: Prisma.TransactionClient, resource: Catalog, fields: Record<string, string>, id?: number) {
   const where = id === undefined ? undefined : { id };
   switch (resource) {
     case "clientes":
     case "distribuidoras":
     case "geradoras":
     case "unidades": {
-      // Validate before opening the transaction; the shared service validates again before writing.
+      // The shared service validates again before writing in the audited transaction.
       await business(() => validateCommissionCatalog(resource, fields));
       const kinds = { clientes: "cliente", distribuidoras: "distribuidora", geradoras: "geradora", unidades: "unidade" } as const;
       const form = new FormData();
       for (const key of catalogFields[resource]) if (key !== "ativo" || fields[key] !== "") form.set(key, fields[key]);
       form.set("cadastro", kinds[resource]);
       if (id !== undefined) form.set("id", String(id));
-      return business(() => db.$transaction(async (tx) => {
-        const row = await saveCommissionCatalogData(tx, form);
-        return detailCatalog(tx, resource, row.id);
-      }, { isolationLevel: "Serializable" }));
+      const row = await business(() => saveCommissionCatalogData(db, form));
+      return detailCatalog(db, resource, row.id);
     }
     case "parceiros": {
       const input = { nome: fields.nome, documento: fields.documento, email: fields.email, telefone: fields.telefone };
@@ -146,13 +159,13 @@ async function writeCatalog(db: PrismaClient, resource: Catalog, fields: Record<
       const input = { nome: fields.nome, email: fields.email, role: fields.role };
       await business(() => validateUser(input));
       return where
-        ? userOperation(() => db.$transaction((tx) => updateUser(tx, where.id, input), { isolationLevel: "Serializable" }))
+        ? userOperation(() => updateUser(db, where.id, input))
         : business(() => createUser(db, input));
     }
   }
 }
 
-async function deleteCatalog(db: PrismaClient, resource: Catalog, id: number) {
+async function deleteCatalog(db: Prisma.TransactionClient, resource: Catalog, id: number) {
   const where = { id };
   switch (resource) {
     case "clientes": return db.cliente.delete({ where });
@@ -163,7 +176,7 @@ async function deleteCatalog(db: PrismaClient, resource: Catalog, id: number) {
     case "contas-bancarias": return db.contaBancaria.delete({ where });
     case "metodos-pagamento": return db.metodoPagamento.delete({ where });
     case "tipos": return db.tipo.delete({ where });
-    case "usuarios": return userOperation(() => db.$transaction((tx) => deleteUser(tx, id), { isolationLevel: "Serializable" }));
+    case "usuarios": return userOperation(() => deleteUser(db, id));
   }
 }
 
@@ -191,7 +204,7 @@ export async function handleCatalog(request: Request, segments: string[], db: Pr
   queryParams(url.searchParams, []);
   if (request.method === "GET") return apiJson({ data: await detailCatalog(db, catalog, id!) });
   if (request.method === "DELETE") {
-    await deleteCatalog(db, catalog, id!);
+    await auditedTransaction(db, null, `API DELETE /api/v1/${catalog}/${id}`, (tx) => deleteCatalog(tx, catalog, id!), { isolationLevel: "Serializable" });
     return new Response(null, { status: 204 });
   }
   const body = await readJson(request, [...catalogFields[catalog]]);
@@ -200,6 +213,9 @@ export async function handleCatalog(request: Request, segments: string[], db: Pr
     body.ativo = String(body.ativo);
   }
   const fields = stringFields(body, catalogFields[catalog]);
-  const row = await writeCatalog(db, catalog, fields, id);
+  // Malformed input must fail without obtaining a database client.
+  await business(() => validateCatalogFields(catalog, fields));
+  const origin = `API ${request.method} /api/v1/${catalog}${id === undefined ? "" : `/${id}`}`;
+  const row = await auditedTransaction(db, null, origin, (tx) => writeCatalog(tx, catalog, fields, id), { isolationLevel: "Serializable" });
   return apiJson({ data: row }, request.method === "POST" ? 201 : 200);
 }

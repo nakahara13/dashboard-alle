@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:audit": "node --import tsx scripts/test-audit.ts",
+    "db:test-audit": "node --import tsx scripts/test-audit-migration.ts",
     "test:client-unit-sync": "node --conditions=react-server --import tsx scripts/test-client-unit-sync.ts",
     "test:dashboard-revenue": "node --conditions=react-server --import tsx scripts/test-dashboard-revenue.ts",
     "test:dashboard-commissions": "node --import tsx scripts/test-dashboard-commissions.ts",

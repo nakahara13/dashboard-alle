@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { InterfaceIcon } from "@/components/interface-icon";
 import styles from "./management-filters.module.css";
 
-const labels: Record<string, string> = { inicio: "De", fim: "Até", status: "Status", busca: "Pesquisa", descricao: "Descrição", parceiro: "Parceiro", favorecido: "Favorecido", conta: "Conta bancária", metodo: "Método", tipo: "Tipo", competencia: "Competência", presenca: "Presença na competência", distribuidora: "Distribuidora", unidade: "Unidade", geradora: "Geradora" };
+const labels: Record<string, string> = { inicio: "De", fim: "Até", status: "Status", busca: "Pesquisa", descricao: "Descrição", parceiro: "Parceiro", favorecido: "Favorecido", conta: "Conta bancária", metodo: "Método", tipo: "Tipo", competencia: "Competência", presenca: "Presença na competência", distribuidora: "Distribuidora", unidade: "Unidade", geradora: "Geradora", usuario: "PK do usuário", local: "Local", acao: "Alteração" };
 type Option = { id: string | number; nome: string };
 export function ManagementFilters({ basePath, values, children, statuses, search, competence, options = {}, appearance = "default" }: {
   basePath: string; values: Record<string, string>; children: ReactNode;

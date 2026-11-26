@@ -3,6 +3,7 @@
 import { requireUser } from "@/lib/auth";
 
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { applyReconciliation, buildReconciliation, parseReconciliationFile, type ReconciliationPreview } from "@/lib/client-reconciliation";
 import { refreshClientPages } from "@/lib/client-cache";
 
@@ -27,10 +28,10 @@ export async function previewReconciliation(_state: ReconciliationState, form: F
 }
 
 export async function confirmReconciliation(_state: ReconciliationState, form: FormData): Promise<ReconciliationState> {
-  await requireUser();
+  const user = await requireUser();
   try {
     if (form.get("completa") !== "on") throw new Error("Confirme que a planilha contém todos os clientes do escopo escolhido.");
-    const result = await getPrisma().$transaction((db) => applyReconciliation(db, JSON.parse(String(form.get("payload") ?? "null"))), { isolationLevel: "Serializable", timeout: 30000 });
+    const result = await auditedTransaction(getPrisma(), user, "/cadastros/clientes/cruzamento • Confirmar cruzamento de clientes", (db) => applyReconciliation(db, JSON.parse(String(form.get("payload") ?? "null"))), { isolationLevel: "Serializable", timeout: 30000 });
     refreshClientPages();
     return { success: true, message: `${result.inactivated} cliente(s) inativado(s) e ${result.activated} reativado(s). Cadastros e comissões existentes foram preservados.` };
   } catch (error) { return { success: false, message: failure(error) }; }

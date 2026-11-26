@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
+import { auditedTransaction } from "../audit-context";
 import { commissionInclude, normalizeUC, positiveId, saveCommission, validateCommission, type CommissionInput } from "../comissao-module";
 import { updateCommissionPayments } from "../comissao-payments";
 import { updateCommissionReceipts } from "../comissao-receipts";
@@ -82,7 +83,7 @@ async function bulkUpdate(request: Request, kind: "recebimentos" | "pagamentos",
     const ids = await business(() => bulkIds(body));
     const { data_recebimento } = stringFields(body, ["data_recebimento"]);
     const date = await business(() => parsePayableDate(data_recebimento));
-    const count = await business(() => db.$transaction((tx) => updateCommissionReceipts(tx, ids, date), { isolationLevel: "Serializable" }));
+    const count = await business(() => auditedTransaction(db, null, "API POST /api/v1/comissoes/recebimentos", (tx) => updateCommissionReceipts(tx, ids, date), { isolationLevel: "Serializable" }));
     return apiJson({ data: { atualizadas: count } });
   }
   const body = await readJson(request, ["ids", "status_pagamento", "data_pagamento"]);
@@ -90,7 +91,7 @@ async function bulkUpdate(request: Request, kind: "recebimentos" | "pagamentos",
   const { status_pagamento, data_pagamento } = stringFields(body, ["status_pagamento", "data_pagamento"]);
   if (status_pagamento !== "Pago" && status_pagamento !== "Pendente") throw new ApiError(422, "invalid_field", "Selecione Pago ou Pendente.");
   const date = status_pagamento === "Pago" ? await business(() => parsePayableDate(data_pagamento)) : null;
-  const count = await business(() => db.$transaction((tx) => updateCommissionPayments(tx, ids, status_pagamento, date), { isolationLevel: "Serializable" }));
+  const count = await business(() => auditedTransaction(db, null, "API POST /api/v1/comissoes/pagamentos", (tx) => updateCommissionPayments(tx, ids, status_pagamento, date), { isolationLevel: "Serializable" }));
   return apiJson({ data: { atualizadas: count } });
 }
 
@@ -137,7 +138,7 @@ export async function handleCommissions(request: Request, segments: string[], db
   const body = await readJson(request, [...scalarFields, ...flagFields]);
   const input = commissionInput(body, id);
   await business(() => validateCommission(input));
-  const row = await business(() => db.$transaction(async (tx) => {
+  const row = await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/comissoes${id === undefined ? "" : `/${id}`}`, async (tx) => {
     const saved = await saveCommission(tx, input);
     return found(await tx.comissao.findUnique({ where: { id: saved.id }, include: commissionInclude }));
   }, { isolationLevel: "Serializable" }));

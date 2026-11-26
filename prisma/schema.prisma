@@ -241,3 +241,25 @@ model UnidadeAllpFit {
   @@index([parceiro_id])
   @@map("unidades_allp_fit")
 }
+
+// Histórico por registro, preservado mesmo após a exclusão do usuário responsável.
+model Auditoria {
+  id BigInt @id @default(autoincrement())
+  ocorrido_em DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  dia DateTime @db.Date
+  usuario_id Int?
+  usuario_nome String? @db.VarChar(255)
+  usuario_email String? @db.VarChar(255)
+  origem String @db.VarChar(255)
+  tabela String @db.VarChar(100)
+  registro_id String @db.VarChar(100)
+  acao String @db.VarChar(6)
+  campos_alterados String[]
+  antes Json?
+  depois Json?
+
+  @@index([dia, ocorrido_em, id])
+  @@index([usuario_id, ocorrido_em, id])
+  @@index([tabela, ocorrido_em, id])
+  @@map("auditoria")
+}

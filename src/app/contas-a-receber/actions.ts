@@ -3,6 +3,7 @@
 import { requireUser } from "@/lib/auth";
 
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { createPayment, validatePayment, type PaymentInput } from "@/lib/pagamentos";
@@ -38,7 +39,7 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
     if (!await db.parceiro.findUnique({ where: { id: Number(input.parceiro_id) }, select: { id: true } })) {
       return { success: false, message: "O parceiro selecionado não existe. Atualize a página e selecione novamente." };
     }
-    const payment = await db.$transaction(async (tx) => {
+    const payment = await auditedTransaction(db, user, "/contas-a-receber • Salvar recebimento", async (tx) => {
       const saved = await createPayment(tx, input, id);
       if (file) await persistFinancialReceipt(tx, "receber", saved.id_do_registro.toString(), user.id, file);
       return saved;
@@ -54,9 +55,9 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
 }
 
 export async function deletePayment(id: string) {
-  await requireUser();
+  const user = await requireUser();
   try {
-    await getPrisma().criar_pagamento.delete({ where: { id_do_registro: parseRecordId(id) } });
+    await auditedTransaction(getPrisma(), user, "/contas-a-receber • Excluir recebimento", (db) => db.criar_pagamento.delete({ where: { id_do_registro: parseRecordId(id) } }));
     revalidatePath("/contas-a-receber");
     revalidatePath("/");
     return { success: true, message: "Registro excluído com sucesso." };

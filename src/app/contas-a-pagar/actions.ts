@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { createPayable, validatePayable, type PayableInput } from "@/lib/contas-a-pagar";
 import { ReceiptError, readOptionalReceiptFile, getReceiptStorageConfig } from "@/lib/financial-receipt-storage";
 import { persistFinancialReceipt } from "@/lib/financial-receipts";
@@ -32,7 +33,7 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
   try {
     const file = await readOptionalReceiptFile(form);
     if (file) getReceiptStorageConfig();
-    const payable = await getPrisma().$transaction(async (db) => {
+    const payable = await auditedTransaction(getPrisma(), user, "/contas-a-pagar • Salvar conta a pagar", async (db) => {
       const saved = await createPayable(db, input, id);
       if (file) await persistFinancialReceipt(db, "pagar", saved.id.toString(), user.id, file);
       return saved;
@@ -48,9 +49,9 @@ export async function savePayable(_previous: State, form: FormData): Promise<Sta
 }
 
 export async function deletePayable(id: string) {
-  await requireUser();
+  const user = await requireUser();
   try {
-    await getPrisma().contaPagar.delete({ where: { id: parseRecordId(id) } });
+    await auditedTransaction(getPrisma(), user, "/contas-a-pagar • Excluir conta a pagar", (db) => db.contaPagar.delete({ where: { id: parseRecordId(id) } }));
     revalidatePath("/contas-a-pagar");
     revalidatePath("/");
     return { success: true, message: "Registro excluído com sucesso." };

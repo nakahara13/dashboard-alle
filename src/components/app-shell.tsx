@@ -87,8 +87,10 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
         <div id="sidebar-navigation" className={`${menuOpen ? "flex" : "hidden"} min-h-0 flex-1 flex-col lg:flex`}>
           <nav aria-label="Menu principal" className="sidebar-nav flex-1 space-y-5 overflow-y-auto px-6 pb-7 pt-8">
             {navigation.map((group) => {
+              const groupItems = group.items.filter((item) => !["/usuarios", "/auditoria"].includes(item.href) || user.role === "admin");
+              if (!groupItems.length) return null;
               const items = <ul className="space-y-2">
-                  {group.items.filter((item) => item.href !== "/usuarios" || user.role === "admin").map((item) => {
+                  {groupItems.map((item) => {
                     const active = currentItem === item;
                     // Details oferece abertura por teclado; o grupo da página atual inicia expandido.
                     if (item.children) return <li key={item.href}><details key={`${item.href}-${currentPath}`} open={active} className="group/item">

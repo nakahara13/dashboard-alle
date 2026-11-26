@@ -2,10 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { managementData, updateManagement, deleteManagement, type ManagementKind } from "@/lib/gestao";
 import { validateTipoId } from "@/lib/tipos";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { UserManagementError } from "@/lib/usuarios";
+
+const managementPaths: Record<ManagementKind, string> = {
+  parceiro: "/cadastros/parceiros", conta: "/contas-bancarias", metodo: "/metodos-de-pagamento",
+  tipo: "/tipos", usuario: "/usuarios", distribuidora: "/cadastros/distribuidoras", unidade: "/cadastros/unidades",
+};
 
 // Atualiza as páginas separadas que compartilham cadastros e vínculos.
 function refresh() {
@@ -20,20 +26,18 @@ function failure(error: unknown) {
   return { success: false, message: "Não foi possível concluir a operação. Tente novamente." };
 }
 export async function saveManagement(kind: ManagementKind, id: number, form: FormData) {
-  if (kind === "usuario") await requireAdmin();
-  else await requireUser();
+  const user = kind === "usuario" ? await requireAdmin() : await requireUser();
   let input;
   try { validateTipoId(String(id)); input = managementData(kind, form); } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Verifique os campos." };
   }
-  try { await getPrisma().$transaction((tx) => updateManagement(tx, id, input), { isolationLevel: "Serializable" }); } catch (error) { return failure(error); }
+  try { await auditedTransaction(getPrisma(), user, `${managementPaths[kind]} • Editar cadastro`, (tx) => updateManagement(tx, id, input), { isolationLevel: "Serializable" }); } catch (error) { return failure(error); }
   refresh();
   return { success: true, message: "Alterações salvas." };
 }
 export async function removeManagement(kind: ManagementKind, id: number) {
-  if (kind === "usuario") await requireAdmin();
-  else await requireUser();
-  try { await getPrisma().$transaction((tx) => deleteManagement(tx, kind, id), { isolationLevel: "Serializable" }); } catch (error) { return failure(error); }
+  const user = kind === "usuario" ? await requireAdmin() : await requireUser();
+  try { await auditedTransaction(getPrisma(), user, `${managementPaths[kind] ?? "/cadastros"} • Excluir cadastro`, (tx) => deleteManagement(tx, kind, id), { isolationLevel: "Serializable" }); } catch (error) { return failure(error); }
   refresh();
   return { success: true, message: "Cadastro excluído." };
 }

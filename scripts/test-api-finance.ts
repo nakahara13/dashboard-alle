@@ -3,6 +3,17 @@ import { Prisma, type PrismaClient } from "../src/generated/prisma/client";
 import { handleFinance } from "../src/lib/api/finance";
 import { ApiError } from "../src/lib/api/http";
 
+type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string };
+function apiAuditContext(query: TemplateStringsArray, parameters: unknown[]): ApiAuditContext {
+  assert.equal(query.join("?"), "SELECT set_config('alle.audit_context', ?, true)", "Audit context must be transaction local and parameterized.");
+  assert.equal(parameters.length, 1);
+  assert.equal(typeof parameters[0], "string");
+  const context = JSON.parse(String(parameters[0])) as ApiAuditContext;
+  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem }, "A shared API token must not be attributed to a user.");
+  assert.match(context.origem, /^API (POST|PUT|DELETE) \/api\/v1\//);
+  return context;
+}
+
 // All delegates below are in memory. This script never creates a database client.
 const paymentBody = {
   parceiro_id: "1", tipo_id: "2", valor_total: "1250.90", data_do_pagamento: "2026-10-16",
@@ -37,6 +48,7 @@ function request(path: string, method = "GET", body?: unknown) {
 function memoryDatabase() {
   const state = {
     inTransaction: false, levels: [] as string[], partnerExists: true, linked: false,
+    auditContexts: [] as ApiAuditContext[], currentAudit: null as ApiAuditContext | null,
     payment: null as PaymentRow | null, payable: null as PayableRow | null,
     paymentCreates: 0, payableCreates: 0, writes: 0,
     paymentList: null as Record<string, unknown> | null,
@@ -45,7 +57,14 @@ function memoryDatabase() {
     payableAggregate: null as Record<string, unknown> | null,
   };
   const inside = () => assert.equal(state.inTransaction, true, "Relation checks and mutations must use the transaction client");
+  const audited = () => { inside(); assert.ok(state.currentAudit, "Context must be set before financial writes."); };
   const tx = {
+    $queryRaw: async (query: TemplateStringsArray, ...parameters: unknown[]) => {
+      inside();
+      state.currentAudit = apiAuditContext(query, parameters);
+      state.auditContexts.push(state.currentAudit);
+      return [{ set_config: parameters[0] }];
+    },
     parceiro: { findUnique: async () => { inside(); return state.partnerExists ? { id: 1 } : null; } },
     tipo: { findUnique: async () => { inside(); return { id: 2, nome: "Serviço" }; } },
     metodoPagamento: { findUnique: async () => { inside(); return { id: 4, nome: "Pix atualizado" }; } },
@@ -53,18 +72,18 @@ function memoryDatabase() {
     comissao: { findUnique: async () => { inside(); return state.linked ? { id: BigInt(99) } : null; } },
     criar_pagamento: {
       create: async ({ data }: { data: PaymentData }) => {
-        inside(); state.paymentCreates++; state.writes++;
+        audited(); state.paymentCreates++; state.writes++;
         state.payment = { ...data, valor_total: new Prisma.Decimal(data.valor_total), id_do_registro: paymentId, id_do_pagamento: BigInt(123) };
         return state.payment;
       },
       update: async ({ where, data }: { where: { id_do_registro: bigint }; data: PaymentData }) => {
-        inside(); assert.equal(where.id_do_registro, paymentId); state.writes++;
+        audited(); assert.equal(where.id_do_registro, paymentId); state.writes++;
         assert.ok(state.payment);
         state.payment = { ...state.payment, ...data, valor_total: new Prisma.Decimal(data.valor_total) };
         return state.payment;
       },
       findUnique: async ({ where }: { where: { id_do_registro: bigint } }) => where.id_do_registro === paymentId ? state.payment : null,
-      delete: async () => { inside(); state.writes++; state.payment = null; },
+      delete: async () => { audited(); state.writes++; state.payment = null; },
       aggregate: async (args: Record<string, unknown>) => {
         inside(); state.paymentAggregate = args;
         return { _count: 5, _sum: { valor_total: new Prisma.Decimal("15000.25") } };
@@ -73,18 +92,18 @@ function memoryDatabase() {
     },
     contaPagar: {
       create: async ({ data }: { data: PayableData }) => {
-        inside(); state.payableCreates++; state.writes++;
+        audited(); state.payableCreates++; state.writes++;
         state.payable = { ...data, valor: new Prisma.Decimal(data.valor), id: payableId };
         return state.payable;
       },
       update: async ({ where, data }: { where: { id: bigint }; data: PayableData }) => {
-        inside(); assert.equal(where.id, payableId); state.writes++;
+        audited(); assert.equal(where.id, payableId); state.writes++;
         assert.ok(state.payable);
         state.payable = { ...state.payable, ...data, valor: new Prisma.Decimal(data.valor) };
         return state.payable;
       },
       findUnique: async ({ where }: { where: { id: bigint } }) => where.id === payableId ? state.payable : null,
-      delete: async () => { inside(); state.writes++; state.payable = null; },
+      delete: async () => { audited(); state.writes++; state.payable = null; },
       aggregate: async (args: Record<string, unknown>) => {
         inside(); state.payableAggregate = args;
         return { _count: 6, _sum: { valor: new Prisma.Decimal("4800.33") } };
@@ -98,8 +117,9 @@ function memoryDatabase() {
       assert.equal(state.inTransaction, false);
       state.levels.push(options.isolationLevel);
       state.inTransaction = true;
+      state.currentAudit = null;
       try { return await work(tx as unknown as Prisma.TransactionClient); }
-      finally { state.inTransaction = false; }
+      finally { state.inTransaction = false; state.currentAudit = null; }
     },
   };
   return { state, db: client as unknown as PrismaClient };
@@ -177,6 +197,7 @@ async function main() {
   assert.equal(state.writes, writesBeforeConflict, "Commission conflicts never mutate financial records");
   state.linked = false;
 
+  const contextsBeforeReads = state.auditContexts.length;
   const paymentList = await handleFinance(request("contas-a-receber?pagina=2&limite=2&parceiro=1&status=Pendente"), ["contas-a-receber"], db);
   assert.deepEqual((await paymentList!.json()).meta, { pagina: 2, limite: 2, total: 5, paginas: 3, valor_total: "15000.25" });
   assert.equal(state.paymentList?.skip, 2);
@@ -191,9 +212,18 @@ async function main() {
   assert.deepEqual(state.payableList?.where, { competencia: "2026-10", descricao: { contains: "Serv", mode: "insensitive" }, status: "Pago" });
   assert.deepEqual(state.payableAggregate?.where, state.payableList?.where);
   assert.deepEqual(state.levels.slice(-2), ["RepeatableRead", "RepeatableRead"]);
+  assert.equal(state.auditContexts.length, contextsBeforeReads, "GET transactions do not set mutation context.");
 
   const deleted = await handleFinance(request(`contas-a-receber/${paymentId}`, "DELETE"), ["contas-a-receber", paymentId.toString()], db);
   assert.equal(deleted?.status, 204);
+  assert.deepEqual(state.auditContexts.map((context) => context.origem), [
+    "API POST /api/v1/contas-a-receber", "API POST /api/v1/contas-a-pagar",
+    "API POST /api/v1/contas-a-receber", `API PUT /api/v1/contas-a-receber/${paymentId}`,
+    "API POST /api/v1/contas-a-pagar", `API PUT /api/v1/contas-a-pagar/${payableId}`,
+    `API PUT /api/v1/contas-a-receber/${paymentId}`, `API DELETE /api/v1/contas-a-receber/${paymentId}`,
+    `API PUT /api/v1/contas-a-pagar/${payableId}`, `API DELETE /api/v1/contas-a-pagar/${payableId}`,
+    `API DELETE /api/v1/contas-a-receber/${paymentId}`,
+  ]);
   assert.equal(await deleted?.text(), "");
   await expectError(() => handleFinance(request(`contas-a-receber/${paymentId}`, "GET"), ["contas-a-receber", paymentId.toString()], db), 404, "not_found");
   console.log("PASSOU: API financeira sem banco: validação antecipada, POST/PUT, snapshots, vínculos de comissão, transações, paginação e somas filtradas.");

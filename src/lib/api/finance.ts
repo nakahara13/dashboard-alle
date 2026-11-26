@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../generated/prisma/client";
+import { auditedTransaction } from "../audit-context";
 import { createPayment, validatePayment, type PaymentInput } from "../pagamentos";
 import { createPayable, validatePayable, type PayableInput } from "../contas-a-pagar";
 import { parseHistoryFilters } from "../recebimentos-filtros";
@@ -75,7 +76,7 @@ async function payments(request: Request, segments: string[], db: PrismaClient):
     }
     queryParams(params, []);
     const input = await paymentInput(request);
-    const row = await business(() => db.$transaction(async (tx) => {
+    const row = await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/${segments.join("/")}`, async (tx) => {
       if (!await tx.parceiro.findUnique({ where: { id: Number(input.parceiro_id) }, select: { id: true } })) {
         throw new Error("O parceiro selecionado não existe. Atualize a página e selecione novamente.");
       }
@@ -93,7 +94,7 @@ async function payments(request: Request, segments: string[], db: PrismaClient):
   }
   if (request.method === "PUT") {
     const input = await paymentInput(request);
-    const row = await business(() => db.$transaction(async (tx) => {
+    const row = await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/${segments.join("/")}`, async (tx) => {
       found(await tx.criar_pagamento.findUnique({ where: { id_do_registro: id }, select: { id_do_registro: true } }));
       if (await tx.comissao.findUnique({ where: { entrada_id: id }, select: { id: true } })) commissionLinked();
       if (!await tx.parceiro.findUnique({ where: { id: Number(input.parceiro_id) }, select: { id: true } })) {
@@ -104,7 +105,7 @@ async function payments(request: Request, segments: string[], db: PrismaClient):
     }, { isolationLevel: "Serializable" }));
     return apiJson({ data: row });
   }
-  await business(() => db.$transaction(async (tx) => {
+  await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/${segments.join("/")}`, async (tx) => {
     found(await tx.criar_pagamento.findUnique({ where: { id_do_registro: id }, select: { id_do_registro: true } }));
     if (await tx.comissao.findUnique({ where: { entrada_id: id }, select: { id: true } })) commissionLinked();
     await tx.criar_pagamento.delete({ where: { id_do_registro: id } });
@@ -136,7 +137,7 @@ async function payables(request: Request, segments: string[], db: PrismaClient):
     }
     queryParams(params, []);
     const input = await payableInput(request);
-    const row = await business(() => db.$transaction(async (tx) => {
+    const row = await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/${segments.join("/")}`, async (tx) => {
       const created = await createPayable(tx, input);
       return found(await tx.contaPagar.findUnique({ where: { id: created.id }, include: payableInclude }));
     }, { isolationLevel: "Serializable" }));
@@ -151,7 +152,7 @@ async function payables(request: Request, segments: string[], db: PrismaClient):
   }
   if (request.method === "PUT") {
     const input = await payableInput(request);
-    const row = await business(() => db.$transaction(async (tx) => {
+    const row = await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/${segments.join("/")}`, async (tx) => {
       found(await tx.contaPagar.findUnique({ where: { id }, select: { id: true } }));
       if (await tx.comissao.findUnique({ where: { saida_id: id }, select: { id: true } })) commissionLinked();
       await createPayable(tx, input, id);
@@ -159,7 +160,7 @@ async function payables(request: Request, segments: string[], db: PrismaClient):
     }, { isolationLevel: "Serializable" }));
     return apiJson({ data: row });
   }
-  await business(() => db.$transaction(async (tx) => {
+  await business(() => auditedTransaction(db, null, `API ${request.method} /api/v1/${segments.join("/")}`, async (tx) => {
     found(await tx.contaPagar.findUnique({ where: { id }, select: { id: true } }));
     if (await tx.comissao.findUnique({ where: { saida_id: id }, select: { id: true } })) commissionLinked();
     await tx.contaPagar.delete({ where: { id } });

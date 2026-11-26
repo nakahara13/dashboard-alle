@@ -134,8 +134,10 @@ async function main() {
   assert.equal(gestor.response.headers.get("location"), "/");
   const forbidden = await request("/usuarios", gestor.cookie);
   await redirectsTo(forbidden, "/");
-  const gestorPage = await (await request("/auditoria", gestor.cookie)).text();
+  await redirectsTo(await request("/auditoria", gestor.cookie), "/");
+  const gestorPage = await (await request("/", gestor.cookie)).text();
   assert(!gestorPage.includes('href="/usuarios"'));
+  assert(!gestorPage.includes('href="/auditoria"'), "O histórico completo de alterações é exclusivo dos administradores.");
   await db.sessaoUsuario.updateMany({ where: { usuario: { email: emails[1] } }, data: { expira_em: new Date(Date.now() - 1000) } });
   await isLoginRedirect(await request("/auditoria", gestor.cookie));
 

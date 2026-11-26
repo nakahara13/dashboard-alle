@@ -3,6 +3,17 @@ import { Prisma, type PrismaClient } from "../src/generated/prisma/client";
 import { handleCatalog } from "../src/lib/api/catalogs";
 import { ApiError } from "../src/lib/api/http";
 
+type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string };
+function apiAuditContext(query: TemplateStringsArray, parameters: unknown[]): ApiAuditContext {
+  assert.equal(query.join("?"), "SELECT set_config('alle.audit_context', ?, true)", "Audit context must be transaction local and parameterized.");
+  assert.equal(parameters.length, 1);
+  assert.equal(typeof parameters[0], "string");
+  const context = JSON.parse(String(parameters[0])) as ApiAuditContext;
+  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem }, "A shared API token must not be attributed to a user.");
+  assert.match(context.origem, /^API (POST|PUT|DELETE) \/api\/v1\//);
+  return context;
+}
+
 const resources = ["clientes", "parceiros", "distribuidoras", "geradoras", "unidades", "contas-bancarias", "metodos-pagamento", "tipos", "usuarios"];
 function request(path: string, method = "GET", body?: unknown) {
   return new Request(`http://localhost/api/v1/${path}`, { method, ...(body === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }) });
@@ -32,6 +43,8 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
   storage.get("parceiro")!.set(3, { id: 3, nome: "Gestor", documento: "11222333000181", email: "gestor@example.com", telefone: "123" });
   storage.get("distribuidora")!.set(4, { id: 4, nome: "Distribuidora" });
   const calls: Call[] = [], events: string[] = [], isolation: string[] = [];
+  const auditContexts: ApiAuditContext[] = [];
+  let currentAudit: ApiAuditContext | null = null;
 
   function selected(row: Row | null, args: Args): Row | null {
     return row && args.select ? Object.fromEntries(Object.entries(row).filter(([key]) => args.select![key])) as Row : row;
@@ -41,6 +54,7 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
     return Object.fromEntries(models.map((model) => {
       const rows = source.get(model)!;
       const record = (method: string, args: Args) => {
+        if (["create", "update", "delete"].includes(method)) assert.ok(transaction && currentAudit, "Writes require context set on the transaction before mutation.");
         calls.push({ model, method, args, transaction });
         events.push(`${transaction ? "tx" : "outside"}.${model}.${method}`);
       };
@@ -94,9 +108,18 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
     $transaction: async (work: (tx: Prisma.TransactionClient) => Promise<unknown>, settings: { isolationLevel: string }) => {
       isolation.push(settings.isolationLevel);
       events.push("begin");
+      currentAudit = null;
       const snapshot: Storage = new Map([...storage].map(([model, rows]) => [model, new Map(rows)]));
       try {
-        const result = await work(delegates(snapshot, true) as unknown as Prisma.TransactionClient);
+        const result = await work({
+          ...delegates(snapshot, true),
+          $queryRaw: async (query: TemplateStringsArray, ...parameters: unknown[]) => {
+            currentAudit = apiAuditContext(query, parameters);
+            auditContexts.push(currentAudit);
+            events.push("audit");
+            return [{ set_config: parameters[0] }];
+          },
+        } as unknown as Prisma.TransactionClient);
         for (const [model, rows] of snapshot) {
           storage.get(model)!.clear();
           for (const [id, row] of rows) storage.get(model)!.set(id, row);
@@ -104,9 +127,10 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
         events.push("commit");
         return result;
       } catch (error) { events.push("rollback"); throw error; }
+      finally { currentAudit = null; }
     },
   } as unknown as PrismaClient;
-  return { db, calls, events, isolation, storage };
+  return { db, calls, events, isolation, storage, auditContexts };
 }
 
 async function main() {
@@ -141,7 +165,8 @@ async function main() {
   const updatedData = (await updated.json()).data;
   assert.deepEqual({ nome: updatedData.nome, uc: updatedData.uc, cpf: updatedData.cpf, parceiro_id: updatedData.parceiro_id, distribuidora_id: updatedData.distribuidora_id, unidade_id: updatedData.unidade_id }, { nome: "Novo nome", uc: "NOVAUC", cpf: null, parceiro_id: null, distribuidora_id: null, unidade_id: null });
   assert.deepEqual(customer.isolation, ["Serializable"]);
-  assert.deepEqual(customer.events, ["begin", "tx.cliente.update", "tx.cliente.findUnique", "commit"], "The response must be read before the same transaction commits.");
+  assert.deepEqual(customer.events, ["begin", "audit", "tx.cliente.update", "tx.cliente.findUnique", "commit"], "The response must be read before the same transaction commits.");
+  assert.equal(customer.auditContexts[0].origem, "API PUT /api/v1/clientes/7");
   const customerReload = customer.calls.find((call) => call.model === "cliente" && call.method === "findUnique")!;
   assert.deepEqual(customerReload.args.include, { parceiro: true, distribuidora: true, unidade: { include: { parceiro: true } } });
 
@@ -158,7 +183,7 @@ async function main() {
   const unitUpdated = await response(unit.db, "unidades/5", "PUT", { nome: "Unidade atualizada" });
   assert.equal((await unitUpdated.json()).data.parceiro_id, null, "Omitting a unit's optional partner clears the old relationship.");
   assert.deepEqual(unit.isolation, ["Serializable"]);
-  assert.deepEqual(unit.events, ["begin", "tx.unidadeAllpFit.update", "tx.unidadeAllpFit.findUnique", "commit"]);
+  assert.deepEqual(unit.events, ["begin", "audit", "tx.unidadeAllpFit.update", "tx.unidadeAllpFit.findUnique", "commit"]);
 
   const creation = fixture();
   const created = await response(creation.db, "clientes", "POST", { nome: "Cliente novo", uc: " uc 8 ", cpf: "529.982.247-25", parceiro_id: 3, distribuidora_id: 4, unidade_id: 5 });
@@ -201,6 +226,7 @@ async function main() {
     assert.deepEqual(search.args.where, { nome: { contains: "Atualizado", mode: "insensitive" } });
     assert.equal((await response(catalog.db, `${resource}/${row.id}`, "DELETE")).status, 204);
     assert.equal(catalog.storage.get(model)!.has(row.id), false);
+    assert.deepEqual(catalog.auditContexts.map((context) => context.origem), [`API POST /api/v1/${resource}`, `API PUT /api/v1/${resource}/${row.id}`, `API DELETE /api/v1/${resource}/${row.id}`], "Only mutations set their exact API origin.");
   }
 
   const secretUser = fixture();
@@ -219,6 +245,7 @@ async function main() {
   const listed = await response(listing.db, "clientes?pagina=2&limite=1&busca=529.982&distribuidora_id=sem-vinculo&unidade_id=5&parceiro_id=3");
   assert.deepEqual((await listed.json()).meta, { pagina: 2, limite: 1, total: 1, paginas: 1 });
   assert.deepEqual(listing.isolation, ["RepeatableRead"]);
+  assert.deepEqual(listing.auditContexts, [], "GET does not create audit context or mutation events.");
   const listCall = listing.calls.find((call) => call.method === "findMany")!;
   const countCall = listing.calls.find((call) => call.method === "count")!;
   assert.deepEqual(listCall.args.where, { distribuidora_id: null, unidade_id: 5, parceiro_id: 3, OR: [{ nome: { contains: "529.982", mode: "insensitive" } }, { uc: { contains: "529.982", mode: "insensitive" } }, { cpf: { contains: "529982" } }] });

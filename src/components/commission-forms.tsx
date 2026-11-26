@@ -3,6 +3,7 @@
 import { DateInput, MoneyInput, MonthInput } from "@/components/formatted-input";
 import clientStyles from "@/app/cadastros/clientes/client-registration.module.css";
 import financialStyles from "@/components/financial-management.module.css";
+import managementStyles from "@/components/management-catalog.module.css";
 import { InterfaceIcon } from "@/components/interface-icon";
 import { useDrawerFeedback } from "@/components/management-drawer";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
@@ -71,13 +72,15 @@ export function CommissionForm({ options, row }: { options: CommissionOptions; r
 export function SimpleCommissionCatalog({ kind, title, options, createOnly = false }: { kind: "geradora" | "distribuidora" | "unidade"; title: string; createOnly?: boolean; options: { id: number; nome: string; parceiro_id?: number | null }[]; partners: CommissionOptions["partners"] }) {
   const [state, action, pending] = useActionState(saveCommissionCatalog, initial);
   useDrawerFeedback(state, pending);
+  const fieldId = useId();
   const [id, setId] = useState("");
   const current = options.find((item) => String(item.id) === id);
-  return <form action={action}><h2 className="mb-4 font-medium">{title}</h2><input type="hidden" name="cadastro" value={kind} />
-    <fieldset disabled={pending} className="grid gap-4">{!createOnly && <Select name="id" label="Cadastro" empty="Novo cadastro" options={options} value={id} onChange={setId} />}
-      <div key={`${id}-${current?.nome}-${current?.parceiro_id}`} className="grid gap-4"><label className="grid gap-2 text-sm">Nome *<input name="nome" required maxLength={255} defaultValue={current?.nome} className={fieldClass} /></label>
+  const icon = kind === "unidade" ? "building" : "energy";
+  return <form action={action} onReset={(event) => { if (state.success) setId(""); else event.preventDefault(); }} className={`${financialStyles.recordForm} ${financialStyles.embeddedForm} ${managementStyles.form}`}><h2>{title}</h2><input type="hidden" name="cadastro" value={kind} />
+    <fieldset disabled={pending} className={managementStyles.fieldGrid}>{!createOnly && <div className={managementStyles.fieldGroup}><label htmlFor={`${fieldId}-cadastro`} className={`${financialStyles.filterLabel} ${managementStyles.label}`}><InterfaceIcon name={icon} />Cadastro</label><select id={`${fieldId}-cadastro`} name="id" value={id} onChange={(event) => setId(event.target.value)} className={financialStyles.field}><option value="">Novo cadastro</option>{options.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div>}
+      <div key={`${id}-${current?.nome}-${current?.parceiro_id}`} className={managementStyles.fieldGroup}><label htmlFor={`${fieldId}-nome`} className={`${financialStyles.filterLabel} ${managementStyles.label}`}><InterfaceIcon name={icon} />Nome *</label><input id={`${fieldId}-nome`} name="nome" required maxLength={255} defaultValue={current?.nome} className={financialStyles.field} />
       </div>
-    </fieldset><Notice state={state} /><button disabled={pending} className={`${buttonClass} mt-4`}>{pending ? "Salvando…" : id ? "Salvar alterações" : "Cadastrar"}</button>
+    </fieldset>{state.message && <p role={state.success ? "status" : "alert"} className={state.success ? managementStyles.noticeSuccess : managementStyles.noticeError}>{state.message}</p>}<div className={managementStyles.formActions}><button disabled={pending} className={financialStyles.primaryButton}><InterfaceIcon name="check" />{pending ? "Salvando…" : id ? "Salvar alterações" : "Cadastrar"}</button></div>
   </form>;
 }
 // Cadastro de clientes preserva os vínculos usados nas novas comissões.

@@ -3,6 +3,17 @@ import { Prisma, type Comissao, type PrismaClient } from "../src/generated/prism
 import { handleCommissions } from "../src/lib/api/commissions";
 import { ApiError } from "../src/lib/api/http";
 
+type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string };
+function apiAuditContext(query: TemplateStringsArray, parameters: unknown[]): ApiAuditContext {
+  assert.equal(query.join("?"), "SELECT set_config('alle.audit_context', ?, true)", "Audit context must be transaction local and parameterized.");
+  assert.equal(parameters.length, 1);
+  assert.equal(typeof parameters[0], "string");
+  const context = JSON.parse(String(parameters[0])) as ApiAuditContext;
+  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem }, "A shared API token must not be attributed to a user.");
+  assert.match(context.origem, /^API (POST|PUT|DELETE) \/api\/v1\//);
+  return context;
+}
+
 const B = BigInt;
 const date = new Date("2026-10-15T00:00:00.000Z");
 const base = {
@@ -45,6 +56,9 @@ function fixture() {
   const entries = new Map<bigint, Record<string, unknown>>([[B(10), { id_do_registro: B(10), status_do_pagamento: "Recebido", data_do_pagamento: date }]]);
   const exits = new Map<bigint, Record<string, unknown>>([[B(20), { id: B(20), status: "Pago", vencimento: date }]]);
   let transactions = 0;
+  let inTransaction = false;
+  let currentAudit: ApiAuditContext | null = null;
+  const auditContexts: ApiAuditContext[] = [];
   const transactionLevels: string[] = [];
   let writes = 0;
   const queries: { operation: string; options: Record<string, unknown> }[] = [];
@@ -57,7 +71,14 @@ function fixture() {
     const unique = where.cliente_id_geradora_id_competencia;
     return unique && row.cliente_id === unique.cliente_id && row.geradora_id === unique.geradora_id && row.competencia === unique.competencia;
   }) ?? null;
+  const audited = () => assert.ok(inTransaction && currentAudit, "Context must be set before commission and linked financial writes.");
   const raw = {
+    $queryRaw: async (query: TemplateStringsArray, ...parameters: unknown[]) => {
+      assert.equal(inTransaction, true);
+      currentAudit = apiAuditContext(query, parameters);
+      auditContexts.push(currentAudit);
+      return [{ set_config: parameters[0] }];
+    },
     comissao: {
       findUnique: async ({ where, include }: { where: Where; include?: unknown }) => include ? enrich(locate(where)) : locate(where),
       findUniqueOrThrow: async ({ where }: { where: Where }) => { const row = locate(where); assert.ok(row); return row; },
@@ -75,13 +96,13 @@ function fixture() {
         return { _sum: { valor_economia: sum("valor_economia"), valor_comissao_empresa: sum("valor_comissao_empresa"), valor_comissao_parceiro: sum("valor_comissao_parceiro"), margem: sum("margem") } };
       },
       create: async ({ data }: { data: Omit<Comissao, "id"> }) => {
-        writes++;
+        audited(); writes++;
         const row = { ...data, id: B(rows.size + 1) };
         rows.set(row.id, row);
         return row;
       },
       update: async ({ where, data }: { where: { id: bigint }; data: Partial<Comissao> }) => {
-        writes++;
+        audited(); writes++;
         const row = rows.get(where.id); assert.ok(row); Object.assign(row, data); return row;
       },
     },
@@ -93,17 +114,20 @@ function fixture() {
     contaBancaria: { findUniqueOrThrow: async () => ({ id: 1, titular: "Alle" }) },
     metodoPagamento: { findUniqueOrThrow: async () => ({ id: 1, nome: "Pix" }) },
     criar_pagamento: {
-      create: async ({ data }: { data: Record<string, unknown> }) => { writes++; const row = { ...data, id_do_registro: B(11) }; entries.set(B(11), row); return row; },
-      update: async ({ where, data }: { where: { id_do_registro: bigint }; data: Record<string, unknown> }) => { writes++; const row = entries.get(where.id_do_registro); assert.ok(row); Object.assign(row, data); return row; },
+      create: async ({ data }: { data: Record<string, unknown> }) => { audited(); writes++; const row = { ...data, id_do_registro: B(11) }; entries.set(B(11), row); return row; },
+      update: async ({ where, data }: { where: { id_do_registro: bigint }; data: Record<string, unknown> }) => { audited(); writes++; const row = entries.get(where.id_do_registro); assert.ok(row); Object.assign(row, data); return row; },
     },
     contaPagar: {
-      create: async ({ data }: { data: Record<string, unknown> }) => { writes++; const row = { ...data, id: B(21) }; exits.set(B(21), row); return row; },
-      update: async ({ where, data }: { where: { id: bigint }; data: Record<string, unknown> }) => { writes++; const row = exits.get(where.id); assert.ok(row); Object.assign(row, data); return row; },
+      create: async ({ data }: { data: Record<string, unknown> }) => { audited(); writes++; const row = { ...data, id: B(21) }; exits.set(B(21), row); return row; },
+      update: async ({ where, data }: { where: { id: bigint }; data: Record<string, unknown> }) => { audited(); writes++; const row = exits.get(where.id); assert.ok(row); Object.assign(row, data); return row; },
     },
     $transaction: async <T>(work: (tx: Prisma.TransactionClient) => Promise<T>, options: { isolationLevel: string }): Promise<T> => {
       assert.ok(["Serializable", "RepeatableRead"].includes(options.isolationLevel));
       transactionLevels.push(options.isolationLevel);
+      assert.equal(inTransaction, false, "Audit integration must not nest Prisma transactions.");
       transactions++;
+      inTransaction = true;
+      currentAudit = null;
       const before = { rows: [...rows].map(([id, row]) => [id, { ...row }] as const), entries: [...entries].map(([id, row]) => [id, { ...row }] as const), exits: [...exits].map(([id, row]) => [id, { ...row }] as const), writes };
       try { return await work(raw as unknown as Prisma.TransactionClient); }
       catch (error) {
@@ -113,10 +137,10 @@ function fixture() {
         for (const [id, row] of before.exits) exits.set(id, row);
         writes = before.writes;
         throw error;
-      }
+      } finally { inTransaction = false; currentAudit = null; }
     },
   };
-  return { db: raw as unknown as PrismaClient, rows, entries, exits, queries, transactionLevels, get transactions() { return transactions; }, get writes() { return writes; } };
+  return { db: raw as unknown as PrismaClient, rows, entries, exits, queries, transactionLevels, auditContexts, get transactions() { return transactions; }, get writes() { return writes; } };
 }
 
 async function main() {
@@ -146,6 +170,8 @@ async function main() {
   const maximumResponse = await call(maximum.db, "comissoes/recebimentos", "POST", { ids: Array.from({ length: 100 }, (_, i) => String(i + 1)), data_recebimento: "2026-10-15" }); assert.ok(maximumResponse);
   assert.deepEqual(await maximumResponse.json(), { data: { atualizadas: 100 } });
 
+  assert.equal(maximum.auditContexts[0].origem, "API POST /api/v1/comissoes/recebimentos");
+
   const plain = fixture();
   const created = await call(plain.db, "comissoes", "POST", base); assert.ok(created);
   assert.equal(created.status, 201);
@@ -159,6 +185,7 @@ async function main() {
   const changed = await call(plain.db, "comissoes/4", "PUT", { ...base, valor_comissao_empresa: "125.25", gerar_entrada: false, gerar_saida: false }); assert.ok(changed);
   assert.equal((await changed.json()).data.margem, "123.25");
   assert.equal(plain.entries.size, 1); assert.equal(plain.exits.size, 1);
+  assert.deepEqual(plain.auditContexts.map((context) => context.origem), ["API POST /api/v1/comissoes", "API PUT /api/v1/comissoes/4"]);
   await rejects(() => call(plain.db, "comissoes/999"), 404);
 
   const unassigned = fixture();
@@ -196,6 +223,7 @@ async function main() {
   const paymentResponse = await call(payment.db, "comissoes/pagamentos", "POST", { ids: ["1", "2", "3"], status_pagamento: "Pago", data_pagamento: "2026-10-16" }); assert.ok(paymentResponse);
   assert.deepEqual(await paymentResponse.json(), { data: { atualizadas: 2 } });
   assert.equal(payment.rows.get(B(1))?.status_pagamento, "Não se aplica");
+  assert.equal(payment.auditContexts[0].origem, "API POST /api/v1/comissoes/pagamentos");
   assert.equal(payment.rows.get(B(3))?.status_pagamento, "Pago");
   assert.deepEqual(payment.exits.get(B(20))?.vencimento, new Date("2026-10-16T00:00:00Z"));
   assert.deepEqual(payment.entries.get(B(10)), beforeEntry);
@@ -210,6 +238,7 @@ async function main() {
   const response = await call(list.db, "comissoes?pagina=2&limite=1&competencia=2026-09&geradora_id=1&distribuidora_id=1&unidade_id=1&parceiro_id=1&status_recebimento=Pendente&status_pagamento=Pendente&busca=000123"); assert.ok(response);
   const result = await response.json();
   assert.deepEqual(list.transactionLevels, ["RepeatableRead"]);
+  assert.deepEqual(list.auditContexts, [], "GET does not set mutation context.");
   assert.equal(result.meta.pagina, 2); assert.equal(result.meta.limite, 1); assert.equal(result.meta.total, 3);
   assert.deepEqual(result.meta.totais, { valor_economia: "1050.00", valor_comissao_empresa: "360.00", valor_comissao_parceiro: "140.00", margem: "220.00" });
   const read = list.queries.find((item) => item.operation === "findMany"); assert.ok(read);

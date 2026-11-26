@@ -2,6 +2,7 @@
 
 import { requireUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { bitrixConfig, createBitrixClient } from "@/lib/bitrix";
 import { applyClientUnitSync, clientSyncCpf, planClientUnitSync, type UnitSyncSummary } from "@/lib/client-unit-sync";
 import { refreshClientPages } from "@/lib/client-cache";
@@ -11,7 +12,7 @@ export type UnitSyncBatchResult = { success: true; summary: UnitSyncSummary; cur
 // Lotes curtos permitem exibir progresso em bases grandes sem uma requisição única longa.
 // A consulta remota termina antes da transação; uma falha no Bitrix não grava esse lote.
 export async function syncClientUnitsBatch(cursor = 0, throughId?: number): Promise<UnitSyncBatchResult> {
-  await requireUser();
+  const user = await requireUser();
   try {
     if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > 2147483647 || (throughId !== undefined && (!Number.isSafeInteger(throughId) || throughId < cursor || throughId > 2147483647))) throw new Error("A sincronização expirou. Inicie novamente.");
     const config = bitrixConfig();
@@ -27,7 +28,7 @@ export async function syncClientUnitsBatch(cursor = 0, throughId?: number): Prom
     const options = cpfs.length ? await bitrix.unitOptions() : [];
     const deals = await bitrix.dealsByCpf(cpfs);
     const plan = planClientUnitSync(clients, units, options, deals, config);
-    const summary = await db.$transaction((tx) => applyClientUnitSync(tx, plan), { isolationLevel: "Serializable", timeout: 30000 });
+    const summary = await auditedTransaction(db, user, "/cadastros/clientes/visao-geral • Sincronizar unidades com Bitrix", (tx) => applyClientUnitSync(tx, plan), { isolationLevel: "Serializable", timeout: 30000 });
     if (summary.filled || summary.replaced) {
       // Uma falha de atualização visual após o commit não pode anunciar rollback.
       try { refreshClientPages(); } catch { console.error("Unidades sincronizadas; não foi possível atualizar o cache de clientes."); }

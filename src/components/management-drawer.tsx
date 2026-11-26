@@ -2,6 +2,9 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { InterfaceIcon } from "@/components/interface-icon";
+import financialStyles from "./financial-management.module.css";
+import catalogStyles from "./management-catalog.module.css";
 
 type DrawerFeedback = { saved: (message: string) => void; markClean: () => void; setPending: (pending: boolean) => void; close: () => void };
 const FeedbackContext = createContext<DrawerFeedback | null>(null);
@@ -22,7 +25,7 @@ export function useDrawerFeedback(state: { success: boolean; message: string }, 
   useEffect(() => { if (state.success) feedback?.saved(state.message || "Registro salvo com sucesso."); }, [feedback, state]);
 }
 
-export function ManagementDrawer({ title, children, onClose, onSaved }: { title: string; children: ReactNode; onClose: () => void; onSaved?: (message: string) => void }) {
+export function ManagementDrawer({ title, children, onClose, onSaved, appearance = "default" }: { title: string; children: ReactNode; onClose: () => void; onSaved?: (message: string) => void; appearance?: "default" | "catalog" }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const dirty = useRef(false);
   const busy = useRef(false);
@@ -54,20 +57,20 @@ export function ManagementDrawer({ title, children, onClose, onSaved }: { title:
     if (dirty.current && !window.confirm("Descartar as alterações não salvas?")) return;
     onClose();
   }
-  return <dialog ref={dialog} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); close(); }} className="management-drawer text-primary">
-    <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface p-5"><h2 id={titleId} className="text-lg font-semibold">{title}</h2><button type="button" onClick={close} disabled={pending} aria-label="Fechar modal" className="rounded-lg border border-line px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">Fechar ✕</button></header>
+  return <dialog ref={dialog} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); close(); }} className={`management-drawer text-primary${appearance === "catalog" ? ` ${catalogStyles.dialog}` : ""}`}>
+    <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface p-5"><h2 id={titleId} className="text-lg font-semibold">{title}</h2><button type="button" onClick={close} disabled={pending} aria-label="Fechar modal" className="rounded-lg border border-line px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">{appearance === "catalog" ? <InterfaceIcon name="close" /> : "Fechar ✕"}</button></header>
     <FeedbackContext.Provider value={feedback}><div className="drawer-content p-5" onChangeCapture={() => { dirty.current = true; }} onInputCapture={() => { dirty.current = true; }}>{children}</div></FeedbackContext.Provider>
     <footer className="border-t border-line p-5"><button type="button" disabled={pending} onClick={close} className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-muted disabled:opacity-50">Cancelar / fechar</button></footer>
   </dialog>;
 }
 
-export function CreateRecord({ label, title, children }: { label: string; title: string; children: ReactNode }) {
+export function CreateRecord({ label, title, children, appearance = "default" }: { label: string; title: string; children: ReactNode; appearance?: "default" | "catalog" }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
-  return <div className="flex flex-wrap items-center gap-3">
+  return <div className={appearance === "catalog" ? catalogStyles.createAction : "flex flex-wrap items-center gap-3"}>
     {message && <p role="status" className="text-sm text-accent-ink">{message}</p>}
-    <button type="button" aria-haspopup="dialog" onClick={() => { setMessage(""); setOpen(true); }} className="rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">+ {label}</button>
-    {open && <ManagementDrawer title={title} onClose={() => setOpen(false)} onSaved={setMessage}>{children}</ManagementDrawer>}
+    <button type="button" aria-haspopup="dialog" onClick={() => { setMessage(""); setOpen(true); }} className={appearance === "catalog" ? `${financialStyles.primaryButton} ${catalogStyles.createButton}` : "rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover"}>{appearance === "catalog" ? <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg> : "+ "}{label}</button>
+    {open && <ManagementDrawer title={title} appearance={appearance} onClose={() => setOpen(false)} onSaved={setMessage}>{children}</ManagementDrawer>}
   </div>;
 }
 

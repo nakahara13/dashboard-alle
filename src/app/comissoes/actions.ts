@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createHash } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
+import { auditedTransaction } from "@/lib/audit-context";
 import { positiveId, saveCommission, type CommissionInput } from "@/lib/comissao-module";
 import { matchImport, parseCommissionFile, importCommissions, reviewCommissionImport, type ImportRow, type ImportConflict, type ImportOverwriteApproval } from "@/lib/comissao-import";
 import { saveCommissionCatalogData } from "@/lib/comissao-catalog";
@@ -16,7 +17,7 @@ export type State = { success: boolean; message: string };
 export type PreviewState = State & { rows?: ImportRow[]; geradora_id?: string; geradora_nome?: string; competencia?: string };
 export type ImportConfirmState = State & { conflicts?: ImportConflict[]; reviewKey?: string };
 export async function updateCommissionReceiptsAction(form: FormData): Promise<State> {
-  await requireUser();
+  const user = await requireUser();
   try {
     const values = form.getAll("ids");
     if (!values.length || values.length > 20) throw new Error("Selecione até 20 comissões da página atual.");
@@ -24,13 +25,13 @@ export async function updateCommissionReceiptsAction(form: FormData): Promise<St
     const status = String(form.get("status") ?? "");
     if (status !== "Recebido" && status !== "Pendente") throw new Error("Status de recebimento inválido.");
     const date = status === "Recebido" ? parsePayableDate(String(form.get("data_recebimento") ?? "")) : null;
-    const count = await getPrisma().$transaction((db) => updateCommissionReceipts(db, ids, date, status), { isolationLevel: "Serializable" });
+    const count = await auditedTransaction(getPrisma(), user, "/comissoes • Alterar recebimentos", (db) => updateCommissionReceipts(db, ids, date, status), { isolationLevel: "Serializable" });
     refresh();
     return { success: true, message: `${count} comissão(ões) com recebimento marcado como ${status === "Recebido" ? "recebido" : "pendente"}.` };
   } catch (error) { return { success: false, message: message(error) }; }
 }
 export async function updateCommissionPaymentsAction(form: FormData): Promise<State> {
-  await requireUser();
+  const user = await requireUser();
   try {
     const values = form.getAll("ids");
     if (!values.length || values.length > 20) throw new Error("Selecione até 20 comissões da página atual.");
@@ -38,7 +39,7 @@ export async function updateCommissionPaymentsAction(form: FormData): Promise<St
     const status = String(form.get("status") ?? "");
     if (status !== "Pago" && status !== "Pendente") throw new Error("Status de pagamento inválido.");
     const date = status === "Pago" ? parsePayableDate(String(form.get("data_pagamento") ?? "")) : null;
-    const count = await getPrisma().$transaction((db) => updateCommissionPayments(db, ids, status, date), { isolationLevel: "Serializable" });
+    const count = await auditedTransaction(getPrisma(), user, "/comissoes • Alterar pagamentos", (db) => updateCommissionPayments(db, ids, status, date), { isolationLevel: "Serializable" });
     refresh();
     return { success: true, message: `${count} comissão(ões) marcada(s) como ${status === "Pago" ? "paga(s)" : "pendente(s)"}.${ids.length > count ? ` ${ids.length - count} sem parceiro, sem alteração.` : ""}` };
   } catch (error) { return { success: false, message: message(error) }; }
@@ -55,19 +56,22 @@ function message(error: unknown) {
 // Atualiza as páginas separadas que compartilham cadastros e vínculos.
 function refresh() { for (const path of ["/cadastros/clientes/cruzamento", "/cadastros/clientes/visao-geral", "/comissoes/nova", "/comissoes/importar", "/cadastros/clientes", "/cadastros/geradores", "/cadastros/distribuidoras", "/cadastros/unidades", "/cadastros/parceiros", "/comissoes", "/contas-a-receber", "/contas-a-pagar", "/"]) revalidatePath(path); }
 export async function saveCommissionAction(_state: State, form: FormData): Promise<State> {
-  await requireUser();
+  const user = await requireUser();
   try {
     const input = Object.fromEntries(form.entries()) as CommissionInput;
     const keys: (keyof CommissionInput)[] = ["id", "cliente_id", "geradora_id", "distribuidora_id", "parceiro_id", "competencia", "valor_economia", "valor_comissao_empresa", "valor_comissao_parceiro", "status_recebimento", "status_pagamento", "data_recebimento", "data_pagamento", "gerar_entrada", "gerar_saida", "conta_bancaria_id", "metodo_id", "entrada_existente_id", "saida_existente_id"];
     for (const key of keys) input[key] = String(form.get(key) ?? "");
-    await getPrisma().$transaction((db) => saveCommission(db, input), { isolationLevel: "Serializable" });
+    await auditedTransaction(getPrisma(), user, "/comissoes • Salvar comissão", (db) => saveCommission(db, input), { isolationLevel: "Serializable" });
     refresh(); return { success: true, message: "Comissão salva com sucesso." };
   } catch (error) { return { success: false, message: message(error) }; }
 }
 export async function saveCommissionCatalog(_state: State, form: FormData): Promise<State> {
-  await requireUser();
+  const user = await requireUser();
   try {
-    await getPrisma().$transaction((db) => saveCommissionCatalogData(db, form), { isolationLevel: "Serializable" });
+    const kind = String(form.get("cadastro") ?? "");
+    const paths: Record<string, string> = { cliente: "/cadastros/clientes", geradora: "/cadastros/geradores", distribuidora: "/cadastros/distribuidoras", unidade: "/cadastros/unidades" };
+    const path = Object.hasOwn(paths, kind) ? paths[kind] : "/cadastros";
+    await auditedTransaction(getPrisma(), user, `${path} • Salvar cadastro`, (db) => saveCommissionCatalogData(db, form), { isolationLevel: "Serializable" });
     refresh(); return { success: true, message: "Cadastro salvo com sucesso." };
   } catch (error) {
     if (typeof error === "object" && error && "code" in error && error.code === "P2002") return { success: false, message: "Este identificador de cliente ou nome de cadastro já existe." };
@@ -88,7 +92,7 @@ export async function previewCommissionImport(_state: PreviewState, form: FormDa
   } catch (error) { return { success: false, message: message(error) }; }
 }
 export async function confirmCommissionImport(_state: ImportConfirmState, form: FormData): Promise<ImportConfirmState> {
-  await requireUser();
+  const user = await requireUser();
   try {
     const geradora_id = String(form.get("geradora_id") ?? ""), competencia = parseCompetence(String(form.get("competencia") ?? ""));
     positiveId(geradora_id);
@@ -105,7 +109,7 @@ export async function confirmCommissionImport(_state: ImportConfirmState, form: 
       if (!Array.isArray(parsed) || parsed.length > 500 || parsed.some((item) => !item || typeof item !== "object" || typeof item.id !== "string" || !/^[1-9]\d*$/.test(item.id) || typeof item.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(item.fingerprint))) throw new Error("Confirmação inválida. Confira as comissões novamente.");
       overwrite = parsed;
     }
-    const result = await getPrisma().$transaction(async (db) => {
+    const result = await auditedTransaction(getPrisma(), user, "/comissoes/importar • Importar comissões", async (db) => {
       const conflicts = await reviewCommissionImport(db, selected, geradora_id, competencia);
       const approvals = new Map(overwrite?.map((item) => [item.id, item.fingerprint]));
       const approved = overwrite !== undefined && form.get("review_key") === reviewKey && approvals.size === overwrite.length && overwrite.length === conflicts.length && conflicts.every((item) => approvals.get(item.id) === item.fingerprint);
