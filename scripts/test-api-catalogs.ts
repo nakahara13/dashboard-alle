@@ -2,24 +2,26 @@ import assert from "node:assert/strict";
 import { Prisma, type PrismaClient } from "../src/generated/prisma/client";
 import { handleCatalog } from "../src/lib/api/catalogs";
 import { ApiError } from "../src/lib/api/http";
+import type { LoginMetadata } from "../src/lib/login-metadata";
 
-type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string };
-function apiAuditContext(query: TemplateStringsArray, parameters: unknown[]): ApiAuditContext {
+const unidentifiedAccess: LoginMetadata = { ip: null, navegador: "Não identificado", sistema_operacional: "Não identificado", mac_address: null, user_agent: null };
+type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string; metadados: LoginMetadata };
+function apiAuditContext(query: TemplateStringsArray, parameters: unknown[], expectedMetadata = unidentifiedAccess): ApiAuditContext {
   assert.equal(query.join("?"), "SELECT set_config('alle.audit_context', ?, true)", "Audit context must be transaction local and parameterized.");
   assert.equal(parameters.length, 1);
   assert.equal(typeof parameters[0], "string");
   const context = JSON.parse(String(parameters[0])) as ApiAuditContext;
-  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem }, "A shared API token must not be attributed to a user.");
+  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem, metadados: expectedMetadata }, "A shared API token must not be attributed to a user, and only request metadata may be recorded.");
   assert.match(context.origem, /^API (POST|PUT|DELETE) \/api\/v1\//);
   return context;
 }
 
 const resources = ["clientes", "parceiros", "distribuidoras", "geradoras", "unidades", "contas-bancarias", "metodos-pagamento", "tipos", "usuarios"];
-function request(path: string, method = "GET", body?: unknown) {
-  return new Request(`http://localhost/api/v1/${path}`, { method, ...(body === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }) });
+function request(path: string, method = "GET", body?: unknown, headers: Record<string, string> = {}) {
+  return new Request(`http://localhost/api/v1/${path}`, { method, headers: { ...(body === undefined ? {} : { "content-type": "application/json" }), ...headers }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
-async function response(db: PrismaClient, path: string, method = "GET", body?: unknown) {
-  const result = await handleCatalog(request(path, method, body), path.split("?")[0].split("/"), db);
+async function response(db: PrismaClient, path: string, method = "GET", body?: unknown, headers?: Record<string, string>) {
+  const result = await handleCatalog(request(path, method, body, headers), path.split("?")[0].split("/"), db);
   assert.ok(result);
   return result;
 }
@@ -36,7 +38,7 @@ type Storage = Map<Model, Map<number, Row>>;
 
 // The fake has separate transaction delegates and rolls back its own writes on failure.
 // It never creates a Prisma client or reads a database connection string.
-function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
+function fixture(options: { deleteFailure?: Error; readFailure?: Error; expectedMetadata?: LoginMetadata } = {}) {
   const storage: Storage = new Map(models.map((model) => [model, new Map<number, Row>()]));
   storage.get("cliente")!.set(7, { id: 7, nome: "Cliente anterior", cpf: "52998224725", uc: "UC-7", parceiro_id: 3, distribuidora_id: 4, unidade_id: 5 });
   storage.get("unidadeAllpFit")!.set(5, { id: 5, nome: "Unidade anterior", parceiro_id: 3 });
@@ -114,7 +116,7 @@ function fixture(options: { deleteFailure?: Error; readFailure?: Error } = {}) {
         const result = await work({
           ...delegates(snapshot, true),
           $queryRaw: async (query: TemplateStringsArray, ...parameters: unknown[]) => {
-            currentAudit = apiAuditContext(query, parameters);
+            currentAudit = apiAuditContext(query, parameters, options.expectedMetadata);
             auditContexts.push(currentAudit);
             events.push("audit");
             return [{ set_config: parameters[0] }];
@@ -167,6 +169,15 @@ async function main() {
   assert.deepEqual(customer.isolation, ["Serializable"]);
   assert.deepEqual(customer.events, ["begin", "audit", "tx.cliente.update", "tx.cliente.findUnique", "commit"], "The response must be read before the same transaction commits.");
   assert.equal(customer.auditContexts[0].origem, "API PUT /api/v1/clientes/7");
+  const browserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0";
+  const browserCustomer = fixture({ expectedMetadata: { ip: null, navegador: "Mozilla Firefox 132.0", sistema_operacional: "Linux", mac_address: null, user_agent: browserAgent } });
+  await response(browserCustomer.db, "clientes/7", "PUT", { nome: "Cliente pelo navegador", uc: "UC-7" }, {
+    "User-Agent": browserAgent, "X-User-Id": "999", "X-User-Name": "Usuário forjado", Authorization: "Bearer api-test-secret",
+  });
+  assert.equal(browserCustomer.auditContexts.length, 1, "An API mutation records the current request's browser and operating system once.");
+  assert.deepEqual(browserCustomer.events, ["begin", "audit", "tx.cliente.update", "tx.cliente.findUnique", "commit"]);
+  const browserContext = JSON.stringify(browserCustomer.auditContexts[0]);
+  assert(!browserContext.includes("Usuário forjado") && !browserContext.includes("api-test-secret"), "Client actor headers and bearer credentials never become audit identity or metadata.");
   const customerReload = customer.calls.find((call) => call.model === "cliente" && call.method === "findUnique")!;
   assert.deepEqual(customerReload.args.include, { parceiro: true, distribuidora: true, unidade: { include: { parceiro: true } } });
 

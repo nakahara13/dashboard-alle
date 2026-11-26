@@ -3,7 +3,7 @@
 import { requireUser } from "@/lib/auth";
 
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { createPayment, validatePayment, type PaymentInput } from "@/lib/pagamentos";

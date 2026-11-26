@@ -4,8 +4,10 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPrisma } from "./prisma";
+import { createAuditedSession } from "./login-session";
+import type { LoginMetadata } from "./login-metadata";
 import {
-  authenticateWithPassword, findSessionUser, issueSession, revokeSession,
+  authenticateWithPassword, findSessionUser, revokeSession, type SessionUser,
   SESSION_COOKIE_NAME, SESSION_DURATION_SECONDS,
 } from "./auth-store";
 export { SESSION_COOKIE_NAME, SESSION_TOKEN_PATTERN } from "./auth-store";
@@ -37,11 +39,10 @@ export async function authenticateCredentials(email: string, password: string) {
   return authenticateWithPassword(getPrisma(), email, password);
 }
 
-export async function createSession(userId: number) {
+export async function createSession(user: SessionUser, metadata: LoginMetadata) {
   const cookieStore = await cookies();
   const db = getPrisma();
-  await revokeSession(db, cookieStore.get(SESSION_COOKIE_NAME)?.value);
-  const { token, expiresAt } = await issueSession(db, userId);
+  const { token, expiresAt } = await createAuditedSession(db, user, metadata, cookieStore.get(SESSION_COOKIE_NAME)?.value);
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { importClients, matchClientImport, parseClientFile, type ClientImportRow } from "@/lib/client-import";
 import { refreshClientPages } from "@/lib/client-cache";
 

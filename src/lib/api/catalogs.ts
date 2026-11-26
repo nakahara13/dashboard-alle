@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "../../generated/prisma/client";
-import { auditedTransaction } from "../audit-context";
+import { auditedRequestTransaction } from "../audit-http";
 import { saveCommissionCatalogData } from "../comissao-catalog";
 import { normalizeClientCpf, parseClientActive } from "../clientes";
 import { normalizeUC, positiveId } from "../comissao-module";
@@ -204,7 +204,7 @@ export async function handleCatalog(request: Request, segments: string[], db: Pr
   queryParams(url.searchParams, []);
   if (request.method === "GET") return apiJson({ data: await detailCatalog(db, catalog, id!) });
   if (request.method === "DELETE") {
-    await auditedTransaction(db, null, `API DELETE /api/v1/${catalog}/${id}`, (tx) => deleteCatalog(tx, catalog, id!), { isolationLevel: "Serializable" });
+    await auditedRequestTransaction(request, db, null, `API DELETE /api/v1/${catalog}/${id}`, (tx) => deleteCatalog(tx, catalog, id!), { isolationLevel: "Serializable" });
     return new Response(null, { status: 204 });
   }
   const body = await readJson(request, [...catalogFields[catalog]]);
@@ -216,6 +216,6 @@ export async function handleCatalog(request: Request, segments: string[], db: Pr
   // Malformed input must fail without obtaining a database client.
   await business(() => validateCatalogFields(catalog, fields));
   const origin = `API ${request.method} /api/v1/${catalog}${id === undefined ? "" : `/${id}`}`;
-  const row = await auditedTransaction(db, null, origin, (tx) => writeCatalog(tx, catalog, fields, id), { isolationLevel: "Serializable" });
+  const row = await auditedRequestTransaction(request, db, null, origin, (tx) => writeCatalog(tx, catalog, fields, id), { isolationLevel: "Serializable" });
   return apiJson({ data: row }, request.method === "POST" ? 201 : 200);
 }

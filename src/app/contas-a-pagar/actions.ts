@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { parseRecordId } from "@/lib/record-id";
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { createPayable, validatePayable, type PayableInput } from "@/lib/contas-a-pagar";
 import { ReceiptError, readOptionalReceiptFile, getReceiptStorageConfig } from "@/lib/financial-receipt-storage";
 import { persistFinancialReceipt } from "@/lib/financial-receipts";

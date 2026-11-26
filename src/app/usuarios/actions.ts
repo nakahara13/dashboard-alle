@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { createUser, validateUser } from "@/lib/usuarios";
 import { requireAdmin } from "@/lib/auth";
 import { validatePassword } from "@/lib/password";

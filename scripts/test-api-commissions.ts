@@ -2,14 +2,16 @@ import assert from "node:assert/strict";
 import { Prisma, type Comissao, type PrismaClient } from "../src/generated/prisma/client";
 import { handleCommissions } from "../src/lib/api/commissions";
 import { ApiError } from "../src/lib/api/http";
+import type { LoginMetadata } from "../src/lib/login-metadata";
 
-type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string };
-function apiAuditContext(query: TemplateStringsArray, parameters: unknown[]): ApiAuditContext {
+const unidentifiedAccess: LoginMetadata = { ip: null, navegador: "Não identificado", sistema_operacional: "Não identificado", mac_address: null, user_agent: null };
+type ApiAuditContext = { usuario_id: null; usuario_nome: null; usuario_email: null; origem: string; metadados: LoginMetadata };
+function apiAuditContext(query: TemplateStringsArray, parameters: unknown[], expectedMetadata = unidentifiedAccess): ApiAuditContext {
   assert.equal(query.join("?"), "SELECT set_config('alle.audit_context', ?, true)", "Audit context must be transaction local and parameterized.");
   assert.equal(parameters.length, 1);
   assert.equal(typeof parameters[0], "string");
   const context = JSON.parse(String(parameters[0])) as ApiAuditContext;
-  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem }, "A shared API token must not be attributed to a user.");
+  assert.deepEqual(context, { usuario_id: null, usuario_nome: null, usuario_email: null, origem: context.origem, metadados: expectedMetadata }, "A shared API token must not be attributed to a user, and only request metadata may be recorded.");
   assert.match(context.origem, /^API (POST|PUT|DELETE) \/api\/v1\//);
   return context;
 }

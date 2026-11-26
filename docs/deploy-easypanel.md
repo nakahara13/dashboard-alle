@@ -161,6 +161,18 @@ No destino interno do domínio, configure protocolo **HTTP** e porta **3000**. A
 
 O login usa cookies `Secure` em produção e precisa ser acessado por HTTPS. A aplicação não precisa publicar a porta `3000` diretamente no servidor; o domínio usa o proxy do painel.
 
+### Dados de acesso na auditoria
+
+Antes de usar esta versão, execute `npm run db:deploy` na Shell da nova imagem. A migration `20261126000200_auditoria_login` permite o evento de login e a `20261126000300_auditoria_metadados` adiciona os dados de acesso aos demais eventos. Ambas dependem da migration inicial da auditoria. A sessão e seu evento são gravados na mesma transação; sem essa atualização o login não é concluído.
+
+Em Environment, configure `AUDIT_TRUST_PROXY="true"` quando o App receber conexões exclusivamente pelo Traefik do Easypanel. Mantenha a porta interna sem publicação direta e o proxy acrescentando o endereço da conexão ao final de `X-Forwarded-For` (padrão do Traefik). A aplicação usa apenas esse último endereço validado, evitando aceitar um IP enviado pelo visitante no início do cabeçalho. Sem a variável, o login é registrado com IP indisponível.
+
+Se houver CDN ou outro proxy antes do Traefik, esse endereço poderá ser o IP do proxy intermediário. Revise a cadeia de proxies e suas origens confiáveis antes de interpretar esse campo como o endereço do visitante. Não habilite a variável em um App acessível diretamente por clientes.
+
+Cada login concluído e cada alteração pela interface ou API registra navegador, sistema operacional e IP disponível da requisição que realizou a ação, junto ao dia e horário de Brasília com segundos. As alterações mantêm o usuário/PK e os valores anteriores e posteriores. Os dados de acesso pertencem ao evento e não são copiados de um login anterior. Navegador e sistema vêm do User-Agent informado pelo cliente; uma integração pode informar seu próprio agente, sem navegador identificável. O endereço MAC fica indisponível porque não é exposto pelo navegador. Senhas e tokens de sessão não são armazenados na auditoria.
+
+Registros antigos e alterações diretas no banco sem contexto de requisição continuam preservados, com os dados de acesso indicados como não registrados. A atualização não tenta reconstruir IP ou navegador de eventos passados.
+
 ## 8. Validar antes de passar a usar
 
 - Abra `/login` por HTTPS e entre com uma conta do banco restaurado.

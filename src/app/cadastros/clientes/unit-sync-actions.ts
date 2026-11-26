@@ -2,7 +2,7 @@
 
 import { requireUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { bitrixConfig, createBitrixClient } from "@/lib/bitrix";
 import { applyClientUnitSync, clientSyncCpf, planClientUnitSync, type UnitSyncSummary } from "@/lib/client-unit-sync";
 import { refreshClientPages } from "@/lib/client-cache";

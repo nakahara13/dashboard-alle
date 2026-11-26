@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { createMethod, validateMethod } from "@/lib/metodos-pagamento";
 
 export async function saveMethod(_previous: { success: boolean; message: string }, form: FormData) {

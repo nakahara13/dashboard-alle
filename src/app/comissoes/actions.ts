@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createHash } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { positiveId, saveCommission, type CommissionInput } from "@/lib/comissao-module";
 import { matchImport, parseCommissionFile, importCommissions, reviewCommissionImport, type ImportRow, type ImportConflict, type ImportOverwriteApproval } from "@/lib/comissao-import";
 import { saveCommissionCatalogData } from "@/lib/comissao-catalog";

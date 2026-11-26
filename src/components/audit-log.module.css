@@ -21,12 +21,22 @@
 .insert { background: var(--success-soft); color: var(--success-ink); }
 .update { background: var(--detail-orange-soft); color: var(--detail-orange); }
 .delete { background: var(--danger-soft); color: var(--danger-ink); }
+.login { background: #eff6ff; color: #1d4ed8; }
+:global(:root[data-theme="dark"]) .login { background: #1e324b; color: #93c5fd; }
 .comparison { position: relative; min-width: 310px; max-width: 720px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .comparison > summary { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 9px 12px; color: var(--secondary); font-size: 12px; line-height: 18px; font-weight: 600; list-style: none; cursor: pointer; }
 .comparison > summary::-webkit-details-marker { display: none; }
 .comparison > summary > svg { width: 15px; height: 15px; flex-shrink: 0; margin-left: auto; color: var(--muted-ink); }
 .comparison[open] > summary > svg { transform: rotate(180deg); }
 .fieldCount { padding: 1px 6px; border-radius: 999px; background: var(--muted); color: var(--muted-ink); font-size: 11px; line-height: 16px; font-weight: 500; white-space: nowrap; }
+.accessDetails { width: 360px; }
+.eventDetails { display: grid; gap: 8px; }
+.missingAccess { margin: 0; padding: 10px 12px; border-top: 1px solid var(--line); color: var(--muted-ink); font-size: 12px; line-height: 18px; white-space: normal; }
+.accessData { display: grid; min-width: 0; margin: 0; padding: 0 12px; border-top: 1px solid var(--line); }
+.accessData > div { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 3px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.accessData > div:last-child { border-bottom: 0; }
+.accessData dt { color: var(--muted-ink); font-size: 11px; line-height: 16px; font-weight: 500; }
+.accessData dd { margin: 0; color: var(--primary); font-size: 12px; line-height: 18px; font-weight: 400; white-space: pre-wrap; overflow-wrap: anywhere; }
 .table .comparisonTable { width: 100%; min-width: 520px; table-layout: fixed; border-spacing: 0; border-top: 1px solid var(--line); border-collapse: separate; white-space: normal; font-size: 12px; line-height: 18px; font-weight: 400; }
 .table .comparisonTable th, .table .comparisonTable td { position: static; width: auto; height: auto; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
 .table .comparisonTable thead th { background: var(--muted); font-size: 11px; line-height: 16px; font-weight: 600; }

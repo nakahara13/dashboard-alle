@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { createTipo, validateTipo } from "@/lib/tipos";
 
 export async function saveTipo(_previous: { success: boolean; message: string }, form: FormData) {

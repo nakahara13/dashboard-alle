@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
-import { auditedTransaction } from "@/lib/audit-context";
+import { auditedTransaction } from "@/lib/audit-request";
 import { managementData, updateManagement, deleteManagement, type ManagementKind } from "@/lib/gestao";
 import { validateTipoId } from "@/lib/tipos";
 import { requireAdmin, requireUser } from "@/lib/auth";

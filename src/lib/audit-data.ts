@@ -23,6 +23,7 @@ export async function loadAudit(params: AuditParams): Promise<AuditData> {
     const entries: AuditEntry[] = rows.map((row) => ({
       ...row, id: row.id.toString(), ocorrido_em: row.ocorrido_em.toISOString(), dia: row.dia.toISOString().slice(0, 10),
       acao: row.acao as AuditEntry["acao"], antes: row.antes as AuditEntry["antes"], depois: row.depois as AuditEntry["depois"],
+      metadados: row.metadados as AuditEntry["metadados"],
     }));
     return { entries, total, page, pages, filters };
   }, { isolationLevel: "RepeatableRead" });

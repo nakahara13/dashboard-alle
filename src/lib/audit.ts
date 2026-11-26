@@ -1,6 +1,7 @@
 export const AUDIT_TIME_ZONE = "America/Sao_Paulo";
 export const AUDIT_PAGE_SIZE = 50;
 export const AUDIT_LOCATIONS = [
+  { value: "acessos", label: "Logins" },
   { value: "clientes", label: "Clientes" },
   { value: "comissoes", label: "Comissões" },
   { value: "contas_a_pagar", label: "Contas a pagar" },
@@ -20,8 +21,9 @@ export type AuditFilters = { inicio: string; fim: string; usuario: string; local
 export type AuditEntry = {
   id: string; ocorrido_em: string; dia: string;
   usuario_id: number | null; usuario_nome: string | null; usuario_email: string | null;
-  origem: string; tabela: string; registro_id: string; acao: "INSERT" | "UPDATE" | "DELETE";
+  origem: string; tabela: string; registro_id: string; acao: "INSERT" | "UPDATE" | "DELETE" | "LOGIN";
   campos_alterados: string[]; antes: Record<string, unknown> | null; depois: Record<string, unknown> | null;
+  metadados?: Record<string, unknown> | null;
 };
 export type AuditData = { entries: AuditEntry[]; total: number; page: number; pages: number; filters: AuditFilters };
 export type AuditParams = Record<string, string | string[] | undefined>;
@@ -52,8 +54,8 @@ export function parseAuditFilters(params: AuditParams, now = new Date()): { filt
   if (inicio > fim) throw new Error("A data inicial deve ser anterior ou igual à data final.");
   const usuario = read("usuario"), local = read("local"), acao = read("acao"), busca = read("busca"), pageValue = read("pagina");
   if (usuario && (!/^[1-9]\d*$/.test(usuario) || Number(usuario) > 2147483647)) throw new Error("Informe uma PK de usuário válida.");
-  if (local && !AUDIT_LOCATIONS.some((item) => item.value === local)) throw new Error("Selecione um local de alteração válido.");
-  if (acao && !["INSERT", "UPDATE", "DELETE"].includes(acao)) throw new Error("Selecione um tipo de alteração válido.");
+  if (local && !AUDIT_LOCATIONS.some((item) => item.value === local)) throw new Error("Selecione um local válido.");
+  if (acao && !["INSERT", "UPDATE", "DELETE", "LOGIN"].includes(acao)) throw new Error("Selecione um evento válido.");
   if (busca.length > 255) throw new Error("Use até 255 caracteres na pesquisa.");
   if (pageValue && (!/^[1-9]\d*$/.test(pageValue) || !Number.isSafeInteger(Number(pageValue)))) throw new Error("Informe uma página válida.");
   return { filters: { inicio, fim, usuario, local, acao, busca }, page: Number(pageValue || 1) };
@@ -68,12 +70,13 @@ export function auditTime(iso: string) {
 }
 
 const fieldLabels: Record<string, string> = {
+  ip: "IP", navegador: "Navegador", sistema_operacional: "Sistema operacional", mac_address: "Endereço MAC", user_agent: "User-Agent",
   id: "PK do registro", id_do_registro: "PK do registro", id_do_pagamento: "Nº do pagamento", nome: "Nome", email: "E-mail", role: "Perfil", senha: "Senha", criado_em: "Cadastrado em", documento: "CNPJ", telefone: "Telefone", cpf: "CPF", uc: "Unidade consumidora", ativo: "Situação", unidade_id: "PK da unidade", parceiro_id: "PK do parceiro", distribuidora_id: "PK da distribuidora", geradora_id: "PK da geradora", cliente_id: "PK do cliente", favorecido_id: "PK do favorecido", conta_bancaria_id: "PK da conta bancária", tipo_id: "PK do tipo", metodo_id: "PK do método", banco: "Banco", agencia: "Agência", numero: "Número da conta", titular: "Titular", valor: "Valor", valor_total: "Valor total", valor_economia: "Economia", valor_comissao_empresa: "Comissão da empresa", valor_comissao_parceiro: "Comissão do parceiro", margem: "Margem", competencia: "Competência", competencia_financeira: "Competência financeira", data_do_pagamento: "Data do recebimento", data_recebimento: "Data do recebimento", data_pagamento: "Data do pagamento", status: "Situação", status_do_pagamento: "Situação do recebimento", status_recebimento: "Situação do recebimento", status_pagamento: "Situação do pagamento", descricao: "Descrição", centro_custo: "Centro de custo", lancamento: "Lançamento", vencimento: "Vencimento", beneficiario: "Beneficiário", pagador: "Pagador", metodo_do_pagamento: "Método do pagamento", numero_da_nf: "Nota fiscal", entrada_id: "PK da entrada", saida_id: "PK da saída", conta_pagar_id: "PK da conta a pagar", recebimento_id: "PK do recebimento", enviado_por_id: "PK do usuário que enviou", content_type: "Formato do arquivo", tamanho_bytes: "Tamanho do arquivo",
 };
 export function auditFieldLabel(key: string) { return fieldLabels[key] ?? key.replaceAll("_", " "); }
 
 export function auditValue(value: unknown, key?: string): string {
-  if (value === null || value === undefined) return "Não informado";
+  if (value === null || value === undefined) return key === "mac_address" ? "Indisponível no navegador" : "Não informado";
   if (typeof value === "boolean") return key === "ativo" ? value ? "Ativo" : "Inativo" : value ? "Sim" : "Não";
   if (key === "role") return value === "admin" ? "Admin" : value === "gestor" ? "Gestor" : String(value);
   if (typeof value === "string") {

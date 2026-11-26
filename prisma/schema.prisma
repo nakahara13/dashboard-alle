@@ -257,6 +257,7 @@ model Auditoria {
   campos_alterados String[]
   antes Json?
   depois Json?
+  metadados Json?
 
   @@index([dia, ocorrido_em, id])
   @@index([usuario_id, ocorrido_em, id])
