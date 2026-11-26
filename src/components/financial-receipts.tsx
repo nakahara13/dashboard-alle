@@ -19,11 +19,19 @@ export function ReceiptFileInput({ disabled, required = false, id, className = "
   const inputId = id ?? `comprovante-${generatedId}`;
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
+  const [hasFile, setHasFile] = useState(false);
   useEffect(() => {
     const input = inputRef.current;
     const owner = input?.form;
     if (!input || !owner) return;
-    const reset = () => { input.setCustomValidity(""); setError(""); };
+    const reset = (event: Event) => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        input.setCustomValidity("");
+        setError("");
+        setHasFile(false);
+      });
+    };
     owner.addEventListener("reset", reset);
     return () => owner.removeEventListener("reset", reset);
   }, []);
@@ -32,11 +40,13 @@ export function ReceiptFileInput({ disabled, required = false, id, className = "
     const message = file ? validateFile(file) : "";
     event.currentTarget.setCustomValidity(message);
     setError(message);
+    setHasFile(!!file);
   }
   return <div className={`grid min-w-0 gap-2 ${className}`}>
     <label htmlFor={inputId} className="text-sm font-medium">Comprovante{required ? " *" : " (opcional)"}</label>
-    <input ref={inputRef} id={inputId} name="comprovante" type="file" accept={RECEIPT_ACCEPT} required={required} disabled={disabled} onChange={change} className={fieldClass} aria-invalid={!!error} aria-describedby={`${inputId}-hint${error ? ` ${inputId}-error` : ""}`} />
-    <p id={`${inputId}-hint`} className="text-xs text-muted-ink">JPG, PNG ou PDF · Até 5 MB. O comprovante fica vinculado à transação.</p>
+    {/* Sem seleção, omitir o campo evita o File vazio que o multipart do React renomeia para "blob". */}
+    <input ref={inputRef} id={inputId} name={hasFile ? "comprovante" : undefined} type="file" accept={RECEIPT_ACCEPT} required={required} disabled={disabled} onChange={change} className={fieldClass} aria-invalid={!!error} aria-describedby={`${inputId}-hint${error ? ` ${inputId}-error` : ""}`} />
+    <p id={`${inputId}-hint`} className="text-xs text-muted-ink">JPG, PNG ou PDF · Até 5 MB.{required ? " O comprovante fica vinculado à transação." : " Você pode salvar sem comprovante e anexá-lo depois."}</p>
     {error && <p id={`${inputId}-error`} role="alert" className="text-sm text-danger-ink">{error}</p>}
   </div>;
 }

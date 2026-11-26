@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { InterfaceIcon } from "@/components/interface-icon";
 import financialStyles from "./financial-management.module.css";
 import catalogStyles from "./management-catalog.module.css";
+import styles from "./management-drawer.module.css";
 
 type DrawerFeedback = { saved: (message: string) => void; markClean: () => void; setPending: (pending: boolean) => void; close: () => void };
 const FeedbackContext = createContext<DrawerFeedback | null>(null);
@@ -58,9 +59,8 @@ export function ManagementDrawer({ title, children, onClose, onSaved, appearance
     onClose();
   }
   return <dialog ref={dialog} aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); close(); }} className={`management-drawer text-primary${appearance === "catalog" ? ` ${catalogStyles.dialog}` : ""}`}>
-    <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface p-5"><h2 id={titleId} className="text-lg font-semibold">{title}</h2><button type="button" onClick={close} disabled={pending} aria-label="Fechar modal" className="rounded-lg border border-line px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">{appearance === "catalog" ? <InterfaceIcon name="close" /> : "Fechar ✕"}</button></header>
+    <header className={`sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line ${styles.header}`}><h2 id={titleId} className="text-lg font-semibold">{title}</h2><button type="button" onClick={close} disabled={pending} aria-label="Fechar modal" title="Fechar modal" className={styles.closeButton}><InterfaceIcon name="close" /></button></header>
     <FeedbackContext.Provider value={feedback}><div className="drawer-content p-5" onChangeCapture={() => { dirty.current = true; }} onInputCapture={() => { dirty.current = true; }}>{children}</div></FeedbackContext.Provider>
-    <footer className="border-t border-line p-5"><button type="button" disabled={pending} onClick={close} className="rounded-lg border border-line px-4 py-2 text-sm hover:bg-muted disabled:opacity-50">Cancelar / fechar</button></footer>
   </dialog>;
 }
 

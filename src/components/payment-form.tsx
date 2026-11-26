@@ -26,7 +26,7 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
   const drawerClose = useDrawerClose();
   const prefix = useId();
   return (
-    <form action={action} className={`${styles.recordForm} ${drawerClose ? styles.embeddedForm : styles.standaloneForm}`}>
+    <form action={action} onReset={(event) => { if (!state.success) event.preventDefault(); }} className={`${styles.recordForm} ${drawerClose ? styles.embeddedForm : styles.standaloneForm}`}>
       {initial && <input type="hidden" name="id" value={initial.id} />}
       {!drawerClose && <h2>{initial ? "Editar recebimento" : "Registrar recebimento"}</h2>}
       <p className={`${drawerClose ? "" : "mt-2"} text-muted-ink`}>{initial ? "Edite os dados deste recebimento." : "Registre o valor recebido, o parceiro e a conta bancária de destino."} Campos com * são obrigatórios.</p>
@@ -49,8 +49,8 @@ export function PaymentForm({ types, partners, methods, accounts, initial, onSav
     {!!initial?.comprovantes?.length && <div className="mt-5 space-y-3"><h3 className="text-sm font-semibold">Comprovantes anexados</h3><ReceiptList receipts={initial.comprovantes} /></div>}
       {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
       <button disabled={pending || types.length === 0 || partners.length === 0 || methods.length === 0 || accounts.length === 0} className={`mt-6 ${styles.primaryButton}`}><InterfaceIcon name={initial ? "check" : "incoming"} />{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar recebimento"}</button>
-      {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
-      {initial && !onCancel && <Link href="/contas-a-receber#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
+      {onCancel && !drawerClose && <button type="button" disabled={pending} onClick={onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
+      {initial && !onCancel && !drawerClose && <Link href="/contas-a-receber#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
     </form>
   );
 }

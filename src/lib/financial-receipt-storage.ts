@@ -68,6 +68,8 @@ export async function readOptionalReceiptFile(form: FormData) {
   if (!entries.length) return null;
   if (entries.length > 1) throw new ReceiptError("Envie apenas um comprovante por vez.");
   const entry = entries[0];
+  // Um input de arquivo sem seleção pode chegar como texto vazio após o multipart.
+  if (entry === "") return null;
   if (typeof entry === "string") throw new ReceiptError(INVALID_FILE);
   if (!entry.name && !entry.size) return null;
   return validateReceiptFile(entry);

@@ -23,7 +23,7 @@ export function PayableForm({ types, partners, initial, onSaved, onCancel }: { t
   useDrawerFeedback(state, pending);
   const drawerClose = useDrawerClose();
   const prefix = useId();
-  return <form action={action} className={`${styles.recordForm} ${drawerClose ? styles.embeddedForm : styles.standaloneForm}`}>
+  return <form action={action} onReset={(event) => { if (!state.success) event.preventDefault(); }} className={`${styles.recordForm} ${drawerClose ? styles.embeddedForm : styles.standaloneForm}`}>
     {initial && <input type="hidden" name="id" value={initial.id} />}
     {!drawerClose && <h2>{initial ? "Editar conta a pagar" : "Registrar conta a pagar"}</h2>}
     <p className={`${drawerClose ? "" : "mt-2"} text-muted-ink`}>Informe os dados da despesa. Campos com * são obrigatórios.</p>
@@ -43,7 +43,7 @@ export function PayableForm({ types, partners, initial, onSaved, onCancel }: { t
     {!!initial?.comprovantes?.length && <div className="mt-5 space-y-3"><h3 className="text-sm font-semibold">Comprovantes anexados</h3><ReceiptList receipts={initial.comprovantes} /></div>}
     {state.message && <p role="status" className={`mt-5 rounded-lg p-3 text-sm ${state.success ? "bg-accent-soft text-accent-ink" : "bg-danger-soft text-danger-ink"}`}>{state.message}</p>}
     <button disabled={pending || types.length === 0 || partners.length === 0} className={`mt-6 ${styles.primaryButton}`}><InterfaceIcon name={initial ? "check" : "outgoing"} />{pending ? "Salvando…" : initial ? "Salvar alterações" : "Registrar conta a pagar"}</button>
-    {onCancel && <button type="button" disabled={pending} onClick={drawerClose ?? onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
-      {initial && !onCancel && <Link href="/contas-a-pagar#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
+    {onCancel && !drawerClose && <button type="button" disabled={pending} onClick={onCancel} className="ml-4 text-sm text-accent-ink underline">Cancelar</button>}
+      {initial && !onCancel && !drawerClose && <Link href="/contas-a-pagar#historico" className="ml-4 text-sm text-accent-ink underline">Voltar ao histórico</Link>}
   </form>;
 }

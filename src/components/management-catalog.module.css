@@ -49,20 +49,15 @@
 .dialog { --financial-gradient: linear-gradient(100deg, #f67216 0%, #ff1650 100%); container: catalog-dialog / inline-size; text-align: left; }
 .dialog > header { padding: 20px 24px; }
 .dialog > header > h2 { font-size: 18px; line-height: 26px; font-weight: 600; }
-.dialog > header > button { display: inline-flex; width: 40px; height: 40px; flex-shrink: 0; align-items: center; justify-content: center; padding: 10px; border-radius: 10px; }
-.dialog > header > button > svg { width: 18px; height: 18px; }
 .dialog > :global(.drawer-content) { padding: 24px; }
 .dialog .form > h2 { display: none; }
 .dialog .form > .formDescription { margin-top: 0; margin-bottom: 20px; }
 .dialog .form > fieldset:first-of-type, .dialog .editForm > fieldset:first-of-type { margin-top: 0; }
-.dialog > footer { padding: 16px 24px; background: var(--muted); }
-.dialog > footer > button { min-height: 44px; padding: 10px 16px; border-radius: 10px; background: var(--surface); color: var(--secondary); font-size: 13px; line-height: 20px; font-weight: 500; }
-.dialog > footer > button:hover { background: var(--muted); }
 .page :is(button, a):focus-visible, .dialog :is(button, a):focus-visible { outline: 2px solid var(--detail-orange); outline-offset: 3px; }
 @container (min-width: 600px) { .form .fieldGrid, .editForm .fieldGrid, .details { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 639px) {
   .standalonePanel { padding: 16px; }
   .empty { padding-inline: 16px; }
-  .dialog > header, .dialog > :global(.drawer-content), .dialog > footer { padding: 16px; }
+  .dialog > header, .dialog > :global(.drawer-content) { padding: 16px; }
   .nameText { max-width: 240px; }
 }

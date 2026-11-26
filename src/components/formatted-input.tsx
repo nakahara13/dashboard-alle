@@ -28,7 +28,9 @@ function FormattedInput({ format, value, defaultValue = "", onValueChange, name,
   useEffect(() => {
     const owner = inputRef.current?.form;
     if (!owner || value !== undefined) return;
-    const reset = () => setDraft({ source: undefined, text: inputDisplayValue(defaultValue, format) });
+    const reset = (event: Event) => queueMicrotask(() => {
+      if (!event.defaultPrevented && inputRef.current) setDraft({ source: undefined, text: inputDisplayValue(defaultValue, format) });
+    });
     owner.addEventListener("reset", reset);
     return () => owner.removeEventListener("reset", reset);
   }, [defaultValue, format, value, form]);

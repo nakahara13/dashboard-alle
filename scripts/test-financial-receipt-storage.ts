@@ -30,10 +30,25 @@ async function main() {
     const form = new FormData();
     form.set("comprovante", new File([], ""));
     assert.equal(await readOptionalReceiptFile(form), null);
-    for (const entry of ["arquivo.pdf", "", new File([], "vazio.pdf")]) {
+    // O multipart sem nome de arquivo pode ser interpretado como um campo de texto vazio.
+    const roundTrip = await new Request("http://localhost/comprovante", { method: "POST", body: form }).formData();
+    assert.equal(roundTrip.get("comprovante"), "");
+    assert.equal(await readOptionalReceiptFile(roundTrip), null);
+    form.set("comprovante", "");
+    assert.equal(await readOptionalReceiptFile(form), null);
+    delete process.env.AWS_REGION;
+    delete process.env.S3_RECEIPTS_BUCKET;
+    assert.equal(await readOptionalReceiptFile(new FormData()), null, "Salvar sem arquivo não exige configuração da AWS");
+    assert.equal(await readOptionalReceiptFile(roundTrip), null);
+    process.env.AWS_REGION = "sa-east-1";
+    process.env.S3_RECEIPTS_BUCKET = bucket;
+    for (const entry of ["arquivo.pdf", " ", new File([], "vazio.pdf"), new File([], "blob"), new File(["inválido"], "falso.pdf")]) {
       form.set("comprovante", entry);
       await assert.rejects(() => readOptionalReceiptFile(form), ReceiptError);
     }
+    form.set("comprovante", pdf);
+    const selected = await new Request("http://localhost/comprovante", { method: "POST", body: form }).formData();
+    assert.equal((await readOptionalReceiptFile(selected))?.name, "comprovante.pdf");
     form.set("comprovante", pdf);
     form.append("comprovante", png);
     await assert.rejects(() => readOptionalReceiptFile(form), /um comprovante/);

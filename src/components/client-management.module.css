@@ -27,7 +27,7 @@
 .successButton { --financial-gradient: linear-gradient(100deg, #16a34a 0%, #15803d 100%); box-shadow: 0 5px 14px -7px rgb(22 163 74 / .4); }
 .modalScope :global(.management-drawer) { text-align: left; font-size: 15px; line-height: 24px; font-weight: 400; }
 .modalScope :global(.management-drawer) > header h2 { font-size: 22px; line-height: 28px; font-weight: 600; }
-.modalScope :global(.management-drawer) > header > button, .modalScope :global(.management-drawer) > footer > button { min-height: 44px; font-size: 14px; line-height: 22px; }
+.modalScope :global(.management-drawer) > header > button { min-height: 44px; font-size: 14px; line-height: 22px; }
 .modalScope .clientForm { text-align: left; font-size: 15px; line-height: 24px; }
 .modalScope .clientForm label { font-size: 14px; line-height: 20px; }
 .modalScope .clientForm input:not([type="hidden"]), .modalScope .clientForm select { font-size: 15px; line-height: 22px; text-align: left; }
