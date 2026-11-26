@@ -151,6 +151,10 @@ A página Contas a receber lista transações reais abaixo do formulário, com f
 
 Execute `node --import tsx scripts/test-history-filters.ts` para validar os filtros e a formatação de valores.
 
+Em **Contas a pagar** e **Contas a receber**, o botão **Exportar planilha** no cabeçalho do histórico baixa um arquivo Excel (`.xlsx`) com todos os registros que atendem aos filtros aplicados, incluindo busca, período, competência, status e vínculos selecionados. A exportação mantém a ordenação da tabela e inclui os resultados de todas as páginas. Valores são células numéricas com duas casas decimais; IDs, NF, agência e conta preservam o texto e os zeros iniciais. Sem resultados, o botão fica desabilitado.
+
+As rotas `/contas-a-pagar/exportar` e `/contas-a-receber/exportar` exigem sessão autenticada e reutilizam os filtros das listagens. `npm run test:financial-export` valida os arquivos e as consultas com respostas simuladas, incluindo mais de uma página, registros antigos sem vínculos, autenticação e erros, sem gravar no banco.
+
 ## Tema visual
 
 O botão no cabeçalho alterna entre modo claro e noturno. O modo noturno usa `#21222b` no fundo e `#3107b2` nos destaques, com tons auxiliares para legibilidade. A preferência é salva localmente no navegador e sincronizada entre abas. O padrão inicial é o modo claro.

@@ -7,6 +7,7 @@ import { Pagination } from "@/components/pagination";
 import { ManagementFilters } from "@/components/management-filters";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { FinancialRowActions } from "@/components/financial-row-actions";
+import { FinancialExportButton } from "@/components/financial-export-button";
 import { PAYABLE_STATUSES } from "@/lib/contas-a-pagar";
 import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
@@ -66,7 +67,7 @@ export async function PayablesHistory({ params, types, partners }: {
     </form>
     </ManagementFilters>
     </div>
-    <div className={styles.tableHeader}><h2>Histórico de contas a pagar <span className={styles.count}>({result.totals._count})</span></h2></div>
+    <div className={styles.tableHeader}><h2>Histórico de contas a pagar <span className={styles.count}>({result.totals._count})</span></h2><FinancialExportButton key={JSON.stringify(values)} kind="pagar" filters={values} disabled={!result.totals._count} /></div>
     {result.rows.length === 0 ? <p className="rounded-lg bg-muted p-6 text-sm text-muted-ink">Nenhuma conta encontrada para os filtros selecionados.</p> : <div className={styles.tableScroll} role="region" aria-label="Tabela de contas a pagar" tabIndex={0}><table className={styles.table}><caption className="sr-only">Contas a pagar, ordenadas por vencimento mais recente</caption><thead><tr>{["Conta", "Favorecido", "Descrição", "Tipo", "Lançamento", "Competência", "Vencimento", "Valor", "Status", "Ações"].map((label) => <th key={label} scope="col" className={label === "Valor" ? styles.moneyHeading : label === "Conta" ? styles.idCell : label === "Favorecido" ? styles.partnerCell : undefined}>{label}</th>)}</tr></thead><tbody>{result.rows.map((row) => <tr key={row.id.toString()} className={styles.row}><td className={styles.idCell}><span className={styles.paymentId}>#{row.id.toString()}</span>{row.comprovantes.length > 0 && <span className={styles.receiptCount} title={`${row.comprovantes.length} comprovante(s)`}><InterfaceIcon name="invoice" />{row.comprovantes.length}<span className="sr-only"> comprovante(s)</span></span>}</td><td className={styles.partnerCell}><span className={styles.partnerName} title={row.favorecido.nome}>{row.favorecido.nome}</span></td><td className="p-3"><span className={styles.description} title={row.descricao}>{row.descricao}</span></td><td className="p-3"><span className={styles.cellText} title={row.tipo.nome}>{row.tipo.nome}</span></td><td className="p-3">{row.lancamento.toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td><td className="p-3">{row.competencia.split("-").reverse().join("/")}</td><td className="p-3">{row.vencimento.toLocaleDateString("pt-BR", { timeZone: "UTC" })}</td><td className={styles.moneyValue}>{formatMoney(row.valor)}</td><td className="p-3"><PaymentStatusBadge status={row.status} /></td><td className={styles.rowActions}><FinancialRowActions iconOnly id={row.id.toString()} label={`conta a pagar nº ${row.id}`} kind="pagar" receipts={row.comprovantes.map(serializeReceipt)} editData={{ kind: "pagar", types, partners, initial: {
       comprovantes: row.comprovantes.map(serializeReceipt),
       id: row.id.toString(), favorecido_id: String(row.favorecido_id), descricao: row.descricao, tipo_id: String(row.tipo_id),

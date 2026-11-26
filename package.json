@@ -44,6 +44,7 @@
     "db:test-client-reconciliation": "node --import tsx scripts/test-client-reconciliation.ts",
     "db:test-commission-upgrade": "tsx scripts/test-commission-upgrade.ts",
     "test:receipts": "node --import tsx scripts/test-financial-receipt-storage.ts",
+    "test:financial-export": "node --conditions=react-server --import tsx scripts/test-financial-export.ts",
     "db:test-receipts": "node --import tsx scripts/test-financial-receipts.ts"
   },
   "engines": {

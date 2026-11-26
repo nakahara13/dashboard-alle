@@ -29,6 +29,10 @@
 .clearFilters svg { width: 15px; height: 15px; }
 .tableHeader { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 20px 12px; }
 .tableHeader h2 { font-size: 16px; line-height: 24px; font-weight: 600; }
+.exportAction { display: grid; justify-items: end; gap: 5px; max-width: 100%; }
+.exportButton { --financial-gradient: linear-gradient(100deg, #16a34a 0%, #15803d 100%); box-shadow: 0 5px 14px -7px rgb(22 163 74 / .4); }
+.exportButton:focus-visible { outline: 2px solid var(--success-ink); outline-offset: 3px; }
+.exportError { max-width: 32ch; color: var(--danger-ink); text-align: right; font-size: 11px; line-height: 16px; }
 .count { color: var(--muted-ink); font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; }
 .tableScroll { max-width: 100%; max-height: min(70vh, 640px); overflow-x: auto; overflow-y: auto; border-block: 1px solid var(--line); scrollbar-width: auto; scrollbar-color: var(--detail-orange) var(--detail-orange-soft); scrollbar-gutter: stable; isolation: isolate; }
 .tableScroll::-webkit-scrollbar { width: 13px; height: 14px; }
@@ -88,6 +92,8 @@
   .header { align-items: flex-start; }
   .controls, .pagination { padding: 16px; }
   .tableHeader { padding: 16px 16px 12px; }
+  .exportAction { justify-items: start; }
+  .exportError { text-align: left; }
   .table .idCell { width: 80px; min-width: 80px; max-width: 80px; }
   .table .partnerCell { left: 80px; width: 156px; min-width: 156px; }
   .receivableTable .idCell { padding-inline: 8px; }

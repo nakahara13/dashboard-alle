@@ -7,6 +7,7 @@ import { Pagination } from "@/components/pagination";
 import { ManagementFilters } from "@/components/management-filters";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { FinancialRowActions } from "@/components/financial-row-actions";
+import { FinancialExportButton } from "@/components/financial-export-button";
 import { PAYMENT_STATUSES } from "@/lib/pagamentos";
 import Link from "next/link";
 import { getPrisma } from "@/lib/prisma";
@@ -70,7 +71,7 @@ export async function ReceivablesHistory({ params, types, partners, methods, acc
     </form>
     </ManagementFilters>
     </div>
-    <div className={styles.tableHeader}><h2>Histórico de recebimentos <span className={styles.count}>({result.totals._count})</span></h2></div>
+    <div className={styles.tableHeader}><h2>Histórico de recebimentos <span className={styles.count}>({result.totals._count})</span></h2><FinancialExportButton key={JSON.stringify(values)} kind="receber" filters={values} disabled={!result.totals._count} /></div>
     {result.rows.length === 0 ? <p className="rounded-lg bg-muted p-6 text-sm text-muted-ink">Nenhuma transação encontrada para os filtros selecionados.</p> : <div className={styles.tableScroll} role="region" aria-label="Tabela de contas a receber" tabIndex={0}>
       <table className={`${styles.table} ${styles.receivableTable}`}>
         <caption className="sr-only">Recebimentos registrados, ordenados por data mais recente</caption>
