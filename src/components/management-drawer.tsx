@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { InterfaceIcon } from "@/components/interface-icon";
@@ -65,8 +67,10 @@ export function ManagementDrawer({ title, children, onClose, onSaved, appearance
 }
 
 export function CreateRecord({ label, title, children, appearance = "default" }: { label: string; title: string; children: ReactNode; appearance?: "default" | "catalog" }) {
+  const canWrite = useCanWrite();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  if (!canWrite) return null;
   return <div className={appearance === "catalog" ? catalogStyles.createAction : "flex flex-wrap items-center gap-3"}>
     {message && <p role="status" className="text-sm text-accent-ink">{message}</p>}
     <button type="button" aria-haspopup="dialog" onClick={() => { setMessage(""); setOpen(true); }} className={appearance === "catalog" ? `${financialStyles.primaryButton} ${catalogStyles.createButton}` : "rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover"}>{appearance === "catalog" ? <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg> : "+ "}{label}</button>

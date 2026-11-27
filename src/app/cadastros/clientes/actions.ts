@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
@@ -10,7 +10,7 @@ import { refreshClientPages } from "@/lib/client-cache";
 
 export type ClientImportState = { success: boolean; message: string; rows?: ClientImportRow[] };
 export async function setClientActive(id: number, ativo: boolean): Promise<ClientImportState> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     if (!Number.isSafeInteger(id) || id < 1 || typeof ativo !== "boolean") throw new Error("Cliente ou situação inválida.");
     await auditedTransaction(getPrisma(), user, `/cadastros/clientes/visao-geral • ${ativo ? "Ativar" : "Inativar"} cliente`, async (db) => {
@@ -31,7 +31,7 @@ function failure(error: unknown) {
 }
 // A leitura da planilha somente prepara a prévia; nenhum dado é salvo nesta etapa.
 export async function previewClientImport(_state: ClientImportState, form: FormData): Promise<ClientImportState> {
-  await requireUser();
+  await requireAdmin();
   try {
     const file = form.get("arquivo");
     if (!(file instanceof File) || !file.size || file.size > 5 * 1024 * 1024) throw new Error("Envie uma planilha .xlsx ou .csv com até 5 MB.");
@@ -41,7 +41,7 @@ export async function previewClientImport(_state: ClientImportState, form: FormD
 }
 // Apenas a confirmação explícita cadastra o lote, sem criar comissões ou alterar clientes existentes.
 export async function confirmClientImport(_state: ClientImportState, form: FormData): Promise<ClientImportState> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     const count = await auditedTransaction(getPrisma(), user, "/cadastros/clientes • Importar clientes", (db) => importClients(db, JSON.parse(String(form.get("rows") ?? "[]"))), { isolationLevel: "Serializable", timeout: 30000 });
     for (const path of ["/", "/cadastros/clientes/visao-geral", "/cadastros/clientes", "/comissoes", "/comissoes/nova", "/comissoes/importar"]) revalidatePath(path);
@@ -53,7 +53,7 @@ export async function confirmClientImport(_state: ClientImportState, form: FormD
 
 // A remoção preserva comissões existentes: o banco bloqueia clientes com vínculos.
 export async function removeClient(id: number): Promise<ClientImportState> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     if (!Number.isSafeInteger(id) || id < 1) throw new Error("Cliente inválido.");
     await auditedTransaction(getPrisma(), user, "/cadastros/clientes/visao-geral • Excluir cliente", (db) => db.cliente.delete({ where: { id } }));

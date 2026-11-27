@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { useState } from "react";
 import { ManagementDrawer, RecordDetails } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
@@ -19,6 +21,7 @@ function CommissionDetails({ row, options, onClose, onSaved, initialEditing }: {
   onSaved: (message: string) => void;
   initialEditing: boolean;
 }) {
+  const canWrite = useCanWrite();
   const [editing, setEditing] = useState(initialEditing);
   // A consulta preserva todos os dados antes exibidos abaixo da tabela.
   const details = [
@@ -46,7 +49,7 @@ function CommissionDetails({ row, options, onClose, onSaved, initialEditing }: {
         <RecordDetails items={details} />
         {Number(row.margem) <= 0 && <p role="status" className="mt-5 rounded-lg bg-danger-soft p-3 text-sm text-danger-ink">Atenção: margem zero ou negativa.</p>}
         <ClientPaymentHistory clientId={row.cliente_id} />
-        <button type="button" onClick={() => setEditing(true)} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">Editar comissão</button>
+        {canWrite && <button type="button" onClick={() => setEditing(true)} className="mt-6 rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-on-accent hover:bg-accent-hover">Editar comissão</button>}
       </>}
     </div>
   </ManagementDrawer>;

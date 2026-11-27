@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { auditedTransaction } from "@/lib/audit-request";
 import { parseRecordId } from "@/lib/record-id";
@@ -10,7 +10,7 @@ import { ReceiptError, readOptionalReceiptFile } from "@/lib/financial-receipt-s
 import { persistFinancialReceipt } from "@/lib/financial-receipts";
 
 export async function attachFinancialReceiptAction(kind: ReceiptKind, recordId: string, form: FormData): Promise<{ success: boolean; message: string; receipt?: ReceiptSummary }> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     parseRecordId(recordId);
     const file = await readOptionalReceiptFile(form);

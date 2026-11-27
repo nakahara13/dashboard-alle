@@ -4,6 +4,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPrisma } from "./prisma";
+import { canManageRecords } from "./access";
 import { createAuditedSession } from "./login-session";
 import type { LoginMetadata } from "./login-metadata";
 import {
@@ -31,7 +32,7 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser();
-  if (user.role !== "admin") throw new Error("Acesso permitido apenas para administradores.");
+  if (!canManageRecords(user)) throw new Error("Acesso somente para visualização. Alterações são permitidas apenas para administradores.");
   return user;
 }
 

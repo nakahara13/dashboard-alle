@@ -1,4 +1,5 @@
 import { MonthInput } from "@/components/formatted-input";
+import { WriteAccess } from "@/components/access-provider";
 import { requireUser } from "@/lib/auth";
 import { Pagination } from "@/components/pagination";
 import { ManagementFilters } from "@/components/management-filters";
@@ -53,7 +54,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       <div className={clientStyles.headerActions}>
         <div><ClientUnitSync /></div>
         <Link href="/cadastros/clientes/cruzamento" className={styles.primaryButton}><InterfaceIcon name="invoice" />Cruzar planilha mensal</Link>
-        <Link href="/cadastros/clientes" className={clientStyles.secondaryButton}>Importar / cadastro completo</Link>
+        <WriteAccess><Link href="/cadastros/clientes" className={clientStyles.secondaryButton}>Importar / cadastro completo</Link></WriteAccess>
         <CreateClient options={options} />
       </div>
     </header>

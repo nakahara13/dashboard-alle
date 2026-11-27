@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { createHash } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
@@ -17,7 +17,7 @@ export type State = { success: boolean; message: string };
 export type PreviewState = State & { rows?: ImportRow[]; geradora_id?: string; geradora_nome?: string; competencia?: string };
 export type ImportConfirmState = State & { conflicts?: ImportConflict[]; reviewKey?: string };
 export async function updateCommissionReceiptsAction(form: FormData): Promise<State> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     const values = form.getAll("ids");
     if (!values.length || values.length > 20) throw new Error("Selecione até 20 comissões da página atual.");
@@ -31,7 +31,7 @@ export async function updateCommissionReceiptsAction(form: FormData): Promise<St
   } catch (error) { return { success: false, message: message(error) }; }
 }
 export async function updateCommissionPaymentsAction(form: FormData): Promise<State> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     const values = form.getAll("ids");
     if (!values.length || values.length > 20) throw new Error("Selecione até 20 comissões da página atual.");
@@ -56,7 +56,7 @@ function message(error: unknown) {
 // Atualiza as páginas separadas que compartilham cadastros e vínculos.
 function refresh() { for (const path of ["/cadastros/clientes/cruzamento", "/cadastros/clientes/visao-geral", "/comissoes/nova", "/comissoes/importar", "/cadastros/clientes", "/cadastros/geradores", "/cadastros/distribuidoras", "/cadastros/unidades", "/cadastros/parceiros", "/comissoes", "/contas-a-receber", "/contas-a-pagar", "/"]) revalidatePath(path); }
 export async function saveCommissionAction(_state: State, form: FormData): Promise<State> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     const input = Object.fromEntries(form.entries()) as CommissionInput;
     const keys: (keyof CommissionInput)[] = ["id", "cliente_id", "geradora_id", "distribuidora_id", "parceiro_id", "competencia", "valor_economia", "valor_comissao_empresa", "valor_comissao_parceiro", "status_recebimento", "status_pagamento", "data_recebimento", "data_pagamento", "gerar_entrada", "gerar_saida", "conta_bancaria_id", "metodo_id", "entrada_existente_id", "saida_existente_id"];
@@ -66,7 +66,7 @@ export async function saveCommissionAction(_state: State, form: FormData): Promi
   } catch (error) { return { success: false, message: message(error) }; }
 }
 export async function saveCommissionCatalog(_state: State, form: FormData): Promise<State> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     const kind = String(form.get("cadastro") ?? "");
     const paths: Record<string, string> = { cliente: "/cadastros/clientes", geradora: "/cadastros/geradores", distribuidora: "/cadastros/distribuidoras", unidade: "/cadastros/unidades" };
@@ -79,7 +79,7 @@ export async function saveCommissionCatalog(_state: State, form: FormData): Prom
   }
 }
 export async function previewCommissionImport(_state: PreviewState, form: FormData): Promise<PreviewState> {
-  await requireUser();
+  await requireAdmin();
   try {
     const geradora_id = String(form.get("geradora_id") ?? "");
     const id = positiveId(geradora_id), competencia = parseCompetence(String(form.get("competencia") ?? ""));
@@ -92,7 +92,7 @@ export async function previewCommissionImport(_state: PreviewState, form: FormDa
   } catch (error) { return { success: false, message: message(error) }; }
 }
 export async function confirmCommissionImport(_state: ImportConfirmState, form: FormData): Promise<ImportConfirmState> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     const geradora_id = String(form.get("geradora_id") ?? ""), competencia = parseCompetence(String(form.get("competencia") ?? ""));
     positiveId(geradora_id);

@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/auth";
+import { requireAdmin, requireUser } from "@/lib/auth";
 
 import { getPrisma } from "@/lib/prisma";
 import { auditedTransaction } from "@/lib/audit-request";
@@ -28,7 +28,7 @@ export async function previewReconciliation(_state: ReconciliationState, form: F
 }
 
 export async function confirmReconciliation(_state: ReconciliationState, form: FormData): Promise<ReconciliationState> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     if (form.get("completa") !== "on") throw new Error("Confirme que a planilha contém todos os clientes do escopo escolhido.");
     const result = await auditedTransaction(getPrisma(), user, "/cadastros/clientes/cruzamento • Confirmar cruzamento de clientes", (db) => applyReconciliation(db, JSON.parse(String(form.get("payload") ?? "null"))), { isolationLevel: "Serializable", timeout: 30000 });

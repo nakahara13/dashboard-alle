@@ -5,7 +5,6 @@ import { ManagementRowActions } from "@/components/management-row-actions";
 import { getPrisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { USER_PUBLIC_SELECT } from "@/lib/usuarios";
-import { redirect } from "next/navigation";
 import financialStyles from "@/components/financial-management.module.css";
 import styles from "@/components/management-catalog.module.css";
 
@@ -13,8 +12,7 @@ export const metadata: Metadata = { title: "Usuários | Financeiro Alle" };
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const user = await requireUser();
-  if (user.role !== "admin") redirect("/");
+  await requireUser();
   let users;
   try { users = await getPrisma().usuario.findMany({ orderBy: [{ nome: "asc" }, { id: "asc" }], select: USER_PUBLIC_SELECT }); }
   catch { return <p role="alert">Não foi possível carregar os usuários. Verifique a conexão e tente novamente.</p>; }

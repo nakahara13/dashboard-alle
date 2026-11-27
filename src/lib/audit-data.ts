@@ -2,9 +2,11 @@ import "server-only";
 
 import type { Prisma } from "../generated/prisma/client";
 import { getPrisma } from "./prisma";
+import { requireAuditAccess } from "./audit-vault";
 import { AUDIT_PAGE_SIZE, parseAuditFilters, type AuditData, type AuditEntry, type AuditParams } from "./audit";
 
 export async function loadAudit(params: AuditParams): Promise<AuditData> {
+  await requireAuditAccess();
   const { filters, page: requestedPage } = parseAuditFilters(params);
   const where: Prisma.AuditoriaWhereInput = { dia: { gte: new Date(`${filters.inicio}T00:00:00Z`), lte: new Date(`${filters.fim}T00:00:00Z`) } };
   if (filters.usuario) where.usuario_id = Number(filters.usuario);

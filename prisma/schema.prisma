@@ -152,10 +152,19 @@ model SessaoUsuario {
   usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
   expira_em DateTime @db.Timestamptz(6)
   criado_em DateTime @default(now()) @db.Timestamptz(6)
+  auditoria_liberada_ate DateTime? @db.Timestamptz(6)
 
   @@index([usuario_id])
   @@index([expira_em])
   @@map("sessoes_usuarios")
+}
+
+// Cofre compartilhado: somente o hash do PIN fica persistido.
+model CofreAuditoria {
+  id Int @id
+  pin_hash String @db.VarChar(255)
+
+  @@map("cofre_auditoria")
 }
 
 model LoginTentativa {

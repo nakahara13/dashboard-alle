@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Action = "view" | "edit" | "delete";
@@ -15,6 +17,8 @@ export function RowActions({ label, children }: { label: string; children: React
 }
 
 export function RowActionButton({ action, label, children, iconOnly = false, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className"> & { action: Action; label: string; iconOnly?: boolean }) {
+  const canWrite = useCanWrite();
+  if (action !== "view" && !canWrite) return null;
   return <button {...props} type="button" title={`${labels[action]} ${label}`} aria-label={`${labels[action]} ${label}`} className={`inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${action === "delete" ? "border-line bg-surface text-danger-ink hover:border-danger-ink hover:bg-danger-soft" : action === "edit" ? "border-accent-line bg-accent-soft text-accent-ink hover:bg-accent-soft/70" : "border-line bg-surface text-secondary hover:bg-muted"}`}>
     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">{icons[action]}</svg>
     {!iconOnly && <span>{children ?? labels[action]}</span>}

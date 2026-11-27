@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 import { getPrisma } from "@/lib/prisma";
 import { auditedTransaction } from "@/lib/audit-request";
@@ -13,7 +13,7 @@ import { persistFinancialReceipt } from "@/lib/financial-receipts";
 export type PaymentState = { success: boolean; message: string };
 
 export async function savePayment(_previous: PaymentState, form: FormData): Promise<PaymentState> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   let id: bigint | undefined;
   try {
     if (form.has("id")) id = parseRecordId(String(form.get("id")));
@@ -55,7 +55,7 @@ export async function savePayment(_previous: PaymentState, form: FormData): Prom
 }
 
 export async function deletePayment(id: string) {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     await auditedTransaction(getPrisma(), user, "/contas-a-receber • Excluir recebimento", (db) => db.criar_pagamento.delete({ where: { id_do_registro: parseRecordId(id) } }));
     revalidatePath("/contas-a-receber");

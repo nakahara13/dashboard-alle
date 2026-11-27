@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition, type ChangeEvent, type FormEvent } from "react";
@@ -69,6 +71,7 @@ export function ReceiptList({ receipts }: { receipts: readonly ReceiptSummary[] 
 }
 
 export function FinancialReceipts({ kind, recordId, receipts = [], onPendingChange }: { kind: ReceiptKind; recordId: string; receipts?: readonly ReceiptSummary[]; onPendingChange?: (pending: boolean) => void }) {
+  const canWrite = useCanWrite();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const markClean = useDrawerUploadFeedback(pending);
@@ -99,10 +102,10 @@ export function FinancialReceipts({ kind, recordId, receipts = [], onPendingChan
   return <section className="mt-6 space-y-4 border-t border-line pt-5" aria-label="Comprovantes da transação">
     <h3 className="text-sm font-semibold">Comprovantes{visible.length ? ` (${visible.length})` : ""}</h3>
     <ReceiptList receipts={visible} />
-    <form onSubmit={submit} aria-busy={pending} className="space-y-3 rounded-lg border border-line p-3">
+    {canWrite && <form onSubmit={submit} aria-busy={pending} className="space-y-3 rounded-lg border border-line p-3">
       <ReceiptFileInput disabled={pending} required />
       {notice && <p role={notice.success ? "status" : "alert"} className={`text-sm ${notice.success ? "text-accent-ink" : "text-danger-ink"}`}>{notice.message}</p>}
       <button type="submit" disabled={pending} className="min-h-11 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-60">{pending ? "Anexando…" : "Anexar comprovante"}</button>
-    </form>
+    </form>}
   </section>;
 }

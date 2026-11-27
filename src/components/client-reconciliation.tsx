@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import Link from "next/link";
 import { useActionState, useId, useState } from "react";
 import { previewReconciliation, confirmReconciliation, type ReconciliationState } from "@/app/cadastros/clientes/cruzamento/actions";
@@ -21,6 +23,7 @@ function Notice({ state }: { state: ReconciliationState }) {
 }
 
 function Review({ preview, onDone, onCancel }: { preview: ReconciliationPreview; onDone: (message: string) => void; onCancel: () => void }) {
+  const canWrite = useCanWrite();
   const searchId = useId();
   const changeable = preview.rows.filter((row) => row.kind === "ausente" || row.kind === "reativar");
   const [selected, setSelected] = useState(new Set(changeable.map((row) => row.id!)));
@@ -38,7 +41,7 @@ function Review({ preview, onDone, onCancel }: { preview: ReconciliationPreview;
   const visible = filtered.slice((currentPage - 1) * 20, currentPage * 20);
   const inactivate = changeable.filter((row) => selected.has(row.id!) && row.kind === "ausente").length;
   const reactivate = selected.size - inactivate;
-  const canSelect = kind === "ausente" || kind === "reativar";
+  const canSelect = canWrite && (kind === "ausente" || kind === "reativar");
   const toggle = (ids: number[], checked: boolean) => setSelected((previous) => {
     const next = new Set(previous);
     ids.forEach((id) => checked ? next.add(id) : next.delete(id));
@@ -62,16 +65,17 @@ function Review({ preview, onDone, onCancel }: { preview: ReconciliationPreview;
       </tr>)}{!visible.length && <tr><td colSpan={canSelect ? 5 : 4} className="p-8 text-center text-muted-ink">Nenhum cliente nesta situação.</td></tr>}</tbody>
     </table></div>
     <div className={styles.pagination}><span>{filtered.length} resultado(s) · Página {currentPage} de {pages}</span><div><button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className={styles.secondaryButton}>Anterior</button><button type="button" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)} className={styles.secondaryButton}>Próxima</button></div></div>
-    {kind === "novo" && <p className="text-sm text-muted-ink">Use <Link href="/cadastros/clientes" className="text-accent-ink underline">Importar / cadastrar clientes</Link> para incluir as UCs novas. Depois, refaça o cruzamento.</p>}
+    {canWrite && kind === "novo" && <p className="text-sm text-muted-ink">Use <Link href="/cadastros/clientes" className="text-accent-ink underline">Importar / cadastrar clientes</Link> para incluir as UCs novas. Depois, refaça o cruzamento.</p>}
     {/* A confirmação permanece marcada após erro; o sucesso reinicia a sessão inteira. */}
-    <form action={action} onReset={(event) => event.preventDefault()} className={styles.confirmForm}>
+    {canWrite && <form action={action} onReset={(event) => event.preventDefault()} className={styles.confirmForm}>
       <input type="hidden" name="payload" value={JSON.stringify({ scope: preview.scope, ucs: preview.ucs, snapshot: preview.snapshot, ids: [...selected] })} />
       <p className="font-medium">{inactivate} cliente(s) para inativar · {reactivate} para reativar</p>
       <p className="text-sm text-muted-ink">Clientes inativos ficam bloqueados para novas comissões. Comissões e pagamentos já registrados continuam no histórico. Nenhum cadastro será excluído.</p>
       {!!changeable.length && <label className={styles.confirmation}><input type="checkbox" name="completa" required checked={complete} disabled={pending} onChange={(event) => setComplete(event.target.checked)} className={styles.checkbox} />Confirmo que esta planilha representa a lista completa de clientes atuais de {preview.scopeName}, incluindo clientes novos e antigos.</label>}
       <Notice state={state} />
       <div className={styles.actions}>{!!changeable.length && <button disabled={pending || !selected.size || !complete} className={financialStyles.primaryButton}><InterfaceIcon name="check" />{pending ? "Aplicando alterações…" : "Confirmar alterações selecionadas"}</button>}<button type="button" disabled={pending} onClick={onCancel} className={styles.secondaryButton}>Fazer outro cruzamento</button></div>
-    </form>
+    </form>}
+    {!canWrite && <button type="button" onClick={onCancel} className={styles.secondaryButton}>Fazer outro cruzamento</button>}
   </section>;
 }
 

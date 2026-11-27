@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { DateInput } from "@/components/formatted-input";
 import { InterfaceIcon } from "@/components/interface-icon";
 
@@ -29,6 +31,7 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
   filterFooter: ReactNode;
   children: ReactNode;
 }) {
+  const canWrite = useCanWrite();
   const [selected, setSelected] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [receiptDate, setReceiptDate] = useState("");
@@ -56,7 +59,7 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
     <div className={styles.filters}>
       <ManagementFilters {...filterProps}>
         {advancedFilters}
-        {rows.length > 0 && <>
+        {canWrite && rows.length > 0 && <>
           <div className={styles.bulkToolbar}>
             <div className={styles.paymentGroup} data-kind="receipt" role="group" aria-label="Recebimento das comissões selecionadas">
               <label className={styles.paymentDate}><span className={styles.operationLabel}><InterfaceIcon name="incoming" />Data de recebimento</span><DateInput value={receiptDate} onValueChange={setReceiptDate} disabled={pending} className={styles.dateInput} /></label>
@@ -75,7 +78,7 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
       {filterFooter}
     </div>
     {children}
-    {rows.length > 0 && <div className={styles.selectionGroup} role="group" aria-label="Seleção de comissões">
+    {canWrite && rows.length > 0 && <div className={styles.selectionGroup} role="group" aria-label="Seleção de comissões">
         <button type="button" disabled={pending} className={`${buttonClass} ${styles.selectAllButton}`} onClick={() => setSelected(rows.map((row) => row.id))}><InterfaceIcon name="check" />Marcar todas</button>
         <button type="button" disabled={pending || !selected.length} className={`${buttonClass} ${styles.deselectAllButton}`} onClick={() => setSelected([])}><InterfaceIcon name="close" />Desmarcar todas</button>
         <span className={styles.selectionCount} role="status">{selected.length} selecionada(s) nesta página</span>
@@ -86,11 +89,11 @@ export function CommissionTable({ rows, options, filterProps, advancedFilters, f
       <table className={styles.table}>
         <caption className="sr-only">Comissões por cliente e competência</caption>
         <thead><tr>
-          <th scope="col" className={styles.selectionCell}><input ref={allCheckbox} type="checkbox" aria-label="Selecionar todas as comissões desta página" checked={allSelected} disabled={pending} onChange={() => setSelected(allSelected ? [] : rows.map((row) => row.id))} /></th>
+          {canWrite && <th scope="col" className={styles.selectionCell}><input ref={allCheckbox} type="checkbox" aria-label="Selecionar todas as comissões desta página" checked={allSelected} disabled={pending} onChange={() => setSelected(allSelected ? [] : rows.map((row) => row.id))} /></th>}
           {["Cliente / UC", "Geradora", "Distribuidora", "Unidade Allp Fit", "Competência", "Economia", "Comissão da empresa", "Comissão do parceiro", "Margem", "Recebimento", "Pagamento", "Ações"].map((label) => <th scope="col" key={label} className={label === "Cliente / UC" ? styles.clientCell : ["Economia", "Comissão da empresa", "Comissão do parceiro", "Margem"].includes(label) ? styles.moneyCell : undefined}>{label}</th>)}
         </tr></thead>
         <tbody>{rows.map((row) => <tr key={row.id} className={`${styles.row} ${selected.includes(row.id) ? styles.selectedRow : Number(row.margem) <= 0 ? styles.warningRow : ""}`}>
-          <td className={styles.selectionCell}><input type="checkbox" aria-label={`Selecionar comissão de ${row.cliente.nome}, UC ${row.cliente.uc}`} checked={selected.includes(row.id)} disabled={pending} onChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} /></td>
+          {canWrite && <td className={styles.selectionCell}><input type="checkbox" aria-label={`Selecionar comissão de ${row.cliente.nome}, UC ${row.cliente.uc}`} checked={selected.includes(row.id)} disabled={pending} onChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} /></td>}
           <td className={styles.clientCell}><span className={styles.clientName} title={row.cliente.nome}>{row.cliente.nome}</span><span className={styles.clientUC} title={row.cliente.uc}>{row.cliente.uc}</span></td>
           <td><CellText value={row.geradora?.nome ?? "Geradora não informada"} /></td>
           <td><CellText value={row.distribuidora.nome} /></td>

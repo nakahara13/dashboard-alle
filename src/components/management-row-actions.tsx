@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { useId, useState, useTransition, type ComponentProps, type FormEvent } from "react";
 import { ManagementDrawer, useDrawerFeedback } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
@@ -70,6 +72,7 @@ function ManagementEditForm({ kind, record, onSaved }: { kind: ManagementKind; r
   </form>;
 }
 export function ManagementRowActions({ kind, record }: { kind: ManagementKind; record: { id: number; nome: string; [key: string]: string | number | null } }) {
+  const canWrite = useCanWrite();
   const [mode, setMode] = useState<"details" | "edit" | null>(null);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
@@ -95,7 +98,7 @@ export function ManagementRowActions({ kind, record }: { kind: ManagementKind; r
         <span className={styles.detailIcon}><InterfaceIcon name={item.icon} /></span>
         <dl><dt className={styles.detailLabel}>{item.label}</dt><dd className={styles.detailValue}>{item.role ? <span className={`${styles.roleBadge} ${record.role === "admin" ? styles.adminRole : ""}`}>{item.value || "Não informado"}</span> : item.value || "Não informado"}</dd></dl>
       </div>)}</div>
-      <div className={styles.formActions}><button type="button" onClick={() => setMode("edit")} className={financialStyles.primaryButton}><InterfaceIcon name="filters" />Editar</button></div>
+      {canWrite && <div className={styles.formActions}><button type="button" onClick={() => setMode("edit")} className={financialStyles.primaryButton}><InterfaceIcon name="filters" />Editar</button></div>}
     </>}
   </ManagementDrawer>}
   {error && <p role="alert" className="mt-2 max-w-xs whitespace-normal text-xs text-danger-ink">{error}</p>}{message && <p role="status" className="mt-2 text-xs text-accent-ink">{message}</p>}</div>;

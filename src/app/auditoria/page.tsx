@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { InterfaceIcon } from "@/components/interface-icon";
 import { ManagementFilters } from "@/components/management-filters";
 import { Pagination } from "@/components/pagination";
 import { requireUser } from "@/lib/auth";
+import { getAuditVaultStatus } from "@/lib/audit-vault";
+import { AuditVaultGate, AuditVaultContent, AuditVaultControls } from "@/components/audit-vault";
 import { AUDIT_LOCATIONS, auditDayLabel, auditFieldLabel, auditTime, auditValue, type AuditEntry } from "@/lib/audit";
 import { loadAudit } from "@/lib/audit-data";
 import financialStyles from "@/components/financial-management.module.css";
@@ -44,7 +45,8 @@ function Comparison({ entry }: { entry: AuditEntry }) {
 
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireUser();
-  if (user.role !== "admin") redirect("/");
+  const vault = await getAuditVaultStatus();
+  if (!vault.unlockedUntil) return <AuditVaultGate configured={vault.configured} admin={user.role === "admin"} />;
   let data;
   try { data = await loadAudit(await searchParams); }
   catch (error) {
@@ -56,8 +58,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const href = (page: number) => `${basePath}?${new URLSearchParams({ ...filterValues, pagina: String(page) })}`;
   const days = new Map<string, AuditEntry[]>();
   for (const entry of data.entries) days.set(entry.dia, [...(days.get(entry.dia) ?? []), entry]);
-  return <div className={`${financialStyles.page} ${styles.page}`}>
+  return <AuditVaultContent until={vault.unlockedUntil.toISOString()}><div className={`${financialStyles.page} ${styles.page}`}>
     <header className={financialStyles.header}><div><h1>Auditoria</h1><p>Alterações e logins por dia, com dados do acesso e horário de Brasília.</p></div><span className={styles.readOnly}><InterfaceIcon name="lock" />Histórico de eventos</span></header>
+    <AuditVaultControls admin={user.role === "admin"} />
     <section className={financialStyles.panel} aria-label="Filtros da auditoria">
       <div className={`${financialStyles.controls} ${styles.controls}`}>
         <ManagementFilters basePath={basePath} values={filterValues} appearance="capsule" search={{ key: "busca", label: "Buscar na auditoria", placeholder: "Usuário, origem ou registro", max: 255 }} options={{ local: AUDIT_LOCATIONS.map((item) => ({ id: item.value, nome: item.label })), acao: actions }}>
@@ -93,5 +96,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
       </section>)}
       <div className={`${financialStyles.panel} ${financialStyles.pagination}`}><Pagination compact page={data.page} pages={data.pages} href={href} label="Paginação da auditoria" /></div>
     </div>}
-  </div>;
+  </div></AuditVaultContent>;
 }

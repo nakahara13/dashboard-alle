@@ -222,3 +222,7 @@ Essa carga confirma o funcionamento nesses cenários. Dimensione a RAM de produ�
 - [Easypanel: backup e restauração](https://easypanel.io/docs/backups/database)
 - [PostgreSQL: imagem oficial e PGDATA](https://github.com/docker-library/docs/blob/master/postgres/README.md)
 - [Next.js: standalone](https://nextjs.org/docs/app/api-reference/config/next-config-js/output)
+
+### Perfil Gestor e cofre da auditoria
+
+Execute `npm run db:deploy` na Shell da nova imagem para aplicar `20261127000100_cofre_auditoria`. A migration adiciona o hash do PIN e a liberação temporária na sessão. Depois do deploy, o primeiro acesso de um administrador a **Controle → Auditoria** define o PIN compartilhado de 6 dígitos; nenhum PIN padrão é criado. Gestores consultam todos os módulos, incluindo Usuários e a auditoria após o PIN, mas todas as mutações de negócio exigem Admin no servidor. O token Bearer da integração continua independente dos perfis da interface.

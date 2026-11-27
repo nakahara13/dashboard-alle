@@ -4,7 +4,7 @@ Base do sistema financeiro com Next.js (App Router), TypeScript, Tailwind CSS, P
 
 Para hospedar a aplicação em containers no Easypanel e transferir o banco local preservando os dados, siga o [guia de primeiro deploy](docs/deploy-easypanel.md). O projeto inclui um Dockerfile de produção, um modelo de variáveis em `.env.easypanel.example` e `npm run db:export` para gerar a cópia do PostgreSQL.
 
-A interface usa branco e laranja, com detalhes em roxo. A sidebar responsiva organiza os módulos em Financeiro (Contas a receber, Contas a pagar, Comissões e Clientes), Gestão (Cadastros, Tipos de Pagamento, Contas bancárias e Métodos de pagamento) e Controle (Usuários e Auditoria). Configurações e Auditoria possuem páginas iniciais vazias. A rota inicial abre o dashboard após a autenticação.
+A interface usa branco e laranja, com detalhes em roxo. A sidebar responsiva organiza os módulos em Financeiro (Contas a receber, Contas a pagar, Comissões e Clientes), Gestão (Cadastros, Tipos de Pagamento, Contas bancárias e Métodos de pagamento) e Controle (Usuários e Auditoria). A auditoria reúne o histórico de alterações e logins e exige o PIN do cofre. Configurações possui uma página inicial vazia. A rota inicial abre o dashboard após a autenticação.
 
 O dashboard consulta a soma real de `valor_total` em `criar_pagamento`, filtrando por `data_do_pagamento`. Entradas representam os recebimentos registrados, sem inferir liquidação pelo campo livre de status. Registros sem data não entram no resumo diário. Balanço, saídas e alertas ficam indisponíveis até suas fontes serem implementadas. Não há dados ou gráficos simulados; Recharts permanece instalado para gráficos futuros.
 
@@ -16,9 +16,11 @@ Execute `npm run db:deploy` para aplicar a migração de autenticação. As senh
 
 Para preparar um administrador, configure temporariamente `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD` e `BOOTSTRAP_ADMIN_NAME` no ambiente e execute `npm run auth:admin`. O comando cria ou atualiza esse usuário como Admin e revoga suas sessões anteriores. Não mantenha a senha em arquivos versionados. Não há cadastro público nem usuário padrão criado automaticamente no início da aplicação.
 
-Administradores criam, editam e excluem usuários em **Controle → Usuários**, incluindo a definição de senha (8 a 128 caracteres). Gestores acessam os demais módulos. Usuários existentes sem senha recebem acesso depois que um administrador define sua senha na edição. Alterações de senha, e-mail ou perfil revogam as sessões do usuário; o último administrador com senha não pode ser excluído ou rebaixado.
+Administradores criam, editam e excluem usuários em **Controle → Usuários**, incluindo a definição de senha (8 a 128 caracteres). Gestores têm acesso somente para visualização de todos os módulos, incluindo Usuários e Auditoria. Podem consultar dados, filtros, históricos, comprovantes e exportações. Criar, editar, excluir, importar, alterar status, sincronizar unidades e anexar comprovantes exige o perfil Admin, inclusive nas ações chamadas diretamente no servidor. Usuários existentes sem senha recebem acesso depois que um administrador define sua senha na edição. Alterações de senha, e-mail ou perfil revogam as sessões do usuário; o último administrador com senha não pode ser excluído ou rebaixado.
 
-Validação: `npm run auth:test` testa senhas e regras de gestão de usuários; `node --import tsx scripts/test-auth.ts --db` inclui sessões, expiração e bloqueio no banco. Com o servidor local em execução, `npm run auth:test:http` valida o fluxo HTTP e remove os usuários temporários ao final. Use `ALLE_AUTH_BASE` para indicar uma porta diferente de `http://127.0.0.1:3000`.
+Na primeira entrada em **Controle → Auditoria**, um administrador define e confirma um PIN compartilhado de 6 dígitos. Não há PIN padrão. O banco armazena apenas o hash scrypt; o PIN não aparece no histórico. Cada sessão exige o PIN para liberar a leitura por 15 minutos. O botão **Bloquear auditoria** encerra a liberação imediatamente. Cinco tentativas incorretas por usuário bloqueiam novas tentativas por 15 minutos, inclusive após sair e entrar novamente. Administradores podem trocar o PIN informando o PIN atual; a troca bloqueia a auditoria em todas as sessões. A migração `20261127000100_cofre_auditoria` deve ser aplicada com `npm run db:deploy`.
+
+Validação: `npm run test:audit-vault` verifica o cofre em tabelas temporárias isoladas, incluindo concorrência, perfis, expiração e troca do PIN. `npm run auth:test` testa senhas e regras de gestão de usuários; `node --import tsx scripts/test-auth.ts --db` inclui sessões, expiração e bloqueio no banco. Com o servidor local em execução, `npm run auth:test:http` valida o fluxo HTTP e remove os usuários temporários ao final. Use `ALLE_AUTH_BASE` para indicar uma porta diferente de `http://127.0.0.1:3000`.
 
 ## Desenvolvimento
 
@@ -88,7 +90,7 @@ npm run api:token  # Gera e salva API_TOKEN em .env sem exibir a credencial
 npm run dev        # Reinicie o servidor se já estava em execução
 ```
 
-Configure o valor de `API_TOKEN` no ambiente seguro da integração e envie `Authorization: Bearer SEU_TOKEN` em todas as chamadas, incluindo `/health`. A credencial precisa ter pelo menos 32 caracteres, sem espaços, e permite ler e alterar todos os recursos. Trata-se de autenticação da integração; o cadastro de usuários não implementa login ou permissões por usuário. O token protege somente a API e não deve ser usado em código público no navegador.
+Configure o valor de `API_TOKEN` no ambiente seguro da integração e envie `Authorization: Bearer SEU_TOKEN` em todas as chamadas, incluindo `/health`. A credencial precisa ter pelo menos 32 caracteres, sem espaços, e permite ler e alterar todos os recursos. Trata-se de autenticação da integração, independente das sessões da interface e das permissões dos perfis Admin/Gestor. O token protege somente a API e não deve ser usado em código público no navegador.
 
 ```bash
 curl 'http://localhost:3000/api/v1/clientes?pagina=1&limite=20' \

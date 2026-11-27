@@ -16,6 +16,8 @@ const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.
 const suffix = randomUUID();
 const emails = [`auth-http-${suffix}@example.com`, `gestor-http-${suffix}@example.com`];
 const password = randomBytes(24).toString("hex");
+let createdVaultHash: string | undefined;
+const vaultPin = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
 const loginUserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0";
 
 function decodeAttribute(value: string) {
@@ -133,6 +135,20 @@ async function main() {
   const history = JSON.stringify(loginEvent, (_key, value: unknown) => typeof value === "bigint" ? value.toString() : value);
   for (const secret of [password, senha_hash, token, createHash("sha256").update(token).digest("hex")]) assert(!history.includes(secret), "A auditoria nunca inclui senha, hash ou token de sessão.");
   assert(!history.includes("senha_hash"));
+  const lockedHtml = await (await request("/auditoria", cookie)).text();
+  assert(lockedHtml.includes("Cofre da auditoria"));
+  assert(!lockedHtml.includes("Ver dados do acesso"), "Audit data is not sent before PIN authorization.");
+  const vault = await db.cofreAuditoria.findUnique({ where: { id: 1 } });
+  if (!vault) {
+    const setup = formData(lockedHtml, "pin");
+    setup.set("pin", vaultPin); setup.set("confirmacao", vaultPin);
+    const configured = await submit("/auditoria", setup, cookie);
+    assert.equal(configured.status, 303);
+    createdVaultHash = (await db.cofreAuditoria.findUniqueOrThrow({ where: { id: 1 } })).pin_hash;
+  } else {
+    // Preserve an existing PIN; issue a grant only to this temporary test session.
+    await db.sessaoUsuario.update({ where: { token_hash: createHash("sha256").update(token).digest("hex") }, data: { auditoria_liberada_ate: new Date(Date.now() + 60000) } });
+  }
   const active = await request("/auditoria", cookie);
   assert.equal(active.status, 200);
   const activeHtml = await active.text();
@@ -169,18 +185,57 @@ async function main() {
 
   const gestor = await signIn(emails[1], "//example.com");
   assert.equal(gestor.response.headers.get("location"), "/");
-  const forbidden = await request("/usuarios", gestor.cookie);
-  await redirectsTo(forbidden, "/");
-  await redirectsTo(await request("/auditoria", gestor.cookie), "/");
+  const usersReadOnly = await request("/usuarios", gestor.cookie);
+  assert.equal(usersReadOnly.status, 200);
+  const usersReadOnlyHtml = await usersReadOnly.text();
+  assert(usersReadOnlyHtml.includes("Usuários cadastrados"));
+  assert(!usersReadOnlyHtml.includes('aria-label="Editar '));
+  assert(!usersReadOnlyHtml.includes('aria-label="Excluir '));
   const gestorPage = await (await request("/", gestor.cookie)).text();
-  assert(!gestorPage.includes('href="/usuarios"'));
-  assert(!gestorPage.includes('href="/auditoria"'), "O histórico completo de alterações é exclusivo dos administradores.");
+  assert(gestorPage.includes('href="/usuarios"'));
+  assert(gestorPage.includes('href="/auditoria"'));
+  assert(gestorPage.includes("Somente leitura"));
+  const managerGate = await (await request("/auditoria", gestor.cookie)).text();
+  assert(managerGate.includes("Cofre da auditoria"));
+  assert(!managerGate.includes("Ver dados do acesso"));
+  const incorrectPin = formData(managerGate, "pin");
+  incorrectPin.set("pin", "abcdef");
+  const incorrectResponse = await submit("/auditoria", incorrectPin, gestor.cookie);
+  assert((await incorrectResponse.text()).includes("exatamente 6 dígitos"));
+  if (createdVaultHash) {
+    const unlock = formData(managerGate, "pin"); unlock.set("pin", vaultPin);
+    assert.equal((await submit("/auditoria", unlock, gestor.cookie)).status, 303);
+    const unlocked = await (await request("/auditoria", gestor.cookie)).text();
+    assert(unlocked.includes("Ver dados do acesso"));
+    assert(!unlocked.includes("Trocar PIN do cofre"));
+    const lockMarkup = [...unlocked.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].find(([markup]) => markup.includes("Bloquear auditoria"))?.[0];
+    assert(lockMarkup);
+    assert.equal((await submit("/auditoria", formData(lockMarkup, "$ACTION_ID_"), gestor.cookie)).status, 303);
+    assert((await (await request("/auditoria", gestor.cookie)).text()).includes("Cofre da auditoria"));
+  }
+  for (const [path, target] of [["/comissoes/nova", "/comissoes"], ["/comissoes/importar", "/comissoes"], ["/cadastros/clientes", "/cadastros/clientes/visao-geral"], ["/contas-a-pagar/1/editar", "/contas-a-pagar"], ["/contas-a-receber/1/editar", "/contas-a-receber"]]) {
+    await redirectsTo(await request(path, gestor.cookie), target);
+  }
+  for (const path of ["/comissoes", "/contas-a-pagar", "/contas-a-receber", "/cadastros/clientes/visao-geral", "/cadastros/clientes/cruzamento", "/cadastros/geradores", "/cadastros/distribuidoras", "/cadastros/unidades", "/cadastros/parceiros", "/tipos", "/contas-bancarias", "/metodos-de-pagamento"]) {
+    assert.equal((await request(path, gestor.cookie)).status, 200, `Manager can view ${path}`);
+  }
+  const manifestPath = [".next/dev/server/server-reference-manifest.json", ".next/server/server-reference-manifest.json"].find(existsSync)!;
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { node: Record<string, { exportedName?: string }> };
+  const mutations = ["saveUser", "saveManagement", "removeManagement", "savePayable", "deletePayable", "savePayment", "deletePayment", "saveBankAccount", "saveMethod", "savePartner", "saveTipo", "saveCommissionAction", "saveCommissionCatalog", "confirmCommissionImport", "updateCommissionPaymentsAction", "updateCommissionReceiptsAction", "confirmClientImport", "setClientActive", "syncClientUnitsBatch", "confirmReconciliation", "attachFinancialReceiptAction", "configureAuditAction", "changeAuditPinAction"];
+  for (const name of mutations) {
+    const id = Object.entries(manifest.node).find(([, action]) => action.exportedName === name)?.[0];
+    assert(id, `Compiled action ${name} is present.`);
+    const result = await request("/login", gestor.cookie, { method: "POST", headers: { Origin: base, "Next-Action": id, "Content-Type": "text/plain;charset=UTF-8" }, body: "[]" });
+    const body = await result.text();
+    assert(body.includes("somente para visualização"), `Direct manager mutation ${name} is denied before processing arguments.`);
+  }
+  assert.equal(await db.usuario.count({ where: { email: forbiddenEmail } }), 0);
   await db.sessaoUsuario.updateMany({ where: { usuario: { email: emails[1] } }, data: { expira_em: new Date(Date.now() - 1000) } });
   await isLoginRedirect(await request("/auditoria", gestor.cookie));
 
   const api = await request("/api/v1");
   assert.equal(api.status, 401, "API continua protegida pelo Bearer.");
-  console.log("PASSOU: login HTTP real e auditoria por usuário/dia com navegador, IP, sistema operacional e segundos, sem segredos; credenciais inválidas, cookie, proteção de páginas/RSC/ações, perfis, retorno seguro, expiração e logout.");
+  console.log("PASSOU: login HTTP, auditoria protegida por PIN, leitura do GESTOR em todos os módulos, 23 mutações diretas bloqueadas, rotas de edição/importação protegidas, sessões, expiração e logout.");
 }
 
 void main().catch((error: unknown) => {
@@ -188,6 +243,10 @@ void main().catch((error: unknown) => {
   process.exitCode = 1;
 }).finally(async () => {
   try {
+    if (createdVaultHash) await db.cofreAuditoria.deleteMany({ where: { id: 1, pin_hash: createdVaultHash } });
+    const testUsers = await db.usuario.findMany({ where: { email: { in: emails } }, select: { id: true } });
+    const vaultKeys = testUsers.map((user) => createHash("sha256").update(`auditoria-cofre:${user.id}`).digest("hex"));
+    await db.loginTentativa.deleteMany({ where: { chave: { in: vaultKeys } } });
     await db.usuario.deleteMany({ where: { email: { in: emails } } });
     await db.loginTentativa.deleteMany({ where: { chave: { in: emails.map((email) => createHash("sha256").update(email).digest("hex")) } } });
   } catch {

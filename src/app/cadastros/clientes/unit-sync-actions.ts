@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { getPrisma } from "@/lib/prisma";
 import { auditedTransaction } from "@/lib/audit-request";
 import { bitrixConfig, createBitrixClient } from "@/lib/bitrix";
@@ -12,7 +12,7 @@ export type UnitSyncBatchResult = { success: true; summary: UnitSyncSummary; cur
 // Lotes curtos permitem exibir progresso em bases grandes sem uma requisição única longa.
 // A consulta remota termina antes da transação; uma falha no Bitrix não grava esse lote.
 export async function syncClientUnitsBatch(cursor = 0, throughId?: number): Promise<UnitSyncBatchResult> {
-  const user = await requireUser();
+  const user = await requireAdmin();
   try {
     if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > 2147483647 || (throughId !== undefined && (!Number.isSafeInteger(throughId) || throughId < cursor || throughId > 2147483647))) throw new Error("A sincronização expirou. Inicie novamente.");
     const config = bitrixConfig();

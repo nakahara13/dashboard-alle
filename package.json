@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test:audit": "node --import tsx scripts/test-audit.ts",
+    "test:audit-vault": "node --import tsx scripts/test-audit-vault.ts",
     "test:login-metadata": "node --import tsx scripts/test-login-metadata.ts",
     "db:test-audit": "node --import tsx scripts/test-audit-migration.ts",
     "test:client-unit-sync": "node --conditions=react-server --import tsx scripts/test-client-unit-sync.ts",

@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { AccessProvider } from "./access-provider";
+import { canManageRecords } from "@/lib/access";
 import Link from "next/link";
 import financeiroLogo from "@/assets/financeiro-sidebar-logo.png";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -76,7 +78,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
   const currentGroup = navigation.find((group) => group.items.some((item) => item === currentItem));
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
+    <AccessProvider canWrite={canManageRecords(user)}><div className="min-h-screen lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
       <a href="#conteudo" className="sr-only fixed left-4 top-4 z-50 rounded-lg bg-surface p-3 text-accent-ink shadow-lg focus:not-sr-only">Ir para o conteúdo</a>
       <aside className="saas-sidebar m-4 overflow-hidden rounded-[28px] border border-line lg:sticky lg:top-4 lg:mr-0 lg:flex lg:h-[calc(100dvh-2rem)] lg:flex-col lg:self-start">
         <div className="flex shrink-0 items-center justify-end px-6 py-4 lg:hidden">
@@ -87,7 +89,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
         <div id="sidebar-navigation" className={`${menuOpen ? "flex" : "hidden"} min-h-0 flex-1 flex-col lg:flex`}>
           <nav aria-label="Menu principal" className="sidebar-nav flex-1 space-y-5 overflow-y-auto px-6 pb-7 pt-8">
             {navigation.map((group) => {
-              const groupItems = group.items.filter((item) => !["/usuarios", "/auditoria"].includes(item.href) || user.role === "admin");
+              const groupItems = group.items;
               if (!groupItems.length) return null;
               const items = <ul className="space-y-2">
                   {groupItems.map((item) => {
@@ -95,7 +97,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
                     // Details oferece abertura por teclado; o grupo da página atual inicia expandido.
                     if (item.children) return <li key={item.href}><details key={`${item.href}-${currentPath}`} open={active} className="group/item">
                       <summary className={`sidebar-link ${active ? "is-active" : ""}`}><span className="sidebar-icon"><Icon name={item.icon} /></span><span>{item.title}</span><svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" className="ml-auto size-3.5 shrink-0 transition-transform group-open/item:rotate-180"><path d="m5 7 5 5 5-5" /></svg></summary>
-                      <ul className="sidebar-children">{item.children.map((child) => {
+                      <ul className="sidebar-children">{item.children.filter((child) => canManageRecords(user) || !["/comissoes/importar", "/cadastros/clientes"].includes(child.href)).map((child) => {
                         const childActive = currentPath === child.href;
                         return <li key={child.href}><Link href={child.href} aria-current={childActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className="sidebar-child-link">{child.title}</Link></li>;
                       })}</ul>
@@ -124,7 +126,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
           <div className="mx-6 mb-6 flex shrink-0 items-center gap-2 border-t border-line pt-5">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-muted text-sm font-semibold text-primary">{user.nome.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
-              <div className="min-w-0"><p className="truncate text-sm font-semibold text-secondary" title={user.email}>{user.nome}</p><p className="text-[13px] text-muted-ink">{user.role === "admin" ? "Administrador" : "Gestor"}</p></div>
+              <div className="min-w-0"><p className="truncate text-sm font-semibold text-secondary" title={user.email}>{user.nome}</p><p className="text-[13px] text-muted-ink">{user.role === "admin" ? "Administrador" : "Gestor · Somente leitura"}</p></div>
             </div>
             <ThemeToggle />
           </div>
@@ -137,6 +139,6 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
       <div className="flex min-w-0 flex-col">
         <main id="conteudo" tabIndex={-1} className={`flex min-w-0 flex-1 flex-col lg:min-h-dvh ${pathname === "/" ? "p-3 sm:p-4" : "p-5 sm:p-7"}`}>{children}</main>
       </div>
-    </div>
+    </div></AccessProvider>
   );
 }

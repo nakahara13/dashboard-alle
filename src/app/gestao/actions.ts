@@ -5,7 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import { auditedTransaction } from "@/lib/audit-request";
 import { managementData, updateManagement, deleteManagement, type ManagementKind } from "@/lib/gestao";
 import { validateTipoId } from "@/lib/tipos";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { UserManagementError } from "@/lib/usuarios";
 
 const managementPaths: Record<ManagementKind, string> = {
@@ -26,7 +26,7 @@ function failure(error: unknown) {
   return { success: false, message: "Não foi possível concluir a operação. Tente novamente." };
 }
 export async function saveManagement(kind: ManagementKind, id: number, form: FormData) {
-  const user = kind === "usuario" ? await requireAdmin() : await requireUser();
+  const user = await requireAdmin();
   let input;
   try { validateTipoId(String(id)); input = managementData(kind, form); } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Verifique os campos." };
@@ -36,7 +36,7 @@ export async function saveManagement(kind: ManagementKind, id: number, form: For
   return { success: true, message: "Alterações salvas." };
 }
 export async function removeManagement(kind: ManagementKind, id: number) {
-  const user = kind === "usuario" ? await requireAdmin() : await requireUser();
+  const user = await requireAdmin();
   try { await auditedTransaction(getPrisma(), user, `${managementPaths[kind] ?? "/cadastros"} • Excluir cadastro`, (tx) => deleteManagement(tx, kind, id), { isolationLevel: "Serializable" }); } catch (error) { return failure(error); }
   refresh();
   return { success: true, message: "Cadastro excluído." };

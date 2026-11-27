@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { receiptSummarySelect, serializeReceipt } from "@/lib/financial-receipts";
 import { requireUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
@@ -6,7 +7,8 @@ import { getPrisma } from "@/lib/prisma";
 import { parseRecordId } from "@/lib/record-id";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  await requireUser();
+  const user = await requireUser();
+  if (user.role !== "admin") redirect("/contas-a-receber");
   let id: bigint;
   try { id = parseRecordId((await params).id); } catch { notFound(); }
   const db = getPrisma();

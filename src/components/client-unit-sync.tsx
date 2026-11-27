@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ManagementDrawer, useDrawerFeedback } from "./management-drawer";
@@ -36,6 +38,7 @@ function SyncReport({ summary, total, pending, error, complete, uncertain }: { s
 }
 
 export function ClientUnitSync() {
+  const canWrite = useCanWrite();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [summary, setSummary] = useState<UnitSyncSummary>(emptySummary);
@@ -64,6 +67,7 @@ export function ClientUnitSync() {
       finally { router.refresh(); }
     });
   }
+  if (!canWrite) return null;
   return <>
     <button type="button" disabled={pending} aria-haspopup="dialog" aria-busy={pending} onClick={synchronize} className={styles.button}>
       <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={styles.icon}><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 7a7 7 0 0 1 11.6-1.3L20 8M4 16l2.3 2.3A7 7 0 0 0 17.9 17" /></svg>

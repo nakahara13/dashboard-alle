@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { DateInput, MoneyInput, MonthInput } from "@/components/formatted-input";
 import clientStyles from "@/app/cadastros/clientes/client-registration.module.css";
 import financialStyles from "@/components/financial-management.module.css";
@@ -74,8 +76,10 @@ export function SimpleCommissionCatalog({ kind, title, options, createOnly = fal
   useDrawerFeedback(state, pending);
   const fieldId = useId();
   const [id, setId] = useState("");
+  const canWrite = useCanWrite();
   const current = options.find((item) => String(item.id) === id);
   const icon = kind === "unidade" ? "building" : "energy";
+  if (!canWrite) return <section><h2>{title}</h2>{options.length ? <ul className="mt-4 divide-y divide-line">{options.map((item) => <li key={item.id} className="py-3 text-sm">{item.nome}</li>)}</ul> : <p className="mt-4 text-sm text-muted-ink">Nenhum cadastro encontrado.</p>}</section>;
   return <form action={action} onReset={(event) => { if (state.success) setId(""); else event.preventDefault(); }} className={`${financialStyles.recordForm} ${financialStyles.embeddedForm} ${managementStyles.form}`}><h2>{title}</h2><input type="hidden" name="cadastro" value={kind} />
     <fieldset disabled={pending} className={managementStyles.fieldGrid}>{!createOnly && <div className={managementStyles.fieldGroup}><label htmlFor={`${fieldId}-cadastro`} className={`${financialStyles.filterLabel} ${managementStyles.label}`}><InterfaceIcon name={icon} />Cadastro</label><select id={`${fieldId}-cadastro`} name="id" value={id} onChange={(event) => setId(event.target.value)} className={financialStyles.field}><option value="">Novo cadastro</option>{options.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}</select></div>}
       <div key={`${id}-${current?.nome}-${current?.parceiro_id}`} className={managementStyles.fieldGroup}><label htmlFor={`${fieldId}-nome`} className={`${financialStyles.filterLabel} ${managementStyles.label}`}><InterfaceIcon name={icon} />Nome *</label><input id={`${fieldId}-nome`} name="nome" required maxLength={255} defaultValue={current?.nome} className={financialStyles.field} />

@@ -1,6 +1,6 @@
 "use server";
 
-import { requireUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 import { revalidatePath } from "next/cache";
 import { getPrisma } from "@/lib/prisma";
@@ -8,7 +8,7 @@ import { auditedTransaction } from "@/lib/audit-request";
 import { createTipo, validateTipo } from "@/lib/tipos";
 
 export async function saveTipo(_previous: { success: boolean; message: string }, form: FormData) {
-  const user = await requireUser();
+  const user = await requireAdmin();
   const nome = String(form.get("nome") ?? "");
   try { validateTipo(nome); } catch (error) {
     return { success: false, message: error instanceof Error ? error.message : "Verifique o nome." };

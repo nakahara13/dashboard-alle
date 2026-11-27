@@ -62,7 +62,7 @@ function importForm(generator: number, rows: ImportRow[], review?: ImportConfirm
 
 async function main() {
   const fixture = await db.$transaction(async (tx) => {
-    const user = await tx.usuario.create({ data: { nome: marker, email, role: "gestor" } });
+    const user = await tx.usuario.create({ data: { nome: marker, email, role: "admin" } });
     const session = await issueSession(tx, user.id);
     const distributor = await tx.distribuidora.create({ data: { nome: marker } });
     const generator = await tx.geradora.create({ data: { nome: marker } });

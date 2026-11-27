@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanWrite } from "./access-provider";
+
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { CreateRecord, ManagementDrawer, useDrawerFeedback } from "@/components/management-drawer";
 import { RowActions, RowActionButton } from "@/components/row-actions";
@@ -52,12 +54,13 @@ function ClientRecordForm({ mode, record, options, onSaved }: { mode: "create" |
 
 // A alteração de situação preserva cadastros e todos os vínculos financeiros.
 export function ClientRowActions({ record, options, iconOnly = false }: { record: ClientRecord; options: ClientCatalogs; iconOnly?: boolean }) {
+  const canWrite = useCanWrite();
   const [mode, setMode] = useState<"details" | "edit" | "status" | null>(null);
   const [message, setMessage] = useState("");
   return <div className={clientStyles.modalScope}><RowActions label={record.nome}>
     <RowActionButton action="view" label={record.nome} iconOnly={iconOnly} type="button" onClick={() => setMode("details")}>Visualizar</RowActionButton>
     <RowActionButton action="edit" label={record.nome} iconOnly={iconOnly} type="button" onClick={() => { setMessage(""); setMode("edit"); }}>Editar</RowActionButton>
-    <button type="button" title={`${record.ativo ? "Inativar" : "Ativar"} ${record.nome}`} aria-label={`${record.ativo ? "Inativar" : "Ativar"} ${record.nome}`} onClick={() => { setMessage(""); setMode("status"); }} className={`${clientStyles.statusAction} ${record.ativo ? clientStyles.deactivate : clientStyles.activate}`}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v10m-5-7a9 9 0 1 0 10 0" /></svg>{!iconOnly && <span>{record.ativo ? "Inativar" : "Ativar"}</span>}</button>
+    {canWrite && <button type="button" title={`${record.ativo ? "Inativar" : "Ativar"} ${record.nome}`} aria-label={`${record.ativo ? "Inativar" : "Ativar"} ${record.nome}`} onClick={() => { setMessage(""); setMode("status"); }} className={`${clientStyles.statusAction} ${record.ativo ? clientStyles.deactivate : clientStyles.activate}`}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v10m-5-7a9 9 0 1 0 10 0" /></svg>{!iconOnly && <span>{record.ativo ? "Inativar" : "Ativar"}</span>}</button>}
   </RowActions>{message && <p role="status" className="mt-2 text-xs text-accent-ink">{message}</p>}
   {mode && <ManagementDrawer title={mode === "details" ? "Detalhes do cliente" : mode === "edit" ? "Editar cliente" : record.ativo ? "Inativar cliente" : "Ativar cliente"} onClose={() => setMode(null)} onSaved={setMessage}>
     {mode === "details" ? <>
@@ -71,7 +74,7 @@ export function ClientRowActions({ record, options, iconOnly = false }: { record
         <div><dt><InterfaceIcon name="users" />Parceiro específico</dt><dd>{options.partners.find(item => item.id === record.parceiro_id)?.nome || "Não informado"}</dd></div>
       </dl>
       <ClientPaymentHistory clientId={record.id} />
-      <button type="button" onClick={() => setMode("edit")} className={`${styles.primaryButton} ${clientStyles.detailEdit} mt-6`}>Editar cliente</button>
+      {canWrite && <button type="button" onClick={() => setMode("edit")} className={`${styles.primaryButton} ${clientStyles.detailEdit} mt-6`}>Editar cliente</button>}
     </> : <ClientRecordForm mode={mode} record={record} options={options} onSaved={setMessage} />}
   </ManagementDrawer>}</div>;
 }
