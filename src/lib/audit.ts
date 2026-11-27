@@ -78,7 +78,7 @@ export function auditFieldLabel(key: string) { return fieldLabels[key] ?? key.re
 export function auditValue(value: unknown, key?: string): string {
   if (value === null || value === undefined) return key === "mac_address" ? "Indisponível no navegador" : "Não informado";
   if (typeof value === "boolean") return key === "ativo" ? value ? "Ativo" : "Inativo" : value ? "Sim" : "Não";
-  if (key === "role") return value === "admin" ? "Admin" : value === "gestor" ? "Gestor" : String(value);
+  if (key === "role") return value === "admin" ? "Técnico" : value === "gestor" ? "Gestor" : String(value);
   if (typeof value === "string") {
     if (value === "") return "Em branco";
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.split("-").reverse().join("/");

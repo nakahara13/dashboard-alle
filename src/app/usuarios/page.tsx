@@ -28,7 +28,7 @@ export default async function Page() {
             <td className="tabular-nums">{user.id}</td>
             <td><span className={styles.nameText} title={user.nome}>{user.nome}</span></td>
             <td><span className={styles.cellText} title={user.email}>{user.email}</span></td>
-            <td><span className={`${styles.roleBadge} ${user.role === "admin" ? styles.adminRole : ""}`}>{user.role === "admin" ? "Admin" : "Gestor"}</span></td>
+            <td><span className={`${styles.roleBadge} ${user.role === "admin" ? styles.adminRole : styles.gestorRole}`}>{user.role === "admin" ? "Técnico" : "Gestor"}</span></td>
             <td>{user.criado_em.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</td>
             <td className={styles.actionCell}><ManagementRowActions kind="usuario" record={{ id: user.id, nome: user.nome, email: user.email, role: user.role }} /></td>
           </tr>)}</tbody>

@@ -16,6 +16,7 @@
 .actionCell { min-width: 160px; }
 .roleBadge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--muted); color: var(--secondary); font-size: 12px; line-height: 18px; font-weight: 600; }
 .adminRole { border-color: color-mix(in srgb, var(--detail-orange) 20%, var(--line)); background: var(--detail-orange-soft); color: var(--detail-orange); }
+.gestorRole { border-color: color-mix(in srgb, var(--success-ink) 25%, var(--line)); background: var(--success-soft); color: var(--success-ink); }
 .empty { padding: 4px 20px 20px; color: var(--muted-ink); font-size: 13px; line-height: 20px; }
 .createAction { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .createAction > p { color: var(--success-ink); font-size: 13px; line-height: 20px; }

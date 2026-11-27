@@ -126,7 +126,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Sessio
           <div className="mx-6 mb-6 flex shrink-0 items-center gap-2 border-t border-line pt-5">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-muted text-sm font-semibold text-primary">{user.nome.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</span>
-              <div className="min-w-0"><p className="truncate text-sm font-semibold text-secondary" title={user.email}>{user.nome}</p><p className="text-[13px] text-muted-ink">{user.role === "admin" ? "Administrador" : "Gestor · Somente leitura"}</p></div>
+              <div className="min-w-0"><p className="truncate text-sm font-semibold text-secondary" title={user.email}>{user.nome}</p><p className="text-[13px] text-muted-ink">{user.role === "admin" ? "Técnico" : "Gestor · Somente leitura"}</p></div>
             </div>
             <ThemeToggle />
           </div>

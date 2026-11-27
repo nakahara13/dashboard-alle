@@ -96,7 +96,7 @@ export function ManagementRowActions({ kind, record }: { kind: ManagementKind; r
     {mode === "edit" ? <ManagementEditForm kind={kind} record={record} onSaved={() => { setMessage("Alterações salvas."); }} /> : <>
       <div className={styles.details}>{detailItems.map((item) => <div key={item.label} className={styles.detailCard}>
         <span className={styles.detailIcon}><InterfaceIcon name={item.icon} /></span>
-        <dl><dt className={styles.detailLabel}>{item.label}</dt><dd className={styles.detailValue}>{item.role ? <span className={`${styles.roleBadge} ${record.role === "admin" ? styles.adminRole : ""}`}>{item.value || "Não informado"}</span> : item.value || "Não informado"}</dd></dl>
+        <dl><dt className={styles.detailLabel}>{item.label}</dt><dd className={styles.detailValue}>{item.role ? <span className={`${styles.roleBadge} ${record.role === "admin" ? styles.adminRole : styles.gestorRole}`}>{item.value || "Não informado"}</span> : item.value || "Não informado"}</dd></dl>
       </div>)}</div>
       {canWrite && <div className={styles.formActions}><button type="button" onClick={() => setMode("edit")} className={financialStyles.primaryButton}><InterfaceIcon name="filters" />Editar</button></div>}
     </>}
